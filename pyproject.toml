@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "floatmatcher"
+version = "0.1.0"
+description = "A python library for third-party dataset matchup with Argo floats"
+readme = "README.md"
+license = {text = "EUPL-1.2"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Clement WEBER", email = "clement.weber@pokapok.org"},
+]
+dependencies = [
+    "numpy",
+    "xarray",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/floatmatcher"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F"]
