@@ -2,10 +2,6 @@
 
 from dataclasses import dataclass, field
 
-import numpy as np
-import xarray as xr
-
-
 @dataclass
 class GridSet:
     """Thin validated wrapper around a normalized grid dataset.
