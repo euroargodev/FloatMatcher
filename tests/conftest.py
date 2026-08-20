@@ -2,6 +2,7 @@
 import numpy as np
 import pytest
 import xarray as xr
+from floatmatcher.pointset import PointSet
 
 
 @pytest.fixture
@@ -26,4 +27,16 @@ def grid_2d_ds():
     return xr.Dataset(
         {"2DdummyVar": (("lat", "lon"), data)},
         coords={"lat": lat, "lon": lon},
+    )
+
+
+@pytest.fixture
+def points_with_origin():
+    """A 3-point PointSet carrying provenance (as if extracted from a dataset)."""
+    return PointSet(
+        lon=[-45.0, -44.0, -43.0],
+        lat=[32.0, 33.0, 34.0],
+        time=np.array(["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]"),
+        origin_index=np.array([0, 1, 2]),
+        origin_dim="N_POINTS",
     )
