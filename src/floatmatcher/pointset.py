@@ -28,7 +28,7 @@ class PointSet:
         """validation for lenghts and dtype of lon/lat/time"""
         self.lon = np.asarray(self.lon, dtype=float)
         self.lat = np.asarray(self.lat, dtype=float)
-        self.time = np.asarray(self.time)
+        self.time = np.asarray(self.time, dtype="datetime64[ns]")
         if not (len(self.lat) == len(self.time) == len(self.lon)):
             raise ValueError("lon, lat, time must have the same length")
 

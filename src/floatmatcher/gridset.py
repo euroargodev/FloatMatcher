@@ -1,6 +1,7 @@
 # gridset.py: validated wrapper around a normalized grid dataset
 
 from dataclasses import dataclass, field
+import xarray as xr
 
 @dataclass
 class GridSet:

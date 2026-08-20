@@ -40,3 +40,28 @@ def points_with_origin():
         origin_index=np.array([0, 1, 2]),
         origin_dim="N_POINTS",
     )
+
+
+# ---------- interp lineaire ----------
+def _linear(lon, lat):
+    """Known analytic field: value = 2*lon + 3*lat."""
+    return 2.0 * lon + 3.0 * lat
+
+@pytest.fixture
+def linear_grid_3d():
+    """3D grid whose variable is an exact linear function of position.
+
+    The value does not depend on time here, which is fine: it lets us predict
+    the interpolated result from position alone.
+    """
+    lat = np.arange(30.0, 40.0)          # 30..39
+    lon = np.arange(-50.0, -40.0)        # -50..-41
+    time = np.array([np.datetime64("2015-01-01"), np.datetime64("2015-01-02"),
+                     np.datetime64("2015-01-03")], dtype="datetime64[ns]")
+    lon2d, lat2d = np.meshgrid(lon, lat)          # (lat, lon)
+    field2d = _linear(lon2d, lat2d)               # (lat, lon)
+    data = np.broadcast_to(field2d, (time.size, lat.size, lon.size))
+    return xr.Dataset(
+        {"v": (("time", "lat", "lon"), data.copy())},
+        coords={"time": time, "lat": lat, "lon": lon},
+    )
