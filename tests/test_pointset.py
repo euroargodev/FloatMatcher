@@ -13,7 +13,6 @@ def _times(n):
 
 
 # --- validation ---
-#TODO: A VALIDERR !!!
 def test_time_dtype():
     """test dtype of time array"""
     ps = PointSet([-45.0, -44.0], [32.0, 33.0], _times(2))
