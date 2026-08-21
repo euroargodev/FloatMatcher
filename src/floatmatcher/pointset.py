@@ -6,6 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from .geo import lonlat_to_xyz
+from .constants import TIME_UNIT
 
 
 @dataclass
@@ -28,7 +29,7 @@ class PointSet:
         """validation for lenghts and dtype of lon/lat/time"""
         self.lon = np.asarray(self.lon, dtype=float)
         self.lat = np.asarray(self.lat, dtype=float)
-        self.time = np.asarray(self.time, dtype="datetime64[ns]")
+        self.time = np.asarray(self.time, dtype=f"datetime64[{TIME_UNIT}]")
         if not (len(self.lat) == len(self.time) == len(self.lon)):
             raise ValueError("lon, lat, time must have the same length")
 

@@ -47,8 +47,8 @@ def test_method_is_a_matchup_method(method):
 def test_out_of_grid_point_is_invalid(method, standard_grid_3d):
     """Both methods invalidate a point far outside the grid."""
     grid = GridSet(standard_grid_3d)
-    lon = np.array([-46.0, 100.0])        # second point way outside
-    lat = np.array([34.0, 34.0])
+    lon = np.array([-48.0, 100.0])        # second point way outside
+    lat = np.array([31.0, 34.0])
     points = PointSet(lon, lat, set_timestamps(2, 2))
 
     result = method.match(grid, points, Constraints())

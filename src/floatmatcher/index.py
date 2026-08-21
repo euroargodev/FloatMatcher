@@ -6,9 +6,7 @@ from scipy.spatial import cKDTree
 
 from .pointset import PointSet
 from .reference import ReferenceSet
-
-# Reference epoch to turn datetime64 into floating-point days for the 1D time tree.
-REF_TIME = np.datetime64("1970-01-01", "ns")
+from .constants import REF_TIME, TIME_UNIT
 
 
 def _to_days(times: NDArray[np.datetime64]) -> NDArray[np.float64]:
@@ -17,7 +15,7 @@ def _to_days(times: NDArray[np.datetime64]) -> NDArray[np.float64]:
     Working in a common float unit lets the 1D KDTree measure time distance,
     and returning *days* makes the max_time_days constraint directly comparable.
     """
-    delta = (np.asarray(times, dtype="datetime64[ns]") - REF_TIME)
+    delta = np.asarray(times, dtype=f"datetime64[{TIME_UNIT}]") - REF_TIME
     return delta / np.timedelta64(1, "D")      # nanoseconds → days, as float
 
 

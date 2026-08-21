@@ -74,13 +74,13 @@ def test_distance_constraint_is_inclusive(standard_grid_2d):
 def test_time_constraint_is_inclusive(standard_grid_3d):
     """A point exactly at the threshold time delta is accepted (<=)."""
     grid = GridSet(standard_grid_3d)
-    lon = np.array([-46.0])
-    lat = np.array([34.0])
+    print(grid)
+    lon = np.array([-48.0])
+    lat = np.array([31.0])
     # a time between grid steps so the delta is non-zero
-    points = PointSet(lon, lat, np.array(["2015-01-02T06:00"], dtype="datetime64[ns]"))
+    points = PointSet(lon, lat, np.array(["2015-01-03T06:00"], dtype="datetime64[ns]"))
 
-    observed = NearestNeighbor().match(grid, points, Constraints(max_time_days=1e9))
-    dt = observed.time_delta[0]
+    dt=0.25     # correspond to 6houres shift of points
 
     at_threshold = NearestNeighbor().match(grid, points, Constraints(max_time_days=dt))
     assert at_threshold.valid[0]                       
