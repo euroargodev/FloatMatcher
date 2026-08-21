@@ -48,7 +48,7 @@ def _linear(lon, lat):
     return 2.0 * lon + 3.0 * lat
 
 @pytest.fixture
-def linear_grid_3d():
+def grid_3d_equalalltimes():
     """3D grid whose variable is an exact linear function of position.
 
     The value does not depend on time here, which is fine: it lets us predict
@@ -65,3 +65,30 @@ def linear_grid_3d():
         {"v": (("time", "lat", "lon"), data.copy())},
         coords={"time": time, "lat": lat, "lon": lon},
     )
+
+
+# tests/conftest.py  (à ajouter)
+
+@pytest.fixture
+def standard_grid_2d():
+    """2D grid where each node's value encodes its position: 1000*lat + lon."""
+    lat = np.array([30.0, 31.0, 32.0])
+    lon = np.array([-50.0, -49.0, -48.0, -47.0])
+    lon2d, lat2d = np.meshgrid(lon, lat)
+    field = 1000.0 * lat2d + lon2d
+    return xr.Dataset({"v": (("lat", "lon"), field)},
+                      coords={"lat": lat, "lon": lon})
+
+
+@pytest.fixture
+def standard_grid_3d():
+    """3D grid where value encodes position and time index: 1000*lat + lon + 100000*t."""
+    lat = np.array([30.0, 31.0, 32.0])
+    lon = np.array([-50.0, -49.0, -48.0, -47.0])
+    time = np.array(["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]")
+    field = np.empty((time.size, lat.size, lon.size))
+    lon2d, lat2d = np.meshgrid(lon, lat)
+    for t in range(time.size):
+        field[t] = 1000.0 * lat2d + lon2d + 100000.0 * t
+    return xr.Dataset({"v": (("time", "lat", "lon"), field)},
+                      coords={"time": time, "lat": lat, "lon": lon})

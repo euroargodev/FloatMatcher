@@ -53,3 +53,26 @@ def test_reference_xyz_shape():
     )
     ref = grid_to_reference(ds)
     assert ref.xyz.shape == (6, 3)                # 3*2 nodes, 3 coords each
+
+def test_flatten_3d_keeps_time_dimension():
+    """A 3D grid flattens space only; values keep a (node, time) shape."""
+    lat = np.array([30.0, 31.0])
+    lon = np.array([-50.0, -49.0, -48.0])
+    time = np.array([np.datetime64("2015-01-01"), np.datetime64("2015-01-02")])
+    # value encodes position AND time index: 1000*lat + lon + 0.5*time_index
+    field = np.empty((time.size, lat.size, lon.size))
+    for t in range(time.size):
+        lon2d, lat2d = np.meshgrid(lon, lat)
+        field[t] = 1000.0 * lat2d + lon2d + 0.5 * t
+    ds = xr.Dataset(
+        {"v": (("time", "lat", "lon"), field)},
+        coords={"time": time, "lat": lat, "lon": lon},
+    )
+
+    ref = grid_to_reference(ds)
+
+    assert ref.time is not None
+    assert ref.values["v"].shape == (lat.size * lon.size, time.size)   # (node, time)
+    # check a node/time entry matches its encoded position+time
+    npt.assert_allclose(ref.values["v"][:, 0], 1000.0 * ref.lat + ref.lon, atol=1e-9)
+    npt.assert_allclose(ref.values["v"][:, 1], 1000.0 * ref.lat + ref.lon + 0.5, atol=1e-9)

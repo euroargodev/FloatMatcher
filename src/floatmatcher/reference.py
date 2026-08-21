@@ -28,9 +28,18 @@ class ReferenceSet:
 
 
 def grid_to_reference(ds: xr.Dataset) -> ReferenceSet:
-    """Flatten a 2D grid (lat/lon) into a ReferenceSet"""
-    stacked = ds.stack(node=("lat", "lon"))        # one dimension "node"
+    """Flatten a grid (2D or 3D) into a ReferenceSet."""
+    stacked = ds.stack(node=("lat", "lon"))
     lon = stacked["lon"].values
     lat = stacked["lat"].values
-    values = {var: stacked[var].values for var in ds.data_vars}
-    return ReferenceSet(lon=lon, lat=lat, time=None, values=values)
+
+    if "time" in ds.coords:
+        time = ds["time"].values
+        # after stack, a variable is (time, node); we want (node, time)
+        values = {var: stacked[var].transpose("node", "time").values
+                  for var in ds.data_vars}
+    else:
+        time = None
+        values = {var: stacked[var].values for var in ds.data_vars}
+
+    return ReferenceSet(lon=lon, lat=lat, time=time, values=values)
