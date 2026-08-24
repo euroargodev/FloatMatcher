@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from typing import Any
-from .geo import lonlat_to_xyz
+from .geo import lonlat_to_xyz, convert_lon
 from .constants import TIME_UNIT
 
 
@@ -24,6 +24,10 @@ class PointSet:
     origin_index: NDArray[Any] | None = None   # source index, if any
     origin_dim: str | None = None                   # source dimension name, if known
     _xyz: NDArray[np.float64] | None = field(default=None, init=False, repr=False)
+    _lon_by_range: dict[str, NDArray[np.float64]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+
 
     def __post_init__(self) -> None:
         """validation for lenghts and dtype of lon/lat/time"""
@@ -41,4 +45,10 @@ class PointSet:
         if self._xyz is None:
             self._xyz = lonlat_to_xyz(self.lon, self.lat)
         return self._xyz
-    
+
+
+    def lon_in(self, lon_range: str) -> NDArray[np.float64]:
+        """Longitudes expressed in a grid's convention ('-180-180' or '0-360')."""
+        if lon_range not in self._lon_by_range:
+            self._lon_by_range[lon_range] = convert_lon(self.lon, lon_range)
+        return self._lon_by_range[lon_range]

@@ -15,3 +15,58 @@ def lonlat_to_xyz(lon: ArrayLike, lat: ArrayLike) -> NDArray[np.float64]:
     y = EARTH_RADIUS_KM * np.cos(lat_rad) * np.sin(lon_rad)
     z = EARTH_RADIUS_KM * np.sin(lat_rad)
     return np.column_stack([x, y, z])
+
+
+def convert_lon(lon, lon_range):
+    """Return longitude values re-labelled into the requested convention.
+    Both conventions share the 0 meridian (Greenwich) and turn eastward, no sorting.
+    Parameters
+    ----------
+    lon : array-like
+    lon_range : {"-180-180", "0-360"}
+    """
+    lon = np.asarray(lon, dtype=float)
+    if lon_range == "-180-180":
+        return ((lon + 180.0) % 360.0) - 180.0
+    if lon_range == "0-360":
+        return lon % 360.0
+    raise ValueError(
+        f"unknown lon_range: {lon_range!r} (expected '-180-180' or '0-360')"
+    )
+
+
+def detect_lon_range(lon):
+    """Infer the longitude convention of a grid from its values.
+      - any value > 180  -> only "0-360" can produce that
+      - any value < 0    -> only "-180-180" can produce that
+      - all in [0, 180]  -> ambiguous (both conventions coincide there),
+                            default to "-180-180"
+    """
+    lon = np.asarray(lon, dtype=float)
+    if lon.max() > 180.0:
+        return "0-360"
+    if lon.min() < 0.0:
+        return "-180-180"
+    return "-180-180"
+
+
+def is_monotonic(values):
+    """True if a 1-D axis is strictly increasing OR strictly decreasing.
+    Both directions accepted. Works for numeric and datetime64 axes."""
+    a = np.asarray(values)
+    d = np.diff(a)
+    if d.size == 0:
+        return True
+    zero = np.zeros((), dtype=d.dtype)
+    return bool((d > zero).all() or (d < zero).all())
+
+
+def is_strictly_increasing(values):
+    """True if a 1-D axis is strictly increasing only."""
+    a = np.asarray(values)
+    d = np.diff(a)
+    if d.size == 0:
+        return True
+    zero = np.zeros((), dtype=d.dtype)
+    return bool((d > zero).all())
+

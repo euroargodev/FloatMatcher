@@ -42,6 +42,15 @@ def points_with_origin():
         origin_dim="N_POINTS",
     )
 
+@pytest.fixture
+def grid_0_360():
+    """Grid whose longitudes exceed 180 -> native 0-360 convention.
+    Cannot be derived from grid_3d_ds (whose lon stays in [0,180])."""
+    lat = np.array([0.0, 1.0])
+    lon = np.array([200.0, 201.0, 202.0])
+    data = np.zeros((lat.size, lon.size))
+    return xr.Dataset({"v": (("lat", "lon"), data)},
+                      coords={"lat": lat, "lon": lon})
 
 # ---------- interp lineaire ----------
 def _linear(lon, lat):
