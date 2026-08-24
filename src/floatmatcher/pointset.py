@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-
+from typing import Any
 from .geo import lonlat_to_xyz
 from .constants import TIME_UNIT
 
@@ -21,7 +21,7 @@ class PointSet:
     lon: NDArray[np.float64]
     lat: NDArray[np.float64]
     time: NDArray[np.datetime64]
-    origin_index: NDArray[np.int64] | None = None   # source index, if any
+    origin_index: NDArray[Any] | None = None   # source index, if any
     origin_dim: str | None = None                   # source dimension name, if known
     _xyz: NDArray[np.float64] | None = field(default=None, init=False, repr=False)
 
@@ -32,6 +32,8 @@ class PointSet:
         self.time = np.asarray(self.time, dtype=f"datetime64[{TIME_UNIT}]")
         if not (len(self.lat) == len(self.time) == len(self.lon)):
             raise ValueError("lon, lat, time must have the same length")
+        if self.origin_index is not None:
+            self.origin_index = np.asarray(self.origin_index)
 
     @property
     def xyz(self) -> NDArray[np.float64]:

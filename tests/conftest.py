@@ -2,6 +2,7 @@
 import numpy as np
 import pytest
 import xarray as xr
+import pandas as pd
 from floatmatcher.pointset import PointSet
 
 
@@ -67,8 +68,7 @@ def grid_3d_equalalltimes():
     )
 
 
-# tests/conftest.py  (à ajouter)
-
+# ---------- standard grids ----------
 @pytest.fixture
 def standard_grid_2d():
     """2D grid where each node's value encodes its position: 1000*lat + lon."""
@@ -92,3 +92,68 @@ def standard_grid_3d():
         field[t] = 1000.0 * lat2d + lon2d + 100000.0 * t
     return xr.Dataset({"v": (("time", "lat", "lon"), field)},
                       coords={"time": time, "lat": lat, "lon": lon})
+
+
+
+# ---------- fixtures for profile_loader ----------
+
+@pytest.fixture
+def argopy_like_ds():
+    """xarray Dataset in the argopy N_POINTS layout, WITH a real coordinate
+    on the point dimension -> exercises label provenance."""
+    n = 3
+    return xr.Dataset(
+        {
+            "LONGITUDE": (("N_POINTS",), np.array([-45.0, -44.0, -43.0])),
+            "LATITUDE": (("N_POINTS",), np.array([32.0, 33.0, 34.0])),
+            "TIME": (("N_POINTS",), np.array(
+                ["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]")),
+        },
+        coords={"N_POINTS": np.arange(n)},   # real coordinate on the point dim
+    )
+ 
+ 
+@pytest.fixture
+def raw_ds_no_coord():
+    """xarray Dataset on a non-standard dimension 'obs' WITHOUT a coordinate
+    -> exercises dimension-name discovery AND positional provenance (arange)."""
+    return xr.Dataset(
+        {
+            "LONGITUDE": (("obs",), np.array([-45.0, -44.0, -43.0])),
+            "LATITUDE": (("obs",), np.array([32.0, 33.0, 34.0])),
+            "TIME": (("obs",), np.array(
+                ["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]")),
+        },
+        # no coords -> 'obs' is a bare dimension
+    )
+ 
+
+@pytest.fixture
+def juld_ds():
+    """xarray Dataset whose time variable is named JULD, not TIME
+    -> exercises the TIME/JULD tolerance."""
+    return xr.Dataset(
+        {
+            "LONGITUDE": (("obs",), np.array([-45.0, -44.0, -43.0])),
+            "LATITUDE": (("obs",), np.array([32.0, 33.0, 34.0])),
+            "JULD": (("obs",), np.array(
+                ["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]")),
+        },
+    )
+ 
+ 
+@pytest.fixture
+def df_datetime_index():
+    """DataFrame whose index is a DatetimeIndex (non-integer)
+    -> exercises the 'soft' policy: origin_index carried as-is, not cast to int."""
+    idx = pd.to_datetime(["2015-01-01", "2015-01-02", "2015-01-03"])
+    idx.name = "profile_date"
+    return pd.DataFrame(
+        {
+            "longitude": [-45.0, -44.0, -43.0],
+            "latitude": [32.0, 33.0, 34.0],
+            "date": pd.to_datetime(["2015-06-01", "2015-06-02", "2015-06-03"]),
+        },
+        index=idx,
+    )
+ 

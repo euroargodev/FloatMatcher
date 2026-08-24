@@ -12,8 +12,9 @@ def set_timestamps(*days):
     """Timestamps for the given 2015-01-xx days."""
     return np.array([f"2015-01-{d:02d}" for d in days], dtype="datetime64[ns]")
 
-
+# ─────────────────────────────────────────────────────────────
 # --- 2D: picks the nearest node's value ---
+# ─────────────────────────────────────────────────────────────
 
 def test_2d_picks_nearest_node(standard_grid_2d):
     """A point near a node gets that node's (position-encoded) value."""
@@ -30,8 +31,9 @@ def test_2d_picks_nearest_node(standard_grid_2d):
     npt.assert_allclose(result.values["v"], expected)
     assert result.valid.all()
 
-
+# ─────────────────────────────────────────────────────────────
 # --- 3D: picks the nearest node in space AND time ---
+# ─────────────────────────────────────────────────────────────
 
 def test_3d_picks_nearest_in_space_and_time(standard_grid_3d):
     """The retained node is nearest in space and in time."""
@@ -47,8 +49,9 @@ def test_3d_picks_nearest_in_space_and_time(standard_grid_3d):
     expected = np.array([1000 * 31 + (-50) + 100000 * 2])
     npt.assert_allclose(result.values["v"], expected)
 
-
+# ─────────────────────────────────────────────────────────────
 # --- Thresholds in space AND time ---
+# ─────────────────────────────────────────────────────────────
 
 def test_distance_constraint_is_inclusive(standard_grid_2d):
     """A point exactly at the threshold distance is accepted (<=)."""
@@ -88,7 +91,9 @@ def test_time_constraint_is_inclusive(standard_grid_3d):
     below = NearestNeighbor().match(grid, points, Constraints(max_time_days=dt - 1e-9))
     assert not below.valid[0]
 
+# ─────────────────────────────────────────────────────────────
 # --- constraints: mask, not filter ---
+# ─────────────────────────────────────────────────────────────
 
 def test_distance_constraint_invalidates_far_point(standard_grid_2d):
     """A point beyond max_dist_km is invalid and NaN, but still present."""
@@ -119,8 +124,9 @@ def test_time_constraint_invalidates_far_in_time(standard_grid_3d):
     assert not result.valid[0]
     assert np.isnan(result.values["v"][0])
 
-
+# ─────────────────────────────────────────────────────────────
 # --- output alignment ---
+# ─────────────────────────────────────────────────────────────
 
 def test_result_is_aligned_with_points(standard_grid_2d):
     """Every result array has one entry per input point, in order."""
