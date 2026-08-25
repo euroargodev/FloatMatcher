@@ -5,10 +5,25 @@ import xarray as xr
 import numpy as np
 
 from .method import MatchupMethod
-from .pointset import PointSet
-from .gridset import GridSet
 from .results import MatchupResult
 
+from .geo import is_global_lon
+ 
+ 
+def pad_periodic_lon(ds):
+    """Append first column to last on the right.
+ 
+    On a global grid (only) the last node (e.g. 359.75) and the first (0) are physical
+    neighbours, but the axis is discontinuous there, so xarray.interp returns
+    NaN for a point falling between them --> copy the first node to position
+    first+360, restoring continuity. Lazy-friendly (concat only).
+
+    """
+    lon = ds["lon"].values
+    if not is_global_lon(lon):
+        return ds
+    edge = ds.isel(lon=[0]).assign_coords(lon=[float(lon[0]) + 360.0])
+    return xr.concat([ds, edge], dim="lon")
 
 
 class Interpolation(MatchupMethod):

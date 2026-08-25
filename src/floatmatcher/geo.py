@@ -7,6 +7,7 @@ from .constants import EARTH_RADIUS_KM
 
 # functions 
 #_______
+
 def lonlat_to_xyz(lon: ArrayLike, lat: ArrayLike) -> NDArray[np.float64]:
     """Convert lon/lat to xyz on the shpere"""
     lon_rad = np.radians(lon)
@@ -70,3 +71,12 @@ def is_strictly_increasing(values):
     zero = np.zeros((), dtype=d.dtype)
     return bool((d > zero).all())
 
+def is_global_lon(lon, tol=1e-3):
+    """Check if the grid is circular or not. True if a longitude axis wraps the whole globe"""
+    lon = np.asarray(lon, dtype=float)
+    if lon.size < 2:
+        return False
+    step = abs(float(lon[1] - lon[0]))
+    span = float(lon.max() - lon.min()) + step
+    return abs(span - 360.0) < max(tol, step * 0.5)
+ 

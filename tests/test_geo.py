@@ -4,6 +4,8 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
+
+
 from floatmatcher.constants import EARTH_RADIUS_KM
 from floatmatcher.geo import (
     lonlat_to_xyz,
@@ -11,6 +13,7 @@ from floatmatcher.geo import (
     detect_lon_range,
     is_monotonic,
     is_strictly_increasing,
+    is_global_lon
 )
 
 
@@ -165,3 +168,26 @@ def test_xyz_convention_invariant():
     b = lonlat_to_xyz([-10.0], [30.0])
     npt.assert_allclose(a, b, atol=1e-9)
  
+
+# ───────────── PAD circular longitudes ─────────────
+
+def test_is_global_0_360():
+    assert is_global_lon(np.arange(0, 360, 0.25)) is True
+ 
+ 
+def test_is_global_minus180_180():
+    assert is_global_lon(np.arange(-180, 180, 0.25)) is True
+ 
+ 
+def test_is_global_regional_is_false():
+    # an Atlantic cut-out does not wrap the globe
+    assert is_global_lon(np.arange(-100, 20, 0.25)) is False
+ 
+ 
+def test_is_global_single_point_is_false():
+    assert is_global_lon(np.array([10.0])) is False
+ 
+ 
+def test_is_global_coarse_but_global():
+    # coarse yet global: step 90, span 360 once the wrap cell is added
+    assert is_global_lon(np.array([0.0, 90.0, 180.0, 270.0])) is True

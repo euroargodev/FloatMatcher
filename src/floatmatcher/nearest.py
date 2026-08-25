@@ -31,11 +31,11 @@ class NearestNeighbor(MatchupMethod):
             time_delta = np.full(n, np.nan)
             temporal_idx = None
 
-        # --- read the retained value for each variable, then mask invalids ---
+        # --- read the retained ONLY at the retained nodes for each variable, then mask invalids ---
+        picked = reference.read_values(spatial_idx, temporal_idx)
         values = {}
-        for var, flat in reference.values.items():
-            picked = self._pick(flat, spatial_idx, temporal_idx, grid.regime)
-            values[var] = np.where(valid, picked, np.nan)
+        for var, vals in picked.items():
+            values[var] = np.where(valid, vals, np.nan)
 
         # invalid points carry no meaningful distance/time either
         dist_km = np.where(valid, dist_km, np.nan)
