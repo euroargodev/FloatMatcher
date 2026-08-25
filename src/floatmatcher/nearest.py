@@ -43,10 +43,3 @@ class NearestNeighbor(MatchupMethod):
 
         return MatchupResult(values=values, distance_km=dist_km,
                              time_delta=time_delta, valid=valid)
-
-    @staticmethod
-    def _pick(flat, spatial_idx, temporal_idx, regime):
-        """Read the value at the retained (space, time) node for each point."""
-        if regime == "2D":
-            return flat[spatial_idx]                    # (n_node,) → per point
-        return flat[spatial_idx, temporal_idx]          # (n_node, n_time) → per point
