@@ -31,7 +31,7 @@ class Interpolation(MatchupMethod):
         self.method = method              # "linear", "nearest", "cubic"…
 
     def match(self, grid, points, constraints):
-        ds = grid.dataset                 # grid est un GridSet ; on interpole le dataset
+        ds = pad_periodic_lon(grid.dataset)                # grid est un GridSet ; on interpole le dataset
         interp_coords = dict(
             lon=xr.DataArray(points.lon_in(grid.lon_range), dims="pts"),
             lat=xr.DataArray(points.lat, dims="pts"),
