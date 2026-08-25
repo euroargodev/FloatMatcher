@@ -52,6 +52,34 @@ def grid_0_360():
     return xr.Dataset({"v": (("lat", "lon"), data)},
                       coords={"lat": lat, "lon": lon})
 
+
+@pytest.fixture
+def fake_era5_file(tmp_path):
+    """Tiny ERA5-like NetCDF: raw names, 0-360 (a lon > 180), decreasing lat."""
+    lat = np.array([40.0, 30.0, 20.0])
+    lon = np.array([9.0, 10.0, 11.0, 350.0])      # 350 > 180 -> 0-360
+    vt = np.array(["2015-06-01T00", "2015-06-01T06"], dtype="datetime64[ns]")
+    shape = (vt.size, lat.size, lon.size)
+    ds = xr.Dataset(
+        {v: (("valid_time", "latitude", "longitude"),
+             np.random.rand(*shape).astype("float32"))
+         for v in ["u10", "t2m", "sst"]},
+        coords={"valid_time": vt, "latitude": lat, "longitude": lon},
+    )
+    p = tmp_path / "fake_era5.nc"
+    ds.to_netcdf(p)
+    return str(p)
+
+
+@pytest.fixture
+def points_in_grid():
+    return PointSet(
+        lon=[9.5, 10.5],
+        lat=[35.0, 25.0],
+        time=np.array(["2015-06-01T03", "2015-06-01T03"], dtype="datetime64[ns]"),
+    )
+
+
 # ---------- interp lineaire ----------
 def _linear(lon, lat):
     """Known analytic field: value = 2*lon + 3*lat."""

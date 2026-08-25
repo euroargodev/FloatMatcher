@@ -18,7 +18,7 @@ class Interpolation(MatchupMethod):
     def match(self, grid, points, constraints):
         ds = grid.dataset                 # grid est un GridSet ; on interpole le dataset
         interp_coords = dict(
-            lon=xr.DataArray(points.lon, dims="pts"),
+            lon=xr.DataArray(points.lon_in(grid.lon_range), dims="pts"),
             lat=xr.DataArray(points.lat, dims="pts"),
         )
         if grid.regime == "3D":           # régime porté par le GridSet

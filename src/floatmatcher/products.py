@@ -1,13 +1,11 @@
 import numpy as np
 import xarray as xr 
 
-from .pointset import PointSet
-from .exceptions import ProfileFormatError
-from .geo import to_lon_180
 # ─────────────────────────────────────────────────────────────
 #  Private xarray extraction helpers
 #  (the name-lookup logic lives HERE, never in PointSet)
 # ─────────────────────────────────────────────────────────────
+
 
 def rename_coords(ds, mapping):
     """Rename source coordinate names to the standard ones (lat/lon[/time]).
@@ -32,7 +30,7 @@ def to_standard(ds, mapping):
 
 
 class ERA5Product:
-    COORD_MAP = {"longitude": "lon", "latitude": "lat", "time": "time"}
+    COORD_MAP = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
     LON_RANGE = "0-360"
     def normalize(self, raw):
         return to_standard(raw, self.COORD_MAP)    # la classe appelle la fonction

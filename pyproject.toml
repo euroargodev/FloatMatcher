@@ -18,6 +18,8 @@ dependencies = [
     "scipy",
     "argopy",
     "ipykernel",
+    "erddapy<3",
+    "dask>=2026.8.0",
 ]
 
 [dependency-groups]
@@ -46,3 +48,6 @@ disallow_untyped_defs = true
 line-length = 88
 target-version = "py311"
 select = ["E", "F"]
+
+[tool.uv.sources]
+argopy = { git = "https://github.com/euroargodev/argopy.git", rev = "master" }
