@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from dask.utils import SerializableLock
 
 from .pointset import PointSet
 
@@ -113,6 +114,12 @@ class PathTemplate(FileResolver):
 #  LocalSource: open the resolved files
 # ─────────────────────────────────────────────────────────────
 
+# netCDF4/HDF5 is not thread-safe, and open_mfdataset returns dask-backed
+# arrays read by dask's threaded scheduler. ONE lock shared by every open
+# serializes those reads process-wide; a per-call lock would not.
+_NETCDF_LOCK = SerializableLock()
+
+
 class LocalSource:
     """Opens files already present on disk and returns the raw dataset."""
 
@@ -132,4 +139,4 @@ class LocalSource:
         """
         if not paths:
             raise ValueError("LocalSource: empty file list")
-        return xr.open_mfdataset(paths, combine="by_coords")
+        return xr.open_mfdataset(paths, combine="by_coords", lock=_NETCDF_LOCK)
