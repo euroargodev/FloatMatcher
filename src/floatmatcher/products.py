@@ -29,7 +29,9 @@ def to_standard(ds, mapping):
 
 class ERA5Product:
     COORD_MAP = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
-    LON_RANGE = "0-360"
+    # CDS returns either convention depending on how the request was made,
+    # so it cannot be declared -> GridSet detects it from the data instead.
+    LON_RANGE = None
     def normalize(self, raw):
         return to_standard(raw, self.COORD_MAP)    # la classe appelle la fonction
 

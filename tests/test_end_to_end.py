@@ -56,8 +56,6 @@ def points():
     )
 
 
-
-
 def test_pathtemplate_resolves_only_needed_days(era5_tree, points):
     """The resolver returns one file per unique day present in the points."""
     files = PathTemplate(era5_tree, PATTERN).files_for(points)

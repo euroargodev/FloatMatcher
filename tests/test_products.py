@@ -73,7 +73,7 @@ def test_era5_normalize():
 
 
 def test_era5_declared_attributes():
-    assert ERA5Product.LON_RANGE == "0-360"
+    assert ERA5Product.LON_RANGE is None
     assert ERA5Product.COORD_MAP["longitude"] == "lon"
 
 
