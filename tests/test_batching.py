@@ -4,7 +4,6 @@
 import numpy as np
 import numpy.testing as npt
 import pytest
-import xarray as xr
 
 from floatmatcher.orchestrator import Orchestrator
 from floatmatcher.products import ERA5Product

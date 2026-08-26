@@ -1,7 +1,6 @@
 # tests/test_products.py
 
 import numpy as np
-import pytest
 import xarray as xr
 
 from floatmatcher.products import (

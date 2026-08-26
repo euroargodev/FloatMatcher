@@ -1,5 +1,4 @@
 import numpy as np
-import xarray as xr 
 
 from .pointset import PointSet
 from .exceptions import ProfileFormatError
@@ -11,7 +10,8 @@ from .exceptions import ProfileFormatError
 
 def _find_key(ds, *names):
     """Base level: return the FIRST of `names` present in ds (coord or variable).
-    Raise ProfileFormatError if none match. The only place that knows the lookup rule."""
+    Raise ProfileFormatError if none match. The only place that knows the
+    lookup rule."""
     for name in names:
         if name in ds.coords or name in ds.variables:
             return name

@@ -1,4 +1,5 @@
-# Imports 
+
+# Imports
 import xarray as xr
 import numpy as np
 import warnings
@@ -8,7 +9,6 @@ warnings.filterwarnings("ignore", category=SyntaxWarning)
 from floatmatcher.orchestrator import Orchestrator
 from floatmatcher.products import ERA5Product
 from floatmatcher.profile_loader import ProfileLoader
-from floatmatcher.interpolation import Interpolation
 from floatmatcher.nearest import NearestNeighbor
 
 

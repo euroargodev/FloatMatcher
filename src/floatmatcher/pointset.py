@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 from typing import Any
 from .geo import lonlat_to_xyz, convert_lon
 from .constants import TIME_UNIT

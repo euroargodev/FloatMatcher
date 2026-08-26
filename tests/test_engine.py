@@ -1,6 +1,5 @@
 # tests/test_engine.py
 import numpy as np
-import numpy.testing as npt
 import pytest
 
 from floatmatcher.nearest import NearestNeighbor

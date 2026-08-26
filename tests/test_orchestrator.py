@@ -11,7 +11,6 @@ import xarray as xr
 
 from floatmatcher.orchestrator import Orchestrator
 from floatmatcher.products import ERA5Product
-from floatmatcher.pointset import PointSet
 
 
 # ─────────────────────────────────────────────────────────────

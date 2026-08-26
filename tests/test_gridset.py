@@ -1,7 +1,5 @@
 # tests/test_gridset.py
-import numpy as np
 import pytest
-import xarray as xr
 
 from floatmatcher.gridset import GridSet
 

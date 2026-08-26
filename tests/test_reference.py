@@ -8,7 +8,7 @@
 import numpy as np
 import numpy.testing as npt
 
-from floatmatcher.reference import ReferenceSet, grid_to_reference
+from floatmatcher.reference import grid_to_reference
 
 from helpers import make_grid, pos_field, daily_timestamps
 
