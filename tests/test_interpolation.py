@@ -10,12 +10,11 @@ from floatmatcher.pointset import PointSet
 from floatmatcher.method import Constraints
 from floatmatcher.interpolation import pad_periodic_lon
  
- 
+from helpers import linear_field
 
 # ───────────── test exactitude of interpolation ─────────────
 
-def _linear(lon, lat):
-    return 2.0 * lon + 3.0 * lat
+
 
 
 def test_linear_field_is_interpolated_exactly(grid_3d_equalalltimes):
@@ -29,7 +28,7 @@ def test_linear_field_is_interpolated_exactly(grid_3d_equalalltimes):
 
     result = Interpolation(method="linear").match(grid, points, Constraints())
 
-    expected = _linear(lon, lat)
+    expected = linear_field(lon, lat)
     npt.assert_allclose(result.values["v"], expected, atol=1e-9)
     assert result.valid.all()
 

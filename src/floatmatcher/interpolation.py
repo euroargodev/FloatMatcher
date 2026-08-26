@@ -31,15 +31,16 @@ class Interpolation(MatchupMethod):
         self.method = method              # "linear", "nearest", "cubic"…
 
     def match(self, grid, points, constraints):
-        ds = pad_periodic_lon(grid.dataset)                # grid est un GridSet ; on interpole le dataset
+        ds = pad_periodic_lon(grid.dataset)                
         interp_coords = dict(
             lon=xr.DataArray(points.lon_in(grid.lon_range), dims="pts"),
             lat=xr.DataArray(points.lat, dims="pts"),
         )
-        if grid.regime == "3D":           # régime porté par le GridSet
+        if grid.regime == "3D":          
             interp_coords["time"] = xr.DataArray(points.time, dims="pts")
 
         out = ds.interp(**interp_coords, method=self.method)
+ 
         values = {var: out[var].values for var in ds.data_vars}
 
         valid = ~np.isnan(next(iter(values.values())))

@@ -9,10 +9,7 @@ from floatmatcher.method import MatchupMethod, Constraints
 from floatmatcher.gridset import GridSet
 from floatmatcher.pointset import PointSet
 
-
-def set_timestamps(*days):
-    """Timestamps for the given 2015-01-xx days."""
-    return np.array([f"2015-01-{d:02d}" for d in days], dtype="datetime64[ns]")
+from helpers import set_timestamps
 
 
 # both methods, driven through the SAME code path

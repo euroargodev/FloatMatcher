@@ -47,10 +47,9 @@ print("\n--------------------")
 # print("nearest values:", res_n.values)
 
 
-orch = Orchestrator(ERA5Product(), NearestNeighbor())
+orch = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1))
 res = orch.colocalize(file_path, points, variables="sst")          # une seule
 res = orch.colocalize(file_path, points, variables=["sst", "t2m"]) # plusieurs
-
 res = orch.colocalize(file_path, points)                            # toutes (défaut)
 
 orch.colocalize(file_path, points, variables="xxx")   # -> ValueError listant u10,v10,t2m,sst

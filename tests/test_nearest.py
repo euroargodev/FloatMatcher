@@ -7,10 +7,7 @@ from floatmatcher.gridset import GridSet
 from floatmatcher.pointset import PointSet
 from floatmatcher.method import Constraints
 
-
-def set_timestamps(*days):
-    """Timestamps for the given 2015-01-xx days."""
-    return np.array([f"2015-01-{d:02d}" for d in days], dtype="datetime64[ns]")
+from helpers import set_timestamps
 
 # ─────────────────────────────────────────────────────────────
 # --- 2D: picks the nearest node's value ---

@@ -1,16 +1,17 @@
 # orchestrator.py: the top-level coordinator (public API of the library).
 #
 # Ties the pieces together and hides the plumbing (access -> normalize ->
-# GridSet -> match). It no longer opens files itself: file access lives in the
-# LocalSource layer (§4.3), so the orchestrator only coordinates.
+# GridSet -> match). It does not open files itself: file access lives in the
+# LocalSource layer, which the orchestrator invokes.
 #
-# MINIMAL VERSION: single pass, no batching, no cache. Temporal batching will
-# slot in between "open" and "match" (split into packets, reinject via
-# origin_index) — that is what the config carried here will drive.
+# Each method has its own temporal-batching strategy, so the orchestrator holds
+# one sub-method per method (nearest / interp) rather than a single generic
+# loop. The public `colocalize` dispatches to the right one.
 
 from .gridset import GridSet
 from .local_source import LocalSource, ExplicitFiles
 from .method import Constraints
+from .nearest import NearestNeighbor
 
 
 class Orchestrator:
@@ -35,21 +36,57 @@ class Orchestrator:
         LocalSource with an ExplicitFiles resolver for convenience).
         Returns a MatchupResult.
         """
-        grid = self._build_grid(source, points, variables)
+        local = self._as_local_source(source)
+        if isinstance(self.method, NearestNeighbor):
+            return self._colocalize_nearest(local, points, variables)
+        return self._colocalize_interp(local, points, variables)
+
+    # ── per-method strategies ────────────────────────────────────────────
+
+    def _colocalize_nearest(self, local, points, variables):
+        """Nearest with temporal batching.
+
+        Open files in packets of at most `method.max_files` (bounding I/O),
+        build the spatial index once from the first packet, match every packet,
+        and keep each point's best match across packets via update_best.
+        """
+        files = local.resolver.files_for(points)
+        max_files = self.method.max_files
+        chunks = [files[i:i + max_files] for i in range(0, len(files), max_files)]
+
+        prepared = None
+        result = None
+        for chunk in chunks:
+            grid = self._open_chunk_grid(local, chunk, variables)
+            if prepared is None:                     # spatial built once, reused
+                prepared = self.method.prepare(grid, points, self.constraints)
+            partial = prepared.match_packet(grid)
+            result = partial if result is None else result.update_best(partial)
+        return result
+
+    def _colocalize_interp(self, local, points, variables):
+        """Interpolation: single open for now.
+
+        RAM-slice batching (a different strategy: temporal slices bounded by a
+        memory budget, with one-slice overlap) will slot in here later, without
+        touching the nearest path.
+        """
+        files = local.resolver.files_for(points)
+        grid = self._open_chunk_grid(local, files, variables)
         return self.method.match(grid, points, self.constraints)
 
-    def _build_grid(self, source, points, variables):
-        """Open (via LocalSource), normalize, and wrap into a validated GridSet."""
-        local = self._as_local_source(source)
-        raw = local.open(points)
-        normalized = self.product.normalize(raw)
-        normalized = self._select_variables(normalized, variables)
-        return GridSet(normalized, declared_lon_range=self.product.LON_RANGE)
-    
+    # ── shared helpers ───────────────────────────────────────────────────
+
+    def _open_chunk_grid(self, local, paths, variables):
+        """Open one packet of files -> normalized, validated GridSet."""
+        raw = local.open_paths(paths)
+        ds = self._select_variables(self.product.normalize(raw), variables)
+        return GridSet(ds, declared_lon_range=self.product.LON_RANGE)
+
     @staticmethod
     def _select_variables(ds, variables):
         """Keep only the requested variables. None -> keep all.
- 
+
         Raises a clear error (listing what's available) if a name is unknown,
         rather than xarray's terse KeyError.
         """

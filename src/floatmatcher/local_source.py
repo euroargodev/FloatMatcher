@@ -120,9 +120,16 @@ class LocalSource:
         self.resolver = resolver
 
     def open(self, points: PointSet) -> xr.Dataset:
-        paths = self.resolver.files_for(points)
+        return self.open_paths(self.resolver.files_for(points))
+
+    def open_paths(self, paths) -> xr.Dataset:
+        """Open an explicit, already-resolved list of files and return the raw
+        dataset. Bypasses the resolver: the caller has batched files_for(...)
+        output into packets and opens each packet here.
+
+        combine="by_coords" lets xarray order ERA5 files by their time coords;
+        a single-element list works the same way.
+        """
         if not paths:
-            raise ValueError("LocalSource: the resolver returned no files to open")
-        # combine="by_coords" lets xarray order ERA5 files by their time coords;
-        # a single-element list works the same way.
+            raise ValueError("LocalSource: empty file list")
         return xr.open_mfdataset(paths, combine="by_coords")

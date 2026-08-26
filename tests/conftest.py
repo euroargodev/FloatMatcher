@@ -1,35 +1,37 @@
 # tests/conftest.py: fixtures shared across the test suite
+
+
 import numpy as np
 import pytest
 import xarray as xr
 import pandas as pd
 from floatmatcher.pointset import PointSet
 
+from helpers import make_grid, linear_field, pos_field, daily_timestamps
+ 
+
+# ---------- grids ----------
 
 @pytest.fixture
 def grid_3d_ds():
-    """Minimal well-formed 3D grid dataset (time/lat/lon), one variable."""
-    lat = np.array([0.0, 1.0, 2.0])
-    lon = np.array([10.0, 11.0, 12.0])
-    time = np.array([np.datetime64("2015-01-01"), np.datetime64("2015-01-02")])
-    data = np.zeros((time.size, lat.size, lon.size))
-    return xr.Dataset(
-        {"t2m": (("time", "lat", "lon"), data)},
-        coords={"time": time, "lat": lat, "lon": lon},
-    )
-
+    return make_grid([0.0, 1.0, 2.0], [10.0, 11.0, 12.0],
+                     time=daily_timestamps(2), variables="t2m")
 
 @pytest.fixture
 def grid_2d_ds():
-    """Minimal well-formed 2D grid dataset (lat/lon, no time), one variable."""
-    lat = np.array([0.0, 1.0, 2.0])
-    lon = np.array([10.0, 11.0, 12.0])
-    data = np.zeros((lat.size, lon.size))
-    return xr.Dataset(
-        {"2DdummyVar": (("lat", "lon"), data)},
-        coords={"lat": lat, "lon": lon},
-    )
+    return make_grid([0.0, 1.0, 2.0], [10.0, 11.0, 12.0], variables="2DdummyVar")
 
+@pytest.fixture
+def grid_0_360():
+    return make_grid([0.0, 1.0], [200.0, 201.0, 202.0])
+
+def _equal_all_times(lon2d, lat2d, t):
+    return linear_field(lon2d, lat2d)
+
+
+
+
+# ---------- points ----------
 
 @pytest.fixture
 def points_with_origin():
@@ -43,35 +45,6 @@ def points_with_origin():
     )
 
 @pytest.fixture
-def grid_0_360():
-    """Grid whose longitudes exceed 180 -> native 0-360 convention.
-    Cannot be derived from grid_3d_ds (whose lon stays in [0,180])."""
-    lat = np.array([0.0, 1.0])
-    lon = np.array([200.0, 201.0, 202.0])
-    data = np.zeros((lat.size, lon.size))
-    return xr.Dataset({"v": (("lat", "lon"), data)},
-                      coords={"lat": lat, "lon": lon})
-
-
-@pytest.fixture
-def fake_era5_file(tmp_path):
-    """Tiny ERA5-like NetCDF: raw names, 0-360 (a lon > 180), decreasing lat."""
-    lat = np.array([40.0, 30.0, 20.0])
-    lon = np.array([9.0, 10.0, 11.0, 350.0])      # 350 > 180 -> 0-360
-    vt = np.array(["2015-06-01T00", "2015-06-01T06"], dtype="datetime64[ns]")
-    shape = (vt.size, lat.size, lon.size)
-    ds = xr.Dataset(
-        {v: (("valid_time", "latitude", "longitude"),
-             np.random.rand(*shape).astype("float32"))
-         for v in ["u10", "t2m", "sst"]},
-        coords={"valid_time": vt, "latitude": lat, "longitude": lon},
-    )
-    p = tmp_path / "fake_era5.nc"
-    ds.to_netcdf(p)
-    return str(p)
-
-
-@pytest.fixture
 def points_in_grid():
     return PointSet(
         lon=[9.5, 10.5],
@@ -80,55 +53,82 @@ def points_in_grid():
     )
 
 
-# ---------- interp lineaire ----------
-def _linear(lon, lat):
-    """Known analytic field: value = 2*lon + 3*lat."""
-    return 2.0 * lon + 3.0 * lat
+# ---------- fake era5 ----------
 
 @pytest.fixture
-def grid_3d_equalalltimes():
-    """3D grid whose variable is an exact linear function of position.
+def write_era5(tmp_path):
+    """Factory for ERA5-like NetCDF files."""
+    def _write(name, times, lon, lat, values=None,
+               variables=("u10", "t2m", "sst")):
+        lon, lat = np.asarray(lon, float), np.asarray(lat, float)
+        times = np.asarray(times, dtype="datetime64[ns]")
+        shape = (times.size, lat.size, lon.size)
 
-    The value does not depend on time here, which is fine: it lets us predict
-    the interpolated result from position alone.
-    """
-    lat = np.arange(30.0, 40.0)          # 30..39
-    lon = np.arange(-50.0, -40.0)        # -50..-41
-    time = np.array([np.datetime64("2015-01-01"), np.datetime64("2015-01-02"),
-                     np.datetime64("2015-01-03")], dtype="datetime64[ns]")
-    lon2d, lat2d = np.meshgrid(lon, lat)          # (lat, lon)
-    field2d = _linear(lon2d, lat2d)               # (lat, lon)
-    data = np.broadcast_to(field2d, (time.size, lat.size, lon.size))
-    return xr.Dataset(
-        {"v": (("time", "lat", "lon"), data.copy())},
-        coords={"time": time, "lat": lat, "lon": lon},
+        if values is None:
+            data = {}
+            for v in variables:
+                data[v] = np.random.rand(*shape).astype("float32")
+        else:
+            field = values(
+                np.arange(lon.size)[None, None, :],
+                np.arange(lat.size)[None, :, None],
+                np.arange(times.size)[:, None, None],
+            )
+            field = (field * np.ones(shape)).astype("float32")
+            data = {}
+            for v in variables:
+                data[v] = field
+
+        data_vars = {}
+        for v, d in data.items():
+            data_vars[v] = (("valid_time", "latitude", "longitude"), d)
+
+        ds = xr.Dataset(
+            data_vars,
+            coords={"valid_time": times, "latitude": lat, "longitude": lon},
+        )
+        path = tmp_path / name
+        ds.to_netcdf(path)
+        return str(path)
+
+    return _write
+
+
+@pytest.fixture
+def fake_era5_file(write_era5):
+    """Tiny ERA5-like NetCDF: raw names, 0-360 (a lon > 180), decreasing lat."""
+    return write_era5(
+        "fake_era5.nc",
+        times=["2015-06-01T00", "2015-06-01T06"],
+        lon=[9.0, 10.0, 11.0, 350.0],
+        lat=[40.0, 30.0, 20.0],
     )
 
 
+
+# ---------- interp lineaire ----------
+@pytest.fixture
+def grid_3d_equalalltimes():
+    return make_grid(np.arange(30.0, 40.0), np.arange(-50.0, -40.0),
+                     time=daily_timestamps(3), fill=_equal_all_times)
+
+
+
 # ---------- standard grids ----------
+
 @pytest.fixture
 def standard_grid_2d():
-    """2D grid where each node's value encodes its position: 1000*lat + lon."""
-    lat = np.array([30.0, 31.0, 32.0])
-    lon = np.array([-50.0, -49.0, -48.0, -47.0])
-    lon2d, lat2d = np.meshgrid(lon, lat)
-    field = 1000.0 * lat2d + lon2d
-    return xr.Dataset({"v": (("lat", "lon"), field)},
-                      coords={"lat": lat, "lon": lon})
-
-
+    return make_grid([30.0, 31.0, 32.0], [-50.0, -49.0, -48.0, -47.0],
+                     fill=pos_field, fill_args=(1000.0, 0.0))
+ 
+ 
 @pytest.fixture
 def standard_grid_3d():
-    """3D grid where value encodes position and time index: 1000*lat + lon + 100000*t."""
-    lat = np.array([30.0, 31.0, 32.0])
-    lon = np.array([-50.0, -49.0, -48.0, -47.0])
-    time = np.array(["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]")
-    field = np.empty((time.size, lat.size, lon.size))
-    lon2d, lat2d = np.meshgrid(lon, lat)
-    for t in range(time.size):
-        field[t] = 1000.0 * lat2d + lon2d + 100000.0 * t
-    return xr.Dataset({"v": (("time", "lat", "lon"), field)},
-                      coords={"time": time, "lat": lat, "lon": lon})
+    return make_grid([30.0, 31.0, 32.0], [-50.0, -49.0, -48.0, -47.0],
+                     time=daily_timestamps(3),
+                     fill=pos_field, fill_args=(1000.0, 100000.0))
+ 
+ 
 
 
 
@@ -163,7 +163,6 @@ def raw_ds_no_coord():
         },
         # no coords -> 'obs' is a bare dimension
     )
- 
 
 @pytest.fixture
 def juld_ds():
@@ -193,4 +192,3 @@ def df_datetime_index():
         },
         index=idx,
     )
- 
