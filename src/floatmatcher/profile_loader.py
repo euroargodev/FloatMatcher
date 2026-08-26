@@ -27,6 +27,17 @@ def _extract(ds, *names):
     """Return the .values (raw ndarray) — the common case."""
     return _get(ds, *names).values
 
+def _to_profiles(ds):
+    """Collapse an argopy measurement layout (N_POINTS) to profiles (N_PROF)."""
+    accessor = getattr(ds, "argo", None)
+    if accessor is None or not hasattr(accessor, "point2profile"):
+        raise ProfileFormatError(
+            "from_argopy_float received an N_POINTS dataset but the argopy 'argo' "
+            "accessor is unavailable. Import argopy first (it registers the "
+            "accessor), or pass an already profile-shaped dataset (N_PROF)."
+        )
+    return accessor.point2profile()
+
 # ─────────────────────────────────────────────────────────────
 #  ProfileLoader: converges any point source into a PointSet.
 #  Never validates itself: it extracts and delegates to PointSet.
@@ -73,12 +84,28 @@ class ProfileLoader:
                         origin_dim=point_dim
                         )
 
-    # TODO : 
+    # --- 4. argopy float: an xarray Dataset from DataFetcher().load().data ---
     @staticmethod
-    def from_argopy_float(obj) -> PointSet:
-        pass
-
-    # TODO : 
+    def from_argopy_float(ds) -> PointSet:
+        """argopy float Dataset -> PointSet, ONE position per profile.
+ 
+        argopy returns a measurement-level layout (dim ``N_POINTS``: lon/lat/time
+        repeat across each profile's depth levels). Colocalization wants one
+        position per profile, so collapse to the profile layout (dim ``N_PROF``)
+        when a measurement layout is given.
+        """
+        if "N_POINTS" in ds.dims:
+            ds = _to_profiles(ds)                 # N_POINTS -> (N_PROF, N_LEVELS)
+        return ProfileLoader.from_xrdataset(ds, lon="LONGITUDE", lat="LATITUDE",
+                                            time="TIME")
+ 
+    # --- 5. argopy index: a pandas DataFrame, one row per profile ---
     @staticmethod
-    def from_argopy_index(idx) -> PointSet:
-        pass
+    def from_argopy_index(index) -> PointSet:
+        """argopy index DataFrame -> PointSet.
+ 
+        IndexFetcher().load().index is a DataFrame with longitude/latitude/date,
+        one row per profile: exactly what from_dataframe consumes.
+        """
+        return ProfileLoader.from_dataframe(index, lon="longitude",
+                                            lat="latitude", time="date")

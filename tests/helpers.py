@@ -2,6 +2,13 @@
 import numpy as np
 import xarray as xr
 
+from floatmatcher.method import Constraints
+
+
+def constraints(max_dist_km=100.0, max_time_days=1.0):
+    """Constraints instance, overridable per test."""
+    return Constraints(max_dist_km=max_dist_km, max_time_days=max_time_days)
+
 
 def set_timestamps(*days):
     """Timestamps for the given 2015-01-xx days."""

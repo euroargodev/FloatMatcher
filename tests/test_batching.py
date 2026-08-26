@@ -10,7 +10,10 @@ from floatmatcher.products import ERA5Product
 from floatmatcher.nearest import NearestNeighbor
 from floatmatcher.pointset import PointSet
 from floatmatcher.results import MatchupResult
-from floatmatcher.method import Constraints
+
+from helpers import constraints
+
+CONS = constraints(max_dist_km=300.0, max_time_days=5.0)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -49,8 +52,6 @@ def points_across_years():
     )
 
 
-def _constraints():
-    return Constraints(max_dist_km=300.0, max_time_days=5.0)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -60,9 +61,9 @@ def _constraints():
 def test_batched_equals_single_pass(three_era5_files, points_across_years):
     """Packetizing must not change the result.
     max_files=1 forces one packet per file; max_files=100 opens all at once."""
-    batched = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), _constraints())\
+    batched = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), CONS)\
         .colocalize(three_era5_files, points_across_years, variables="sst")
-    single = Orchestrator(ERA5Product(), NearestNeighbor(max_files=100), _constraints())\
+    single = Orchestrator(ERA5Product(), NearestNeighbor(max_files=100), CONS)\
         .colocalize(three_era5_files, points_across_years, variables="sst")
 
     npt.assert_array_equal(batched.valid, single.valid)
@@ -74,7 +75,7 @@ def test_batched_equals_single_pass(three_era5_files, points_across_years):
 def test_all_points_matched_across_packets(three_era5_files, points_across_years):
     """Each point finds its match in whichever packet holds its year, even when
     every file is opened as a separate packet."""
-    res = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), _constraints())\
+    res = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), CONS)\
         .colocalize(three_era5_files, points_across_years, variables="sst")
     assert res.valid.all()
 
@@ -83,7 +84,7 @@ def test_batched_values_are_correct(three_era5_files, points_across_years):
     """Not just self-consistent: the matched values are the RIGHT ones.
     Point 0 (2019-06-16, lon 10.1 -> node lon=10 idx1, lat 30.1 -> node lat=30
     idx1, June -> t=0): sst = 1*1000 + 1 + 0 = 1001."""
-    res = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), _constraints())\
+    res = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), CONS)\
         .colocalize(three_era5_files, points_across_years, variables="sst")
     assert res.values["sst"][0] == pytest.approx(1001.0)
 
@@ -98,7 +99,7 @@ def test_boundary_point_keeps_best_across_packets(three_era5_files):
     pts = PointSet(lon=[10.0], lat=[30.0],
                    time=np.array(["2020-12-16"], dtype="datetime64[ns]"),
                    origin_index=np.arange(1), origin_dim="N")
-    res = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), _constraints())\
+    res = Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), CONS)\
         .colocalize(three_era5_files, pts, variables="sst")
     assert res.valid[0]
     assert res.time_delta[0] <= 1.0 + 1e-9
@@ -167,6 +168,6 @@ def test_mismatched_geometry_between_packets_raises(write_era5, points_across_ye
                        [9.0, 10.0, 11.0], lat, values=enc)
 
     with pytest.raises(ValueError):
-        Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), _constraints()).colocalize(
+        Orchestrator(ERA5Product(), NearestNeighbor(max_files=1), CONS).colocalize(
             [f2019, f2020], points_across_years, variables="sst"
         )

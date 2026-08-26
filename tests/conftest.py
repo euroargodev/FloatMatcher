@@ -88,6 +88,7 @@ def write_era5(tmp_path):
             coords={"valid_time": times, "latitude": lat, "longitude": lon},
         )
         path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         ds.to_netcdf(path)
         return str(path)
 
