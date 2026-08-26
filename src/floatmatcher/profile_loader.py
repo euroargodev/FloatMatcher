@@ -1,4 +1,9 @@
+from typing import Any
+
 import numpy as np
+import pandas as pd
+import xarray as xr
+from numpy.typing import NDArray
 
 from .pointset import PointSet
 from .exceptions import ProfileFormatError
@@ -8,7 +13,7 @@ from .exceptions import ProfileFormatError
 #  (the name-lookup logic lives HERE, never in PointSet)
 # ─────────────────────────────────────────────────────────────
 
-def _find_key(ds, *names):
+def _find_key(ds: xr.Dataset, *names: str) -> str:
     """Base level: return the FIRST of `names` present in ds (coord or variable).
     Raise ProfileFormatError if none match. The only place that knows the
     lookup rule."""
@@ -18,16 +23,16 @@ def _find_key(ds, *names):
     raise ProfileFormatError(f"No dataset name matches these candidates: {names}")
 
 
-def _get(ds, *names):
+def _get(ds: xr.Dataset, *names: str) -> xr.DataArray:
     """Return the DataArray (xarray object) — used when .dims is needed after."""
     return ds[_find_key(ds, *names)]
 
 
-def _extract(ds, *names):
+def _extract(ds: xr.Dataset, *names: str) -> NDArray[Any]:
     """Return the .values (raw ndarray) — the common case."""
     return _get(ds, *names).values
 
-def _to_profiles(ds):
+def _to_profiles(ds: xr.Dataset) -> xr.Dataset:
     """Collapse an argopy measurement layout (N_POINTS) to profiles (N_PROF)."""
     accessor = getattr(ds, "argo", None)
     if accessor is None or not hasattr(accessor, "point2profile"):
@@ -36,7 +41,8 @@ def _to_profiles(ds):
             "accessor is unavailable. Import argopy first (it registers the "
             "accessor), or pass an already profile-shaped dataset (N_PROF)."
         )
-    return accessor.point2profile()
+    profiles: xr.Dataset = accessor.point2profile()
+    return profiles
 
 # ─────────────────────────────────────────────────────────────
 #  ProfileLoader: converges any point source into a PointSet.
@@ -47,13 +53,14 @@ class ProfileLoader:
 
     # --- 1. Raw arrays: simplest case ---
     @staticmethod
-    def from_arrays(lon, lat, time) -> PointSet:
+    def from_arrays(lon: Any, lat: Any, time: Any) -> PointSet:
         # Nothing to extract, no origin_* (bare arrays).
         return PointSet(lon, lat, time)
 
     # --- 2. pandas DataFrame ---
     @staticmethod
-    def from_dataframe(df, lon="longitude", lat="latitude", time="date") -> PointSet:
+    def from_dataframe(df: pd.DataFrame, lon: str = "longitude",
+                       lat: str = "latitude", time: str = "date") -> PointSet:
         # Stable, named columns -> NO multi-name lookup here.
         # origin_index = df index ; origin_dim = "index".
         return PointSet(df[lon], df[lat], df[time], origin_index=df.index.to_numpy(),
@@ -61,7 +68,8 @@ class ProfileLoader:
 
     # --- 3. xarray Dataset ---
     @staticmethod
-    def from_xrdataset(ds, lon="LONGITUDE", lat="LATITUDE", time="TIME") -> PointSet:
+    def from_xrdataset(ds: xr.Dataset, lon: str = "LONGITUDE",
+                       lat: str = "LATITUDE", time: str = "TIME") -> PointSet:
         # The point-dimension name is DISCOVERED (da_lon.dims[0]), never assumed.
         da_lon = _get(ds, lon)
         point_dim = da_lon.dims[0]          # DISCOVERED, never assumed
@@ -81,12 +89,12 @@ class ProfileLoader:
                         lat=lat_arr, 
                         time=time_arr, 
                         origin_index=origin_index, 
-                        origin_dim=point_dim
+                        origin_dim=str(point_dim)
                         )
 
     # --- 4. argopy float: an xarray Dataset from DataFetcher().load().data ---
     @staticmethod
-    def from_argopy_float(ds) -> PointSet:
+    def from_argopy_float(ds: xr.Dataset) -> PointSet:
         """argopy float Dataset -> PointSet, ONE position per profile.
  
         argopy returns a measurement-level layout (dim ``N_POINTS``: lon/lat/time
@@ -101,7 +109,7 @@ class ProfileLoader:
  
     # --- 5. argopy index: a pandas DataFrame, one row per profile ---
     @staticmethod
-    def from_argopy_index(index) -> PointSet:
+    def from_argopy_index(index: pd.DataFrame) -> PointSet:
         """argopy index DataFrame -> PointSet.
  
         IndexFetcher().load().index is a DataFrame with longitude/latitude/date,

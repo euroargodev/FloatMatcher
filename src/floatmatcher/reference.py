@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import xarray as xr
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from .geo import lonlat_to_xyz
 
@@ -26,7 +26,8 @@ class ReferenceSet:
             self._xyz = lonlat_to_xyz(self.lon, self.lat)
         return self._xyz
 
-    def read_values(self, node_idx, time_idx=None) -> dict[str, NDArray[np.float64]]:
+    def read_values(self, node_idx: ArrayLike,
+                    time_idx: ArrayLike | None = None) -> dict[str, NDArray[np.float64]]:
         """Read variable values ONLY at the retained (node[, time]) indices.
  
         Vectorized isel over a shared 'pts' dimension: on a lazy dataset this
@@ -34,14 +35,14 @@ class ReferenceSet:
         None for 2D grids, an array aligned with `node_idx` for 3D.
         """
         node = xr.DataArray(np.asarray(node_idx), dims="pts")
-        out = {}
+        out: dict[str, NDArray[np.float64]] = {}
         for var in self._stacked.data_vars:
             da_var = self._stacked[var]
             if time_idx is None:
                 sel = da_var.isel(node=node)
             else:
                 sel = da_var.isel(node=node, time=xr.DataArray(np.asarray(time_idx), dims="pts"))
-            out[var] = sel.values
+            out[str(var)] = sel.values
         return out
 
 

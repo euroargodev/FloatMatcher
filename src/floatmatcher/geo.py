@@ -18,7 +18,7 @@ def lonlat_to_xyz(lon: ArrayLike, lat: ArrayLike) -> NDArray[np.float64]:
     return np.column_stack([x, y, z])
 
 
-def convert_lon(lon, lon_range):
+def convert_lon(lon: ArrayLike, lon_range: str) -> NDArray[np.float64]:
     """Return longitude values re-labelled into the requested convention.
     Both conventions share the 0 meridian (Greenwich) and turn eastward, no sorting.
     Parameters
@@ -36,7 +36,7 @@ def convert_lon(lon, lon_range):
     )
 
 
-def detect_lon_range(lon):
+def detect_lon_range(lon: ArrayLike) -> str:
     """Infer the longitude convention of a grid from its values.
       - any value > 180  -> only "0-360" can produce that
       - any value < 0    -> only "-180-180" can produce that
@@ -51,7 +51,7 @@ def detect_lon_range(lon):
     return "-180-180"
 
 
-def is_monotonic(values):
+def is_monotonic(values: ArrayLike) -> bool:
     """True if a 1-D axis is strictly increasing OR strictly decreasing.
     Both directions accepted. Works for numeric and datetime64 axes."""
     a = np.asarray(values)
@@ -62,7 +62,7 @@ def is_monotonic(values):
     return bool((d > zero).all() or (d < zero).all())
 
 
-def is_strictly_increasing(values):
+def is_strictly_increasing(values: ArrayLike) -> bool:
     """True if a 1-D axis is strictly increasing only."""
     a = np.asarray(values)
     d = np.diff(a)
@@ -71,7 +71,7 @@ def is_strictly_increasing(values):
     zero = np.zeros((), dtype=d.dtype)
     return bool((d > zero).all())
 
-def is_global_lon(lon, tol=1e-3):
+def is_global_lon(lon: ArrayLike, tol: float = 1e-3) -> bool:
     """Check if the grid is circular or not. True if a longitude axis wraps the whole globe"""
     lon = np.asarray(lon, dtype=float)
     if lon.size < 2:

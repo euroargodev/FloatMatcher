@@ -6,6 +6,7 @@
 # two halves and a single-pass `match` for the non-batched case.
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .method import MatchupMethod, Constraints
 from .gridset import GridSet
@@ -14,8 +15,10 @@ from .results import MatchupResult
 from .reference import grid_to_reference, ReferenceSet
 from .index import SpatialIndex, TemporalIndex
 
+_Geometry = tuple[tuple[int, ...], float, float, float, float]
 
-def _geometry_fingerprint(reference: ReferenceSet):
+
+def _geometry_fingerprint(reference: ReferenceSet) -> _Geometry:
     """Cheap signature of a grid's spatial geometry.
 
     Used to assert the geometry stays constant across packets -- the invariant
@@ -35,7 +38,9 @@ class _PreparedNearest:
     later by MatchupResult.update_best).
     """
 
-    def __init__(self, points, constraints, dist_km, spatial_idx, geometry):
+    def __init__(self, points: PointSet, constraints: Constraints,
+                 dist_km: NDArray[np.float64], spatial_idx: NDArray[np.int64],
+                 geometry: _Geometry) -> None:
         self.points = points
         self.constraints = constraints
         self.dist_km = dist_km
@@ -54,6 +59,7 @@ class _PreparedNearest:
 
         n = len(self.points.lon)
         if grid.regime == "3D":
+            assert reference.time is not None
             time_delta, temporal_idx = TemporalIndex(reference.time).query(self.points)
             valid = self.valid_spatial & (time_delta <= self.constraints.max_time_days)
         else:

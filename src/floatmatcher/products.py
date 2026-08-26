@@ -1,3 +1,4 @@
+import xarray as xr
 
 # ─────────────────────────────────────────────────────────────
 #  Private xarray extraction helpers
@@ -5,7 +6,7 @@
 # ─────────────────────────────────────────────────────────────
 
 
-def rename_coords(ds, mapping):
+def rename_coords(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
     """Rename source coordinate names to the standard ones (lat/lon[/time]).
     Rename only keys found in mapping. If key not found, skip and let it as it is.
     """
@@ -21,7 +22,7 @@ def rename_coords(ds, mapping):
     return ds.rename(valid)
 
 
-def to_standard(ds, mapping):
+def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
     """Bring a raw grid dataset to the standard form expected by GridSet."""
     ds = rename_coords(ds, mapping)
     return ds
@@ -32,11 +33,11 @@ class ERA5Product:
     # CDS returns either convention depending on how the request was made,
     # so it cannot be declared -> GridSet detects it from the data instead.
     LON_RANGE = None
-    def normalize(self, raw):
+    def normalize(self, raw: xr.Dataset) -> xr.Dataset:
         return to_standard(raw, self.COORD_MAP)    # la classe appelle la fonction
 
 class LUTProduct:
     COORD_MAP = {"lon": "lon", "lat": "lat"}
     LON_RANGE = "-180-180"
-    def normalize(self, raw):
+    def normalize(self, raw: xr.Dataset) -> xr.Dataset:
         return to_standard(raw, self.COORD_MAP)

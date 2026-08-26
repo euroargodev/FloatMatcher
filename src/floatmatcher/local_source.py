@@ -9,7 +9,9 @@
 
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -23,7 +25,7 @@ from .pointset import PointSet
 #  Path resolution (pure helper, no disk access)
 # ─────────────────────────────────────────────────────────────
 
-def resolve_path(root, pattern, date):
+def resolve_path(root: str | Path, pattern: str, date: Any) -> str:
     """Substitute a date's components into `pattern` (under `root`). available fields are
     year, month, day, hour, minute (pick what the tree needs, with padding ex:
             "{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc").
@@ -50,7 +52,7 @@ class FileResolver(ABC):
 class ExplicitFiles(FileResolver):
     """Simplest resolver: the user lists the files explicitly."""
 
-    def __init__(self, paths):
+    def __init__(self, paths: str | Iterable[str]) -> None:
         if isinstance(paths, str):
             self._paths = [paths]  
         else:
@@ -74,7 +76,7 @@ class PathTemplate(FileResolver):
     NOTHING resolves to an existing file, that is a configuration error -> raise.
     """
 
-    def __init__(self, root, pattern):
+    def __init__(self, root: str | Path, pattern: str) -> None:
         self.root = root
         self.pattern = pattern
 
@@ -123,13 +125,13 @@ _NETCDF_LOCK = SerializableLock()
 class LocalSource:
     """Opens files already present on disk and returns the raw dataset."""
 
-    def __init__(self, resolver: FileResolver):
+    def __init__(self, resolver: FileResolver) -> None:
         self.resolver = resolver
 
     def open(self, points: PointSet) -> xr.Dataset:
         return self.open_paths(self.resolver.files_for(points))
 
-    def open_paths(self, paths) -> xr.Dataset:
+    def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
         """Open an explicit, already-resolved list of files and return the raw
         dataset. Bypasses the resolver: the caller has batched files_for(...)
         output into packets and opens each packet here.

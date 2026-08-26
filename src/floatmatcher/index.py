@@ -21,7 +21,8 @@ def _to_days(times: NDArray[np.datetime64]) -> NDArray[np.float64]:
     and returning *days* makes the max_time_days constraint directly comparable.
     """
     delta = np.asarray(times, dtype=f"datetime64[{TIME_UNIT}]") - REF_TIME
-    return delta / np.timedelta64(1, "D")      # nanoseconds -> days, as float
+    days: NDArray[np.float64] = delta / np.timedelta64(1, "D")
+    return days
 
 
 class SpatialIndex:
@@ -32,22 +33,28 @@ class SpatialIndex:
     this index is built a single time and queried on every packet.
     """
 
-    def __init__(self, xyz: NDArray[np.float64]):
+    def __init__(self, xyz: NDArray[np.float64]) -> None:
         self._tree = cKDTree(xyz)
 
     def query(self, points: PointSet) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """For each point, distance (km) and index of the nearest grid node."""
-        return self._tree.query(points.xyz)
+        dist: NDArray[np.float64]
+        idx: NDArray[np.int64]
+        dist, idx = self._tree.query(points.xyz)
+        return dist, idx
 
 
 class TemporalIndex:
     """Nearest-neighbor lookup over one packet's time axis (built per packet)."""
 
-    def __init__(self, times: NDArray[np.datetime64]):
+    def __init__(self, times: NDArray[np.datetime64]) -> None:
         self._days = _to_days(times)
         self._tree = cKDTree(self._days[:, None])          # 1D -> (N, 1)
 
     def query(self, points: PointSet) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """For each point, |time difference| (days) and index of nearest step."""
         point_days = _to_days(points.time)
-        return self._tree.query(point_days[:, None])
+        dist: NDArray[np.float64]
+        idx: NDArray[np.int64]
+        dist, idx = self._tree.query(point_days[:, None])
+        return dist, idx
