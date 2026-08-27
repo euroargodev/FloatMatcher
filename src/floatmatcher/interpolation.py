@@ -4,6 +4,7 @@ from typing import Any, cast
 
 import xarray as xr
 import numpy as np
+from numpy.typing import NDArray
 
 from .gridset import GridSet
 from .method import Constraints, MatchupMethod
@@ -30,15 +31,31 @@ def pad_periodic_lon(ds: xr.Dataset) -> xr.Dataset:
     return padded
 
 
+def _within_bounds(ds: xr.Dataset, regime: str, lon: NDArray[np.float64],
+                   points: PointSet) -> NDArray[np.bool_]:
+    """Points bracketed by the grid axes, i.e. interpolable."""
+    lon_axis = ds["lon"].values
+    lat_axis = ds["lat"].values
+    inside: NDArray[np.bool_] = (
+        (lon >= lon_axis.min()) & (lon <= lon_axis.max())
+        & (points.lat >= lat_axis.min()) & (points.lat <= lat_axis.max())
+    )
+    if regime == "3D":
+        time_axis = ds["time"].values
+        inside &= (points.time >= time_axis.min()) & (points.time <= time_axis.max())
+    return inside
+
+
 class Interpolation(MatchupMethod):
     def __init__(self, method: str = "linear") -> None:
         self.method = method              # "linear", "nearest", "cubic"…
 
     def match(self, grid: GridSet, points: PointSet,
               constraints: Constraints) -> MatchupResult:
-        ds = pad_periodic_lon(grid.dataset)                
+        ds = pad_periodic_lon(grid.dataset)
+        lon = points.lon_in(grid.lon_range)
         interp_coords = dict(
-            lon=xr.DataArray(points.lon_in(grid.lon_range), dims="pts"),
+            lon=xr.DataArray(lon, dims="pts"),
             lat=xr.DataArray(points.lat, dims="pts"),
         )
         if grid.regime == "3D":          
@@ -48,7 +65,7 @@ class Interpolation(MatchupMethod):
  
         values = {str(var): out[var].values for var in ds.data_vars}
 
-        valid = ~np.isnan(next(iter(values.values())))
+        valid = _within_bounds(ds, grid.regime, lon, points)
 
         return MatchupResult(values, 
                             distance_km=np.full(len(points.lon), np.nan), 
