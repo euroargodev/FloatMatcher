@@ -17,6 +17,7 @@ from .gridset import GridSet
 from .local_source import LocalSource
 from .method import Constraints, MatchupMethod
 from .nearest import NearestNeighbor
+from .interpolation import Interpolation
 from .pointset import PointSet
 from .results import MatchupResult
 
@@ -51,7 +52,10 @@ class Orchestrator:
         local = self._as_local_source(source)
         if isinstance(self.method, NearestNeighbor):
             return self._colocalize_nearest(local, points, variables)
-        return self._colocalize_interp(local, points, variables)
+        elif isinstance(self.method, Interpolation):
+            return self._colocalize_interp(local, points, variables)
+        else:
+            raise AttributeError("unknown method")
 
     # ── per-method strategies ────────────────────────────────────────────
 
