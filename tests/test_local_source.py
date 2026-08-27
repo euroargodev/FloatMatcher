@@ -106,4 +106,23 @@ def test_from_paths_builds_an_explicitfiles_source(tmp_path, points_with_origin)
     paths = [_make_file(tmp_path, 2015, 1, 1), _make_file(tmp_path, 2015, 1, 2)]
     source = LocalSource.from_paths(paths)
     assert isinstance(source.resolver, ExplicitFiles)
-    assert source.resolver.files_for(points_with_origin) == paths
+    assert source.resolver.files_for(points_with_origin) == [str(p) for p in paths]
+
+
+def test_explicitfiles_expands_a_directory(tmp_path, points_with_origin):
+    for day in (1, 2, 3):
+        _make_file(tmp_path, 2015, 1, day)
+    (tmp_path / "notes.txt").write_text("ignored")
+    out = ExplicitFiles(str(tmp_path)).files_for(points_with_origin)
+    assert len(out) == 3
+    assert out == sorted(out)
+    assert all(f.endswith(".nc") for f in out)
+
+
+def test_explicitfiles_mixes_files_and_directories(tmp_path, points_with_origin):
+    loose = _make_file(tmp_path / "loose", 2016, 5, 9)
+    tree = tmp_path / "tree"
+    _make_file(tree, 2015, 1, 1)
+    out = ExplicitFiles([str(loose), str(tree)]).files_for(points_with_origin)
+    assert len(out) == 2
+    assert str(loose) in out

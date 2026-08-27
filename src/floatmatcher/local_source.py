@@ -50,16 +50,31 @@ class FileResolver(ABC):
 
 
 class ExplicitFiles(FileResolver):
-    """Simplest resolver: the user lists the files explicitly."""
+    """Simplest resolver: the user lists the files explicitly 
+    or a parent directory containing all files to process.
+    """
 
-    def __init__(self, paths: str | Iterable[str]) -> None:
-        if isinstance(paths, str):
-            self._paths = [paths]  
+    def __init__(self, paths: str | Path | Iterable[str | Path],
+                 pattern: str = "*.nc") -> None:
+        if isinstance(paths, (str, Path)):
+            self._paths: list[str | Path] = [paths]
         else:
             self._paths = list(paths)
+        self.pattern = pattern
 
     def files_for(self, points: PointSet) -> list[str]:
-        return self._paths
+        resolved: list[str] = []
+        for entry in self._paths:
+            path = Path(entry)
+            if path.is_dir():
+                found = []
+                for child in path.rglob(self.pattern):
+                    found.append(str(child))
+                found.sort()
+                resolved.extend(found)
+            else:
+                resolved.append(str(path))
+        return resolved
 
 
 class PathTemplate(FileResolver):
