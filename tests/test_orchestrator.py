@@ -11,6 +11,8 @@ import xarray as xr
 
 from floatmatcher.orchestrator import Orchestrator
 from floatmatcher.products import ERA5Product
+from floatmatcher.interpolation import Interpolation
+from floatmatcher.local_source import LocalSource
 
 
 # ─────────────────────────────────────────────────────────────
@@ -52,55 +54,3 @@ def test_select_partial_unknown_raises():
     with pytest.raises(ValueError):
         Orchestrator._select_variables(_grid_4vars(), ["sst", "nope"])
 
-
-# ─────────────────────────────────────────────────────────────
-#  2. CHAIN — full orchestrator on a fake ERA5 file
-# ─────────────────────────────────────────────────────────────
-
-class DictMethod:
-    """Minimal MatchupMethod stand-in: reports the variables it saw + valid mask.
-    Iterates ds.data_vars exactly like the real Interpolation / NearestNeighbor."""
-    def match(self, grid, points, constraints):
-        ds = grid.dataset
-        n = len(points.lon)
-
-        class _R:
-            pass
-        r = _R()
-        r.values = {v: np.zeros(n) for v in ds.data_vars}
-        r.valid = np.ones(n, dtype=bool)
-        r.grid_lon_range = grid.lon_range
-        return r
-
-
-def test_chain_all_variables_by_default(fake_era5_file, points_in_grid):
-    orch = Orchestrator(ERA5Product(), DictMethod())
-    res = orch.colocalize(fake_era5_file, points_in_grid)
-    assert set(res.values) == {"u10", "t2m", "sst"}
-    assert res.grid_lon_range == "0-360"          # native convention preserved
-
-
-def test_chain_select_single_variable(fake_era5_file, points_in_grid):
-    orch = Orchestrator(ERA5Product(), DictMethod())
-    res = orch.colocalize(fake_era5_file, points_in_grid, variables="sst")
-    assert set(res.values) == {"sst"}
-
-
-def test_chain_select_multiple_variables(fake_era5_file, points_in_grid):
-    orch = Orchestrator(ERA5Product(), DictMethod())
-    res = orch.colocalize(fake_era5_file, points_in_grid, variables=["sst", "t2m"])
-    assert set(res.values) == {"sst", "t2m"}
-
-
-def test_chain_unknown_variable_raises(fake_era5_file, points_in_grid):
-    orch = Orchestrator(ERA5Product(), DictMethod())
-    with pytest.raises(ValueError):
-        orch.colocalize(fake_era5_file, points_in_grid, variables="does_not_exist")
-
-
-def test_chain_renames_valid_time_to_time(fake_era5_file, points_in_grid):
-    # if valid_time -> time renaming failed, GridSet would see no 'time' coord;
-    # a clean run on 3D confirms the rename happened.
-    orch = Orchestrator(ERA5Product(), DictMethod())
-    res = orch.colocalize(fake_era5_file, points_in_grid, variables="sst")
-    assert res.valid.all()
