@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from floatmatcher.local_source import resolve_path, ExplicitFiles, PathTemplate
+from floatmatcher.local_source import LocalSource, resolve_path, ExplicitFiles, PathTemplate
 from floatmatcher.pointset import PointSet
 
 
@@ -92,3 +92,18 @@ def test_pathtemplate_unique_days(tmp_path):
     )
     out = PathTemplate(str(tmp_path), PATTERN).files_for(pts)
     assert len(out) == 1
+
+
+def test_from_template_builds_a_pathtemplate_source(tmp_path, points_with_origin):
+    for day in (1, 2, 3):
+        _make_file(tmp_path, 2015, 1, day)
+    source = LocalSource.from_template(str(tmp_path), PATTERN)
+    assert isinstance(source.resolver, PathTemplate)
+    assert len(source.resolver.files_for(points_with_origin)) == 3
+
+
+def test_from_paths_builds_an_explicitfiles_source(tmp_path, points_with_origin):
+    paths = [_make_file(tmp_path, 2015, 1, 1), _make_file(tmp_path, 2015, 1, 2)]
+    source = LocalSource.from_paths(paths)
+    assert isinstance(source.resolver, ExplicitFiles)
+    assert source.resolver.files_for(points_with_origin) == paths

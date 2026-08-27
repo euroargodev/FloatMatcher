@@ -128,8 +128,13 @@ class LocalSource:
     def __init__(self, resolver: FileResolver) -> None:
         self.resolver = resolver
 
-    def open(self, points: PointSet) -> xr.Dataset:
-        return self.open_paths(self.resolver.files_for(points))
+    @classmethod
+    def from_template(cls, root: str | Path, pattern: str) -> "LocalSource":
+        return cls(PathTemplate(root, pattern))
+
+    @classmethod
+    def from_paths(cls, paths: str | Iterable[str]) -> "LocalSource":
+        return cls(ExplicitFiles(paths))
 
     def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
         """Open an explicit, already-resolved list of files and return the raw

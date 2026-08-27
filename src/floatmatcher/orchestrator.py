@@ -14,7 +14,7 @@ from typing import Any
 import xarray as xr
 
 from .gridset import GridSet
-from .local_source import LocalSource, ExplicitFiles
+from .local_source import LocalSource
 from .method import Constraints, MatchupMethod
 from .nearest import NearestNeighbor
 from .pointset import PointSet
@@ -123,4 +123,4 @@ class Orchestrator:
         """Accept a ready LocalSource, or a path / list of paths for convenience."""
         if isinstance(source, LocalSource):
             return source
-        return LocalSource(ExplicitFiles(source))
+        return LocalSource.from_paths(source)
