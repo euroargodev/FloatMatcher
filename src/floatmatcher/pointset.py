@@ -46,8 +46,7 @@ class PointSet:
             self._xyz = lonlat_to_xyz(self.lon, self.lat)
         return self._xyz
 
-
-    def lon_in(self, lon_range: str) -> NDArray[np.float64]:
+    def change_lon_convention(self, lon_range: str) -> NDArray[np.float64]:
         """Longitudes expressed in a grid's convention ('-180-180' or '0-360')."""
         if lon_range not in self._lon_by_range:
             self._lon_by_range[lon_range] = convert_lon(self.lon, lon_range)

@@ -53,7 +53,7 @@ class Interpolation(MatchupMethod):
     def match(self, grid: GridSet, points: PointSet,
               constraints: Constraints) -> MatchupResult:
         ds = pad_periodic_lon(grid.dataset)
-        lon = points.lon_in(grid.lon_range)
+        lon = points.change_lon_convention(grid.lon_range)
         interp_coords = dict(
             lon=xr.DataArray(lon, dims="pts"),
             lat=xr.DataArray(points.lat, dims="pts"),

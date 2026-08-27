@@ -82,37 +82,37 @@ def test_provenance_is_kept():
 
 def test_lon_in_converts_to_360():
     ps = PointSet([-45.0, -10.0, 0.0], [0.0, 0.0, 0.0], daily_timestamps(3))
-    npt.assert_allclose(ps.lon_in("0-360"), [315.0, 350.0, 0.0])
+    npt.assert_allclose(ps.change_lon_convention("0-360"), [315.0, 350.0, 0.0])
  
  
 def test_lon_in_converts_to_180():
     ps = PointSet([200.0, 350.0], [0.0, 0.0], daily_timestamps(2))
-    npt.assert_allclose(ps.lon_in("-180-180"), [-160.0, -10.0])
+    npt.assert_allclose(ps.change_lon_convention("-180-180"), [-160.0, -10.0])
  
  
 def test_lon_in_does_not_mutate_self():
     # the stored longitudes must stay in the user's original convention
     ps = PointSet([200.0, 350.0], [0.0, 0.0], daily_timestamps(2))
-    _ = ps.lon_in("-180-180")
+    _ = ps.change_lon_convention("-180-180")
     npt.assert_allclose(ps.lon, [200.0, 350.0])
  
  
 def test_lon_in_is_cached():
     ps = PointSet([200.0, 350.0], [0.0, 0.0], daily_timestamps(2))
-    first = ps.lon_in("-180-180")
-    second = ps.lon_in("-180-180")
+    first = ps.change_lon_convention("-180-180")
+    second = ps.change_lon_convention("-180-180")
     assert first is second          # same object -> cache hit
  
  
 def test_lon_in_different_ranges_cached_separately():
     ps = PointSet([200.0], [0.0], daily_timestamps(1))
-    a = ps.lon_in("0-360")
-    b = ps.lon_in("-180-180")
+    a = ps.change_lon_convention("0-360")
+    b = ps.change_lon_convention("-180-180")
     assert a is not b               # each convention cached independently
  
  
 def test_lon_in_preserves_order():
     # conversion must not sort (keeps alignment with origin_index)
     ps = PointSet([350.0, 10.0, 200.0], [0.0, 0.0, 0.0], daily_timestamps(3))
-    npt.assert_allclose(ps.lon_in("-180-180"), [-10.0, 10.0, -160.0])
+    npt.assert_allclose(ps.change_lon_convention("-180-180"), [-10.0, 10.0, -160.0])
  
