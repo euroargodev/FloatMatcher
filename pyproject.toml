@@ -29,6 +29,7 @@ dev = [
     "mypy",
     "ruff",
 ]
+notebooks = ["cartopy", "matplotlib"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/floatmatcher"]
@@ -56,3 +57,6 @@ select = ["E", "F"]
 
 [tool.uv.sources]
 argopy = { git = "https://github.com/euroargodev/argopy.git", rev = "master" }
+
+[tool.uv]
+default-groups = ["dev", "notebooks"]
