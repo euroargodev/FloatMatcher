@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 import xarray as xr
-from .geo import detect_lon_range
 import numpy as np 
 
 @dataclass
@@ -16,9 +15,7 @@ class GridSet:
 
     dataset: xr.Dataset
     # convention the Product promises; None -> skip the check
-    declared_lon_range: str | None = None
     regime: str = field(init=False)     # "2D" or "3D", derived at construction
-    lon_range: str = field(init=False)  # "-180-180" or "0-360", from lon values
 
     def __post_init__(self) -> None:
         
@@ -44,15 +41,6 @@ class GridSet:
             self.regime = "3D"
         else:
             self.regime = "2D"
-
-        # validates the lon_range values
-        self.lon_range = detect_lon_range(self.dataset["lon"].values)
-        declared = self.declared_lon_range
-        if declared is not None and declared != self.lon_range:
-            raise ValueError(
-                f"grid: data longitude convention {self.lon_range} does not match "
-                f"the declared convention {self.declared_lon_range}"
-            )
 
         # test time unicity if 3D regime
         if self.regime == "3D":

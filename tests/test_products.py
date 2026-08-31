@@ -5,7 +5,6 @@ import xarray as xr
 
 from floatmatcher.products import (
     rename_coords,
-    to_standard,
     ERA5Product,
     LUTProduct,
 )
@@ -58,12 +57,6 @@ def test_rename_does_not_mutate_input():
     assert "longitude" in ds.coords     # original left untouched
 
 
-# ───────────── to_standard ─────────────
-
-def test_to_standard_renames_end_to_end():
-    out = to_standard(_era5_raw(), ERA5Product.COORD_MAP)
-    assert {"lat", "lon", "time"} <= set(out.coords)
-
 
 # ───────────── Products ─────────────
 
@@ -73,7 +66,6 @@ def test_era5_normalize():
 
 
 def test_era5_declared_attributes():
-    assert ERA5Product.LON_RANGE is None
     assert ERA5Product.COORD_MAP["longitude"] == "lon"
 
 
@@ -83,6 +75,3 @@ def test_lut_normalize():
     out = LUTProduct().normalize(ds)
     assert "lon" in out.coords and "lat" in out.coords
 
-
-def test_lut_declared_attributes():
-    assert LUTProduct.LON_RANGE == "-180-180"

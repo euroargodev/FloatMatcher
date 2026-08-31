@@ -9,7 +9,6 @@
 # loop. The public `colocalize` dispatches to the right one.
 
 from collections.abc import Sequence
-from typing import Any
 
 import xarray as xr
 import numpy as np 
@@ -18,7 +17,7 @@ from numpy.typing import NDArray, ArrayLike
 
 from .gridset import GridSet
 from .matchup import NearestNeighbor
-from .interpolation import Interpolation
+# from .interpolation import Interpolation
 from .pointset import PointSet
 from .results import MatchupResult
 from .products import Product
@@ -48,8 +47,8 @@ class Orchestrator:
     def match(self, method) -> MatchupResult:
         if isinstance(method, NearestNeighbor):
             return self._match_nearest(method)
-        elif isinstance(method, Interpolation):
-            return self._match_interp()
+        # elif isinstance(method, Interpolation):
+        #     return self._match_interp()
         else:
             raise AttributeError("unknown method")
 
@@ -109,7 +108,7 @@ class Orchestrator:
         """Open set of files -> normalized, variable selected and validated GridSet."""
         ds_raw = self.product.open_paths(paths)
         ds = _select_variables(self.product.normalize(ds_raw), self.variables)
-        return GridSet(ds, declared_lon_range=self.product.LON_RANGE)
+        return GridSet(ds)
     
 
     # def colocalize(self, source: _Source, points: PointSet,

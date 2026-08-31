@@ -10,7 +10,6 @@ from floatmatcher.constants import EARTH_RADIUS_KM
 from floatmatcher.geo import (
     lonlat_to_xyz,
     convert_lon,
-    detect_lon_range
 )
 
 

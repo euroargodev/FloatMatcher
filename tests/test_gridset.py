@@ -40,41 +40,6 @@ def test_no_data_variable_raises(grid_2d_ds):
         GridSet(grid_2d_ds.drop_vars("2DdummyVar")) # removes the only variable
 
 
-
-# ───────────── lon_range derivation ─────────────
- 
-def test_lon_range_ambiguous_defaults_180(grid_3d_ds):
-    # lon [10,11,12] all in [0,180] -> ambiguous -> default -180-180
-    assert GridSet(grid_3d_ds).lon_range == "-180-180"
- 
-def test_lon_range_0_360(grid_0_360):
-    assert GridSet(grid_0_360).lon_range == "0-360"
- 
-def test_lon_range_negative_is_180(grid_3d_ds):
-    # shift [10,11,12] -> [-50,-49,-48] to get a negative-lon grid
-    ds = grid_3d_ds.assign_coords(lon=grid_3d_ds.lon - 60.0)
-    assert GridSet(ds).lon_range == "-180-180"
-
-def test_declared_none_skips_check(grid_0_360):
-    # no declared convention -> GridSet just derives from data, no check
-    assert GridSet(grid_0_360).lon_range == "0-360"
- 
-def test_declared_matches_data(grid_0_360):
-    # data is 0-360 and product declares 0-360 -> ok
-    grid = GridSet(grid_0_360, declared_lon_range="0-360")
-    assert grid.lon_range == "0-360"
- 
-def test_declared_mismatch_raises(grid_0_360):
-    # data is 0-360 but product declares -180-180 -> anomaly, must raise
-    with pytest.raises(ValueError):
-        GridSet(grid_0_360, declared_lon_range="-180-180")
- 
-def test_declared_matches_negative(grid_3d_ds):
-    # shift lon into negatives, declare -180-180 -> ok
-    ds = grid_3d_ds.assign_coords(lon=grid_3d_ds.lon - 60.0)   # -> [-50,-49,-48]
-    grid = GridSet(ds, declared_lon_range="-180-180")
-    assert grid.lon_range == "-180-180"
-
  
  
 # ───────────── monotonicity of lat/lon ─────────────
