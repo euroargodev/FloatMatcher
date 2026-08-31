@@ -17,9 +17,10 @@ _NETCDF_LOCK = SerializableLock()
 
 # ─────────────────────────────────────────────────────────────
 
-def rename_coords(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
+def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
     """Rename source coordinate names to the standard ones (lat/lon[/time]).
     Rename only keys found in mapping. If key not found, skip and let it as it is.
+    set variables lon/lat/time as coords if not already
     """
     # mapping is {source_name: standard_name}, e.g. {"longitude": "lon"}.
     # A renamable name can be a variable, a coordinate, or a bare dimension,
@@ -30,7 +31,16 @@ def rename_coords(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
         if src in renamable:
             valid[src] = dst 
                      
-    return ds.rename(valid)
+    ds = ds.rename(valid)
+
+    # trnasform data var into coordinate if not already
+    to_promote = []
+    for name in ("lon", "lat", "time"):
+        if name in ds.data_vars:
+            to_promote.append(name)
+
+    ds = ds.set_coords(to_promote)
+    return ds
 
 
 
@@ -88,11 +98,11 @@ class Product(ABC):
 class ERA5Product(Product):
     COORD_MAP = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
     def normalize(self, raw: xr.Dataset) -> xr.Dataset:
-        ds = rename_coords(raw, self.COORD_MAP)
+        ds = to_standard(raw, self.COORD_MAP)
         return ds
     
 class LUTProduct(Product):
     COORD_MAP = {"lon": "lon", "lat": "lat"}
     def normalize(self, raw: xr.Dataset) -> xr.Dataset:
-        ds = rename_coords(raw, self.COORD_MAP)
+        ds = to_standard(raw, self.COORD_MAP)
         return ds
