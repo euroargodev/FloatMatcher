@@ -1,6 +1,6 @@
 # tests/test_reference.py
 #
-# ReferenceSet is now LAZY: grid_to_reference no longer materializes the value
+# FlatGrid is now LAZY: grid_to_reference no longer materializes the value
 # cube. It exposes read_values(node_idx, time_idx) to pull only the retained
 # nodes. So the alignment tests read values through read_values instead of the
 # old ref.values dict.
@@ -8,7 +8,7 @@
 import numpy as np
 import numpy.testing as npt
 
-from floatmatcher.reference import grid_to_reference
+from floatmatcher.flatgrid import grid_to_reference
 
 from helpers import make_grid, pos_field, daily_timestamps
 
@@ -34,7 +34,7 @@ def test_flatten_preserves_alignment():
 
 
 def test_reference_is_2d_has_no_time():
-    """A 2D grid produces a ReferenceSet with time=None."""
+    """A 2D grid produces a FlatGrid with time=None."""
     ds = make_grid([0.0, 1.0], [10.0, 11.0])
     ref = grid_to_reference(ds)
     assert ref.time is None

@@ -1,11 +1,9 @@
-# local_source.py:
+# resolver.py:
 #
-# Two responsibilities, kept separate:
-#   - FileResolver: "WHICH files do I open?" (from the points)
-#   - LocalSource: opens the resolved files and returns the raw dataset.
-#
-# The orchestrator asks LocalSource for a dataset; normalization happens after,
-# in the Product. LocalSource does NOT normalize and does NOT touch the network.
+# The resolver return a list of files to open, it doesn't open anything. 
+# The resolver is split into a dummy class ExplicitFiles returning all files listed 
+# or all files under a given path and a smarter one returning all files sorted along 
+# a given pattern given by the user. 
 
 import warnings
 from abc import ABC, abstractmethod
@@ -16,10 +14,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
-from dask.utils import SerializableLock
 
 from .pointset import PointSet
-
 
 # ─────────────────────────────────────────────────────────────
 #  Path resolution (pure helper, no disk access)
@@ -38,14 +34,14 @@ def resolve_path(root: str | Path, pattern: str, date: Any) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
-#  Resolvers: which files for these points?
+#  Resolvers: which files to return ?
 # ─────────────────────────────────────────────────────────────
 
 class FileResolver(ABC):
     """Answers: which files must be opened for these points?"""
 
     @abstractmethod
-    def files_for(self, points: PointSet) -> list[str]:
+    def files_for(self, points: PointSet | None = None) -> list[str]:
         ...
 
 
@@ -62,7 +58,7 @@ class ExplicitFiles(FileResolver):
             self._paths = list(paths)
         self.pattern = pattern
 
-    def files_for(self, points: PointSet) -> list[str]:
+    def files_for(self, points: PointSet | None = None) -> list[str]:
         resolved: list[str] = []
         for entry in self._paths:
             path = Path(entry)
@@ -95,9 +91,15 @@ class PathTemplate(FileResolver):
         self.root = root
         self.pattern = pattern
 
-    def files_for(self, points: PointSet) -> list[str]:
+    def files_for(self, points: PointSet | None = None) -> list[str]:
         # unique days present in the points (day granularity; a hourly tree would
         # need datetime64[h] here — noted as a limitation for now)
+        if points is None:
+            raise ValueError(
+                "PathTemplate resolves one file per day present in the points; "
+                "pass a PointSet, or use ExplicitFiles to list a directory."
+            )
+        
         dates = np.unique(np.asarray(points.time).astype("datetime64[D]"))
         
         resolved = []
@@ -127,38 +129,38 @@ class PathTemplate(FileResolver):
         return existing
 
 
-# ─────────────────────────────────────────────────────────────
-#  LocalSource: open the resolved files
-# ─────────────────────────────────────────────────────────────
+# # ─────────────────────────────────────────────────────────────
+# #  LocalSource: open the resolved files
+# # ─────────────────────────────────────────────────────────────
 
-# netCDF4/HDF5 is not thread-safe, and open_mfdataset returns dask-backed
-# arrays read by dask's threaded scheduler. ONE lock shared by every open
-# serializes those reads process-wide; a per-call lock would not.
-_NETCDF_LOCK = SerializableLock()
+# # netCDF4/HDF5 is not thread-safe, and open_mfdataset returns dask-backed
+# # arrays read by dask's threaded scheduler. ONE lock shared by every open
+# # serializes those reads process-wide; a per-call lock would not.
+# _NETCDF_LOCK = SerializableLock()
 
 
-class LocalSource:
-    """Opens files already present on disk and returns the raw dataset."""
+# class LocalSource:
+#     """Opens files already present on disk and returns the raw dataset."""
 
-    def __init__(self, resolver: FileResolver) -> None:
-        self.resolver = resolver
+#     def __init__(self, resolver: FileResolver) -> None:
+#         self.resolver = resolver
 
-    @classmethod
-    def from_template(cls, root: str | Path, pattern: str) -> "LocalSource":
-        return cls(PathTemplate(root, pattern))
+#     @classmethod
+#     def from_template(cls, root: str | Path, pattern: str) -> "LocalSource":
+#         return cls(PathTemplate(root, pattern))
 
-    @classmethod
-    def from_paths(cls, paths: str | Iterable[str]) -> "LocalSource":
-        return cls(ExplicitFiles(paths))
+#     @classmethod
+#     def from_paths(cls, paths: str | Iterable[str]) -> "LocalSource":
+#         return cls(ExplicitFiles(paths))
 
-    def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
-        """Open an explicit, already-resolved list of files and return the raw
-        dataset. Bypasses the resolver: the caller has batched files_for(...)
-        output into packets and opens each packet here.
+#     def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
+#         """Open an explicit, already-resolved list of files and return the raw
+#         dataset. Bypasses the resolver: the caller has batched files_for(...)
+#         output into packets and opens each packet here.
 
-        combine="by_coords" lets xarray order ERA5 files by their time coords;
-        a single-element list works the same way.
-        """
-        if not paths:
-            raise ValueError("LocalSource: empty file list")
-        return xr.open_mfdataset(paths, combine="by_coords", lock=_NETCDF_LOCK)
+#         combine="by_coords" lets xarray order ERA5 files by their time coords;
+#         a single-element list works the same way.
+#         """
+#         if not paths:
+#             raise ValueError("LocalSource: empty file list")
+#         return xr.open_mfdataset(paths, combine="by_coords", lock=_NETCDF_LOCK)
