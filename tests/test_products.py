@@ -4,6 +4,7 @@ import numpy as np
 import numpy.testing as npt
 import xarray as xr
 
+from floatmatcher.resolver import PathTemplate, ExplicitFiles
 from floatmatcher.products import (
     to_standard,
     ERA5Product,
@@ -14,9 +15,9 @@ from floatmatcher.products import (
 def _era5_raw():
     """Raw ERA5-like dataset with source names longitude/latitude/time."""
     return xr.Dataset(
-        {"t2m": (("time", "latitude", "longitude"), np.zeros((2, 3, 3)))},
+        {"t2m": (("valid_time", "latitude", "longitude"), np.zeros((2, 3, 3)))},
         coords={
-            "time": np.array(["2015-01-01", "2015-01-02"], dtype="datetime64[ns]"),
+            "valid_time": np.array(["2015-01-01", "2015-01-02"], dtype="datetime64[ns]"),
             "latitude": [0.0, 1.0, 2.0],
             "longitude": [10.0, 11.0, 12.0],
         },
@@ -26,19 +27,18 @@ def _era5_raw():
 # ───────────── to_standard ─────────────
 
 def test_rename_maps_present_keys():
-    out = to_standard(_era5_raw(), {"longitude": "lon", "latitude": "lat", "time": "time"})
-    assert "lon" in out.coords and "lat" in out.coords
+    out = to_standard(_era5_raw(), {"longitude": "lon", "latitude": "lat", "valid_time": "time"})
+    assert "lon" in out.coords and "lat" in out.coords and "time" in out.coords
 
 
 def test_rename_ignores_absent_keys():
-    # 'foo' does not exist -> skipped, not an error (tolerant policy)
+    # 'foo' does not exist -> skipped, not an error
     out = to_standard(_era5_raw(), {"longitude": "lon", "foo": "bar"})
     assert "lon" in out.coords
     assert "bar" not in out.variables
 
 
-def test_rename_identity_mapping_is_noop():
-    # LUT case: source == target must pass cleanly
+def test_rename_mapping_already_well_named():
     ds = xr.Dataset({"chl": (("lat", "lon"), np.zeros((2, 2)))},
                     coords={"lat": [0.0, 1.0], "lon": [10.0, 11.0]})
     out = to_standard(ds, {"lon": "lon", "lat": "lat"})
@@ -62,7 +62,7 @@ def test_data_variable_is_promoted_to_coord():
             "longitude": (("x",), np.array([10.0, 11.0])),
         },
     )
-    assert "latitude" in ds.data_vars                    # not a coord to start with
+    assert "latitude" in ds.data_vars                    # not a coord at this point
 
     out = to_standard(ds, {"longitude": "lon", "latitude": "lat"})
 
@@ -71,13 +71,7 @@ def test_data_variable_is_promoted_to_coord():
     npt.assert_allclose(out["lon"].values, [10.0, 11.0])
 
 
-def test_already_coord_stays_coord():
-    """Nothing to promote: the normal case is left untouched."""
-    out = to_standard(_era5_raw(), {"longitude": "lon", "latitude": "lat"})
-    assert "lon" in out.coords and "lat" in out.coords
-
-
-def test_rename_does_not_mutate_input():
+def test_rename_does_not_affect_input():
     ds = _era5_raw()
     out = to_standard(ds, {"longitude": "lon"})
     assert "longitude" in ds.coords     # original left untouched
@@ -88,7 +82,7 @@ def test_rename_does_not_mutate_input():
 
 def test_era5_normalize():
     out = ERA5Product().normalize(_era5_raw())
-    assert "lon" in out.coords and "lat" in out.coords
+    assert "lon" in out.coords and "lat" in out.coords and "time" in out.coords
 
 
 def test_lut_normalize():
@@ -97,3 +91,7 @@ def test_lut_normalize():
     out = LUTProduct().normalize(ds)
     assert "lon" in out.coords and "lat" in out.coords
 
+
+def test_from_local_with_pattern_builds_a_pathtemplate():
+    product = ERA5Product.from_local(path="/data", pattern="{year}/x.nc")
+    assert isinstance(product.resolver, PathTemplate)

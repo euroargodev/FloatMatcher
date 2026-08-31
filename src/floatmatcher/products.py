@@ -1,8 +1,7 @@
 import xarray as xr
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from pathlib import Path
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from typing import Self
 from dask.utils import SerializableLock
 
@@ -18,8 +17,8 @@ _NETCDF_LOCK = SerializableLock()
 # ─────────────────────────────────────────────────────────────
 
 def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
-    """Rename source coordinate names to the standard ones (lat/lon[/time]).
-    Rename only keys found in mapping. If key not found, skip and let it as it is.
+    """
+    Rename keys found in mapping. If key not found, skip and let it as it is.
     set variables lon/lat/time as coords if not already
     """
     # mapping is {source_name: standard_name}, e.g. {"longitude": "lon"}.
@@ -33,7 +32,7 @@ def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
                      
     ds = ds.rename(valid)
 
-    # trnasform data var into coordinate if not already
+    # transform data var into coordinate if not already
     to_promote = []
     for name in ("lon", "lat", "time"):
         if name in ds.data_vars:
