@@ -10,18 +10,19 @@ from .pointset import PointSet
 
 @dataclass
 class MatchupResult:
-    values:      dict[str, NDArray[np.float64]]   
-    distance_km: NDArray[np.float64]        
-    time_delta:  NDArray[np.float64]         
-    valid:       NDArray[np.bool_]             
+    values:      dict[str, NDArray[np.float64]]
+    distance_km: NDArray[np.float64]
+    time_delta:  NDArray[np.float64]
+    valid:       NDArray[np.bool_]
+    points:      PointSet
 
-    def to_dataset(self, points: PointSet) -> xr.Dataset:
+    def to_dataset(self) -> xr.Dataset:
         """
         Reinject the colocalized values into the dataset
         The source Dataset travels inside the PointSet
         """
-        ds = points.origin_ds
-        dim = points.origin_dim
+        ds = self.points.origin_ds
+        dim = self.points.origin_dim
         if ds is None or dim is None:
             raise ValueError(
                 "Cannot reinject: these points have no origin dataset "

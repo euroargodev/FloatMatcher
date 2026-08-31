@@ -101,7 +101,7 @@ class Orchestrator:
         time_delta_out[idx] = time_delta[idx]
 
         return MatchupResult(values=values, distance_km=dist_out,
-                                time_delta=time_delta_out, valid=valid)
+                                time_delta=time_delta_out, valid=valid, points=self.points)
 
 
     def _open_lazy_grid(self, paths) -> GridSet:
