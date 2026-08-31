@@ -8,6 +8,7 @@
 #   - whether ProfileFormatError is public
 
 import numpy as np
+import numpy.testing as npt
 import pandas as pd
 import pytest
 import xarray as xr
@@ -36,8 +37,8 @@ def test_find_key_returns_first_present_skipping_absent(argopy_like_ds):
 def test_find_key_matches_variable_or_coord(argopy_like_ds):
     # variable match
     assert _find_key(argopy_like_ds, "LONGITUDE") == "LONGITUDE"
-    # coordinate match (N_POINTS is a coord here)
-    assert _find_key(argopy_like_ds, "N_POINTS") == "N_POINTS"
+    # coordinate match (N_PROF is a coord here)
+    assert _find_key(argopy_like_ds, "N_PROF") == "N_PROF"
 
 
 def test_find_key_raises_when_no_candidate_matches(argopy_like_ds):
@@ -63,7 +64,6 @@ def test_from_arrays_builds_without_provenance():
         time=np.array(["2015-01-01", "2015-01-02"], dtype="datetime64[ns]"),
     )
     assert len(ps.lon) == 2
-    assert ps.origin_index is None
     assert ps.origin_dim is None
 
 
@@ -81,14 +81,16 @@ def test_from_arrays_length_mismatch_raises():
 #  from_dataframe
 # ─────────────────────────────────────────────────────────────
 
-def test_from_dataframe_carries_index_and_discovered_name(df_datetime_index):
+def test_from_dataframe_uses_the_index_name(df_datetime_index):
+    """origin_dim comes from df.index.name"""
     ps = ProfileLoader.from_dataframe(df_datetime_index)
-    # provenance present
-    assert ps.origin_index is not None
-    # discovered index name (df.index.name or "index")
+
     assert ps.origin_dim == "profile_date"
-    # non-integer index carried as-is (soft policy, not cast to int64)
-    assert np.issubdtype(np.asarray(ps.origin_index).dtype, np.datetime64)
+    npt.assert_allclose(ps.lon, [-45.0, -44.0, -43.0])
+    npt.assert_allclose(ps.lat, [32.0, 33.0, 34.0])
+    npt.assert_array_equal(ps.time,
+                           np.array(["2015-01-01", "2015-01-02", "2015-01-03"],
+                                    dtype="datetime64[ns]"))
 
 
 def test_from_dataframe_unnamed_index_falls_back_to_index():
@@ -104,21 +106,6 @@ def test_from_dataframe_unnamed_index_falls_back_to_index():
 # ─────────────────────────────────────────────────────────────
 #  from_xrdataset — the core decisions
 # ─────────────────────────────────────────────────────────────
-
-def test_from_xrdataset_label_provenance_when_coord_exists(argopy_like_ds):
-    ps = ProfileLoader.from_xrdataset(argopy_like_ds)
-    assert ps.origin_dim == "N_POINTS"
-    # label provenance: origin_index equals the real coordinate values
-    np.testing.assert_array_equal(np.asarray(ps.origin_index), np.arange(3))
-
-
-def test_from_xrdataset_discovers_nonstandard_dim_and_positional_index(raw_ds_no_coord):
-    ps = ProfileLoader.from_xrdataset(raw_ds_no_coord)
-    # dimension name discovered, not assumed
-    assert ps.origin_dim == "obs"
-    # no coord -> positional arange (Option A)
-    np.testing.assert_array_equal(np.asarray(ps.origin_index), np.arange(3))
-
 
 def test_from_xrdataset_time_juld_tolerance(juld_ds):
     # time defaults to "TIME"; JULD must still be found as a fallback.

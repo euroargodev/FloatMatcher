@@ -67,15 +67,6 @@ def test_xyz_is_cached():
 def test_provenance_defaults_to_none():
     """Without a source, provenance fields are None."""
     ps = PointSet([1.0], [2.0], daily_timestamps(1))
-    assert ps.origin_index is None
     assert ps.origin_dim is None
 
-
-def test_provenance_is_kept():
-    """Provenance is stored when provided."""
-    idx = np.array([10, 11, 12])
-    ps = PointSet([1.0, 2.0, 3.0], [4.0, 5.0, 6.0], daily_timestamps(3),
-                  origin_index=idx, origin_dim="N_POINTS")
-    npt.assert_array_equal(ps.origin_index, idx)
-    assert ps.origin_dim == "N_POINTS"
 

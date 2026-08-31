@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 import numpy as np
+import xarray as xr
 from numpy.typing import NDArray
 from typing import Any
 from .geo import lonlat_to_xyz
@@ -16,13 +17,15 @@ class PointSet:
     The wrapper carries validation and clear names, but heavy computation
     works directly on the underlying NumPy arrays (``points.lon``), never on
     the object itself inside loops.
+
+    Dataset travels along origin_ds
     """
 
     lon: NDArray[np.float64]
     lat: NDArray[np.float64]
     time: NDArray[np.datetime64]
-    origin_index: NDArray[Any] | None = None   # source index, if any
-    origin_dim: str | None = None                   # source dimension name, if known
+    origin_dim: str | None = None       # source dimension name
+    origin_ds: xr.Dataset | None = None  # source dataset
     _xyz: NDArray[np.float64] | None = field(default=None, init=False, repr=False)
 
 
@@ -33,8 +36,6 @@ class PointSet:
         self.time = np.asarray(self.time, dtype=f"datetime64[{TIME_UNIT}]")
         if not (len(self.lat) == len(self.time) == len(self.lon)):
             raise ValueError("lon, lat, time must have the same length")
-        if self.origin_index is not None:
-            self.origin_index = np.asarray(self.origin_index)
 
     @property
     def xyz(self) -> NDArray[np.float64]:

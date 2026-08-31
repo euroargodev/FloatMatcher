@@ -32,17 +32,6 @@ def _extract(ds: xr.Dataset, *names: str) -> NDArray[Any]:
     """Return the .values (raw ndarray) — the common case."""
     return _get(ds, *names).values
 
-def _to_profiles(ds: xr.Dataset) -> xr.Dataset:
-    """Collapse an argopy measurement layout (N_POINTS) to profiles (N_PROF)."""
-    accessor = getattr(ds, "argo", None)
-    if accessor is None or not hasattr(accessor, "point2profile"):
-        raise ProfileFormatError(
-            "from_argopy_float received an N_POINTS dataset but the argopy 'argo' "
-            "accessor is unavailable. Import argopy first (it registers the "
-            "accessor), or pass an already profile-shaped dataset (N_PROF)."
-        )
-    profiles: xr.Dataset = accessor.point2profile()
-    return profiles
 
 # ─────────────────────────────────────────────────────────────
 #  ProfileLoader: converges any point source into a PointSet.
@@ -62,9 +51,8 @@ class ProfileLoader:
     def from_dataframe(df: pd.DataFrame, lon: str = "longitude",
                        lat: str = "latitude", time: str = "date") -> PointSet:
         # Stable, named columns -> NO multi-name lookup here.
-        # origin_index = df index ; origin_dim = "index".
-        return PointSet(df[lon], df[lat], df[time], origin_index=df.index.to_numpy(),
-            origin_dim=df.index.name or "index",)
+        return PointSet(df[lon], df[lat], df[time],
+                        origin_dim=df.index.name or "index")
 
     # --- 3. xarray Dataset ---
     @staticmethod
@@ -79,41 +67,35 @@ class ProfileLoader:
         lat_arr  = _extract(ds, lat)
         time_arr = _extract(ds, time, "JULD")  # <-- multi-name ONLY here (minimal option)
 
-        # 3. origin_index only if point_dim is an actual coord of ds
-        if point_dim in ds.coords:
-            origin_index = ds[point_dim].values  
-        else:
-            origin_index = np.arange(ds.sizes[point_dim])
-
         return PointSet(lon=lon_arr, 
                         lat=lat_arr, 
                         time=time_arr, 
-                        origin_index=origin_index, 
-                        origin_dim=str(point_dim)
+                        origin_dim=str(point_dim),
+                        origin_ds=ds
                         )
 
-    # --- 4. argopy float: an xarray Dataset from DataFetcher().load().data ---
-    @staticmethod
-    def from_argopy_float(ds: xr.Dataset) -> PointSet:
-        """argopy float Dataset -> PointSet, ONE position per profile.
+    # # --- 4. argopy float: an xarray Dataset from DataFetcher().load().data ---
+    # @staticmethod
+    # def from_argopy_float(ds: xr.Dataset) -> PointSet:
+    #     """argopy float Dataset -> PointSet, ONE position per profile.
  
-        argopy returns a measurement-level layout (dim ``N_POINTS``: lon/lat/time
-        repeat across each profile's depth levels). Colocalization wants one
-        position per profile, so collapse to the profile layout (dim ``N_PROF``)
-        when a measurement layout is given.
-        """
-        if "N_POINTS" in ds.dims:
-            ds = _to_profiles(ds)                 # N_POINTS -> (N_PROF, N_LEVELS)
-        return ProfileLoader.from_xrdataset(ds, lon="LONGITUDE", lat="LATITUDE",
-                                            time="TIME")
+    #     argopy returns a measurement-level layout (dim ``N_POINTS``: lon/lat/time
+    #     repeat across each profile's depth levels). Colocalization wants one
+    #     position per profile, so collapse to the profile layout (dim ``N_PROF``)
+    #     when a measurement layout is given.
+    #     """
+    #     if "N_POINTS" in ds.dims:
+    #         ds = _to_profiles(ds)                 # N_POINTS -> (N_PROF, N_LEVELS)
+    #     return ProfileLoader.from_xrdataset(ds, lon="LONGITUDE", lat="LATITUDE",
+    #                                         time="TIME")
  
-    # --- 5. argopy index: a pandas DataFrame, one row per profile ---
-    @staticmethod
-    def from_argopy_index(index: pd.DataFrame) -> PointSet:
-        """argopy index DataFrame -> PointSet.
+    # # --- 5. argopy index: a pandas DataFrame, one row per profile ---
+    # @staticmethod
+    # def from_argopy_index(index: pd.DataFrame) -> PointSet:
+    #     """argopy index DataFrame -> PointSet.
  
-        IndexFetcher().load().index is a DataFrame with longitude/latitude/date,
-        one row per profile: exactly what from_dataframe consumes.
-        """
-        return ProfileLoader.from_dataframe(index, lon="longitude",
-                                            lat="latitude", time="date")
+    #     IndexFetcher().load().index is a DataFrame with longitude/latitude/date,
+    #     one row per profile: exactly what from_dataframe consumes.
+    #     """
+    #     return ProfileLoader.from_dataframe(index, lon="longitude",
+    #                                         lat="latitude", time="date")

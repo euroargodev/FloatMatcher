@@ -50,7 +50,6 @@ def points_with_origin():
         lon=[-45.0, -44.0, -43.0],
         lat=[32.0, 33.0, 34.0],
         time=np.array(["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]"),
-        origin_index=np.array([0, 1, 2]),
         origin_dim="N_POINTS",
     )
 
@@ -113,17 +112,17 @@ def fake_era5_file(write_era5):
 
 @pytest.fixture
 def argopy_like_ds():
-    """xarray Dataset in the argopy N_POINTS layout, WITH a real coordinate
+    """xarray Dataset in the argopy N_PROF layout, WITH a real coordinate
     on the point dimension -> exercises label provenance."""
     n = 3
     return xr.Dataset(
         {
-            "LONGITUDE": (("N_POINTS",), np.array([-45.0, -44.0, -43.0])),
-            "LATITUDE": (("N_POINTS",), np.array([32.0, 33.0, 34.0])),
-            "TIME": (("N_POINTS",), np.array(
+            "LONGITUDE": (("N_PROF",), np.array([-45.0, -44.0, -43.0])),
+            "LATITUDE": (("N_PROF",), np.array([32.0, 33.0, 34.0])),
+            "TIME": (("N_PROF",), np.array(
                 ["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]")),
         },
-        coords={"N_POINTS": np.arange(n)},   # real coordinate on the point dim
+        coords={"N_PROF": np.arange(n)},   # real coordinate on the point dim
     )
  
  
@@ -157,15 +156,14 @@ def juld_ds():
  
 @pytest.fixture
 def df_datetime_index():
-    """DataFrame whose index is a DatetimeIndex (non-integer)
-    -> exercises the 'soft' policy: origin_index carried as-is, not cast to int."""
+    """DataFrame whose index is a DatetimeIndex (non-integer)"""
     idx = pd.to_datetime(["2015-01-01", "2015-01-02", "2015-01-03"])
     idx.name = "profile_date"
     return pd.DataFrame(
         {
             "longitude": [-45.0, -44.0, -43.0],
             "latitude": [32.0, 33.0, 34.0],
-            "date": pd.to_datetime(["2015-06-01", "2015-06-02", "2015-06-03"]),
+            "date": idx,
         },
         index=idx,
     )

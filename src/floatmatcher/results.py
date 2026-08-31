@@ -15,18 +15,17 @@ class MatchupResult:
     time_delta:  NDArray[np.float64]         
     valid:       NDArray[np.bool_]             
 
-    def to_dataset(self, ds: xr.Dataset, points: PointSet) -> xr.Dataset:
-        """Reinject the colocalized values into the original dataset."""
+    def to_dataset(self, points: PointSet) -> xr.Dataset:
+        """
+        Reinject the colocalized values into the dataset
+        The source Dataset travels inside the PointSet
+        """
+        ds = points.origin_ds
         dim = points.origin_dim
-        if dim is None:
+        if ds is None or dim is None:
             raise ValueError(
                 "Cannot reinject: these points have no origin dataset "
                 "(they came from raw arrays). Use the MatchupResult directly."
-            )
-        if ds.sizes[dim] != len(self.valid):
-            raise ValueError(
-                f"Dataset size along '{dim}' ({ds.sizes[dim]}) does not match "
-                f"the number of results ({len(self.valid)})."
             )
 
         out = ds.copy()
