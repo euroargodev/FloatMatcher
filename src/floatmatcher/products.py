@@ -36,7 +36,6 @@ def rename_coords(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
 
 class Product(ABC):
     COORD_MAP: dict[str, str] = {}
-    LON_RANGE: str | None = None
 
     def __init__(self, resolver: FileResolver | None = None) -> None:
         self.resolver = resolver
@@ -88,14 +87,12 @@ class Product(ABC):
 
 class ERA5Product(Product):
     COORD_MAP = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
-    LON_RANGE = None
     def normalize(self, raw: xr.Dataset) -> xr.Dataset:
         ds = rename_coords(raw, self.COORD_MAP)
         return ds
     
 class LUTProduct(Product):
     COORD_MAP = {"lon": "lon", "lat": "lat"}
-    LON_RANGE = "-180-180"
     def normalize(self, raw: xr.Dataset) -> xr.Dataset:
         ds = rename_coords(raw, self.COORD_MAP)
         return ds
