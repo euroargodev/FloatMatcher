@@ -87,31 +87,49 @@ class PathTemplate(FileResolver):
     NOTHING resolves to an existing file, that is a configuration error -> raise.
     """
 
-    def __init__(self, root: str | Path, pattern: str) -> None:
+    def __init__(self, root: str | Path, pattern: str,
+                 granularity: str = "D", pad: int = 1) -> None:
         self.root = root
         self.pattern = pattern
+        self.granularity = granularity
+        self.pad = pad
 
     def files_for(self, points: PointSet | None = None) -> list[str]:
-        # unique days present in the points (day granularity; a hourly tree would
-        # need datetime64[h] here — noted as a limitation for now)
         if points is None:
             raise ValueError(
-                "PathTemplate resolves one file per day present in the points; "
+                "PathTemplate resolves one file per date present in the points; "
                 "pass a PointSet, or use ExplicitFiles to list a directory."
             )
+
+        dates = np.unique(
+            np.asarray(points.time).astype(f"datetime64[{self.granularity}]")
+        )
         
-        dates = np.unique(np.asarray(points.time).astype("datetime64[D]"))
-        
+        # A point at 23h or 1h AM may well find its nearest step in the NEXT or PREVISOU file, so
+        # the neighbours of every date are requested too.
+        step = np.timedelta64(1, self.granularity)
+        wanted = dates
+        for shift in range(1, self.pad + 1):
+            wanted = np.concatenate([wanted, dates - shift * step, dates + shift * step])
+        wanted = np.unique(wanted)
+
         resolved = []
-        for d in dates:
+        for d in wanted:
             resolved.append(resolve_path(self.root, self.pattern, d))
+
+        # Only the dates of the requested points are worth warning about:
+        # padded neighbours are absent at the edges of any archive and does
+        # not raise warnings.
+        asked_for = set()
+        for d in dates:
+            asked_for.add(resolve_path(self.root, self.pattern, d))
 
         existing = []
         missing = []
         for p in resolved:
             if Path(p).exists():
                 existing.append(p)
-            else:
+            elif p in asked_for:
                 missing.append(p)
 
         if missing:
@@ -128,39 +146,3 @@ class PathTemplate(FileResolver):
             )
         return existing
 
-
-# # ─────────────────────────────────────────────────────────────
-# #  LocalSource: open the resolved files
-# # ─────────────────────────────────────────────────────────────
-
-# # netCDF4/HDF5 is not thread-safe, and open_mfdataset returns dask-backed
-# # arrays read by dask's threaded scheduler. ONE lock shared by every open
-# # serializes those reads process-wide; a per-call lock would not.
-# _NETCDF_LOCK = SerializableLock()
-
-
-# class LocalSource:
-#     """Opens files already present on disk and returns the raw dataset."""
-
-#     def __init__(self, resolver: FileResolver) -> None:
-#         self.resolver = resolver
-
-#     @classmethod
-#     def from_template(cls, root: str | Path, pattern: str) -> "LocalSource":
-#         return cls(PathTemplate(root, pattern))
-
-#     @classmethod
-#     def from_paths(cls, paths: str | Iterable[str]) -> "LocalSource":
-#         return cls(ExplicitFiles(paths))
-
-#     def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
-#         """Open an explicit, already-resolved list of files and return the raw
-#         dataset. Bypasses the resolver: the caller has batched files_for(...)
-#         output into packets and opens each packet here.
-
-#         combine="by_coords" lets xarray order ERA5 files by their time coords;
-#         a single-element list works the same way.
-#         """
-#         if not paths:
-#             raise ValueError("LocalSource: empty file list")
-#         return xr.open_mfdataset(paths, combine="by_coords", lock=_NETCDF_LOCK)

@@ -44,7 +44,7 @@ def grid_3d_ds():
 
 
 @pytest.fixture
-def points_with_origin():
+def points_object():
     """A 3-point PointSet carrying provenance (as if extracted from a dataset)."""
     return PointSet(
         lon=[-45.0, -44.0, -43.0],
