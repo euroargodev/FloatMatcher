@@ -79,8 +79,15 @@ def test_declared_matches_negative(grid_3d_ds):
  
 # ───────────── monotonicity of lat/lon ─────────────
  
-def test_non_monotonic_lon_raises(grid_3d_ds):
+def test_shuffled_lon_is_accepted(grid_3d_ds):
+    # order does not matter: the KDTree works on a point cloud
     ds = grid_3d_ds.isel(lon=[2, 0, 1])            # [12,10,11] -> not monotonic
+    assert GridSet(ds).regime == "3D"
+
+
+def test_duplicate_lon_raises(grid_3d_ds):
+    # two nodes at the same position would make the nearest lookup ambiguous
+    ds = grid_3d_ds.isel(lon=[0, 1, 1])
     with pytest.raises(ValueError):
         GridSet(ds)
  
@@ -93,8 +100,14 @@ def test_decreasing_lat_is_accepted(grid_3d_ds):
  
 # ───────────── time monotonicity (3D only) ─────────────
  
-def test_decreasing_time_in_3d_raises(grid_3d_ds):
+def test_decreasing_time_is_accepted(grid_3d_ds):
     ds = grid_3d_ds.isel(time=slice(None, None, -1))
+    assert GridSet(ds).regime == "3D"
+
+
+def test_duplicate_time_raises(grid_3d_ds):
+    # overlapping files would silently return either value
+    ds = grid_3d_ds.isel(time=[0, 0])
     with pytest.raises(ValueError):
         GridSet(ds)
  

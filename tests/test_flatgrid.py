@@ -8,7 +8,7 @@
 import numpy as np
 import numpy.testing as npt
 
-from floatmatcher.flatgrid import grid_to_reference
+from floatmatcher.flatgrid import FlatGrid
 
 from helpers import make_grid, pos_field, daily_timestamps
 
@@ -23,7 +23,7 @@ def test_flatten_preserves_alignment():
     ds = make_grid([30.0, 31.0, 32.0], [-50.0, -49.0, -48.0, -47.0],
                    fill=pos_field, fill_args=(1000.0, 0.0))
 
-    ref = grid_to_reference(ds)
+    ref = FlatGrid.from_grid(ds)
 
     assert ref.lon.size == 3 * 4                          # 3 * 4 = 12
 
@@ -36,14 +36,14 @@ def test_flatten_preserves_alignment():
 def test_reference_is_2d_has_no_time():
     """A 2D grid produces a FlatGrid with time=None."""
     ds = make_grid([0.0, 1.0], [10.0, 11.0])
-    ref = grid_to_reference(ds)
+    ref = FlatGrid.from_grid(ds)
     assert ref.time is None
 
 
 def test_reference_xyz_shape():
     """xyz exposes one (x, y, z) row per node."""
     ds = make_grid([0.0, 1.0, 2.0], [10.0, 11.0])
-    ref = grid_to_reference(ds)
+    ref = FlatGrid.from_grid(ds)
     assert ref.xyz.shape == (6, 3)                        # 3*2 nodes, 3 coords each
 
 
@@ -57,7 +57,7 @@ def test_flatten_3d_reads_correct_node_and_time():
                    time=daily_timestamps(2),
                    fill=pos_field, fill_args=(1000.0, 0.5))
 
-    ref = grid_to_reference(ds)
+    ref = FlatGrid.from_grid(ds)
     assert ref.time is not None
 
     nodes = np.arange(ref.lon.size)

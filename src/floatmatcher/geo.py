@@ -36,47 +36,16 @@ def convert_lon(lon: ArrayLike, lon_range: str) -> NDArray[np.float64]:
     )
 
 
-def detect_lon_range(lon: ArrayLike) -> str:
-    """Infer the longitude convention of a grid from its values.
-      - any value > 180  -> only "0-360" can produce that
-      - any value < 0    -> only "-180-180" can produce that
-      - all in [0, 180]  -> ambiguous (both conventions coincide there),
-                            default to "-180-180"
-    """
-    lon = np.asarray(lon, dtype=float)
-    if lon.max() > 180.0:
-        return "0-360"
-    if lon.min() < 0.0:
-        return "-180-180"
-    return "-180-180"
-
-
-def is_monotonic(values: ArrayLike) -> bool:
-    """True if a 1-D axis is strictly increasing OR strictly decreasing.
-    Both directions accepted. Works for numeric and datetime64 axes."""
-    a = np.asarray(values)
-    d = np.diff(a)
-    if d.size == 0:
-        return True
-    zero = np.zeros((), dtype=d.dtype)
-    return bool((d > zero).all() or (d < zero).all())
-
-
-def is_strictly_increasing(values: ArrayLike) -> bool:
-    """True if a 1-D axis is strictly increasing only."""
-    a = np.asarray(values)
-    d = np.diff(a)
-    if d.size == 0:
-        return True
-    zero = np.zeros((), dtype=d.dtype)
-    return bool((d > zero).all())
-
-def is_global_lon(lon: ArrayLike, tol: float = 1e-3) -> bool:
-    """Check if the grid is circular or not. True if a longitude axis wraps the whole globe"""
-    lon = np.asarray(lon, dtype=float)
-    if lon.size < 2:
-        return False
-    step = abs(float(lon[1] - lon[0]))
-    span = float(lon.max() - lon.min()) + step
-    return abs(span - 360.0) < max(tol, step * 0.5)
- 
+# def detect_lon_range(lon: ArrayLike) -> str:
+#     """Infer the longitude convention of a grid from its values.
+#       - any value > 180  -> only "0-360" can produce that
+#       - any value < 0    -> only "-180-180" can produce that
+#       - all in [0, 180]  -> ambiguous (both conventions coincide there),
+#                             default to "-180-180"
+#     """
+#     lon = np.asarray(lon, dtype=float)
+#     if lon.max() > 180.0:
+#         return "0-360"
+#     if lon.min() < 0.0:
+#         return "-180-180"
+#     return "-180-180"

@@ -33,18 +33,13 @@ def rename_coords(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
     return ds.rename(valid)
 
 
-def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
-    """Bring a raw grid dataset to the standard form expected by GridSet."""
-    ds = rename_coords(ds, mapping)
-    return ds
-
 
 class Product(ABC):
     COORD_MAP: dict[str, str] = {}
     LON_RANGE: str | None = None
 
-    def __init__(self, resolver: FileResolver) -> None:
-            self.resolver = resolver
+    def __init__(self, resolver: FileResolver | None = None) -> None:
+        self.resolver = resolver
     
     @classmethod
     def from_local(cls, path: str | Path | Sequence[str] | None = None,
@@ -60,6 +55,11 @@ class Product(ABC):
         return cls(resolver)
 
     def files_for(self, points: PointSet | None = None) -> list[str]:
+        if self.resolver is None:
+            raise ValueError(
+                "this product carries no source; build it with "
+                f"{type(self).__name__}.from_local(...) before resolving files"
+            )
         return self.resolver.files_for(points)
 
     def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
@@ -90,10 +90,12 @@ class ERA5Product(Product):
     COORD_MAP = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
     LON_RANGE = None
     def normalize(self, raw: xr.Dataset) -> xr.Dataset:
-        return to_standard(raw, self.COORD_MAP)    # la classe appelle la fonction
-
+        ds = rename_coords(raw, self.COORD_MAP)
+        return ds
+    
 class LUTProduct(Product):
     COORD_MAP = {"lon": "lon", "lat": "lat"}
     LON_RANGE = "-180-180"
     def normalize(self, raw: xr.Dataset) -> xr.Dataset:
-        return to_standard(raw, self.COORD_MAP)
+        ds = rename_coords(raw, self.COORD_MAP)
+        return ds

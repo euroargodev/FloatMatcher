@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass, field
 import xarray as xr
-from .geo import detect_lon_range, is_monotonic, is_strictly_increasing
+from .geo import detect_lon_range
+import numpy as np 
 
 @dataclass
 class GridSet:
@@ -30,12 +31,14 @@ class GridSet:
         if len(self.dataset.data_vars)<1:
             raise ValueError("There is no variable in the dataset given to GridSet")
 
-        # test of monotonic lat/lon 
-        if not is_monotonic(self.dataset["lon"].values):
-            raise ValueError("grid: 'lon' axis is not monotonic")
-        if not is_monotonic(self.dataset["lat"].values):
-            raise ValueError("grid: 'lat' axis is not monotonic")
-
+        # test of lat/lon unicity
+        lon = self.dataset["lon"].values
+        lat = self.dataset["lat"].values
+        if len(np.unique(lon)) != len(lon):
+            raise ValueError("grid: duplicated longitudes in array")
+        if len(np.unique(lat)) != len(lat):
+            raise ValueError("grid: duplicated latitudes in array")
+        
         # select regime 3D/2D
         if "time" in self.dataset.coords : 
             self.regime = "3D"
@@ -51,7 +54,8 @@ class GridSet:
                 f"the declared convention {self.declared_lon_range}"
             )
 
-        # test time monotony if 3D regime
+        # test time unicity if 3D regime
         if self.regime == "3D":
-            if not is_strictly_increasing(self.dataset["time"].values):
-                raise ValueError("grid: 'time' axis must be strictly increasing")
+            times = self.dataset["time"].values
+            if len(np.unique(times)) != len(times):
+                raise ValueError("grid: duplicate timestamps (overlapping files?)")
