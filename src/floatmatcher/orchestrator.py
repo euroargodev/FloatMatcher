@@ -17,19 +17,19 @@ from numpy.typing import NDArray, ArrayLike
 
 
 from .gridset import GridSet
-from .nearest import NearestNeighbor
+from .matchup import NearestNeighbor
 from .interpolation import Interpolation
 from .pointset import PointSet
 from .results import MatchupResult
 from .products import Product
 from .flatgrid import FlatGrid
 from .utils import _select_variables
-from .index import spatial_index, temporal_index
+from .neighbors import spatial_nearest, temporal_nearest
 
 class Orchestrator:
-    """Orchestrator gather all Points Pointset(), variables needed, setup Product() 
-    and MatchupMethod (Nearest or Interp). It prepares the method to be executed by 
-    the .match() function. All constraints and parametrization lives in .match()
+    """Orchestrator gather all Points Pointset(), variables needed, setup Product(). 
+    It prepares all elements to call the method in .match() function. 
+    All constraints and parametrization lives in .match()
     """
 
     def __init__(self, points: PointSet, variables: str | list[str] | None, product: Product) -> None:
@@ -63,13 +63,13 @@ class Orchestrator:
         grid_stacked = flat_grid.xyz
 
         # starting Nearest method : apply kdtree on spatial 
-        dist_km, spatial_idx = spatial_index(grid_stacked, self.points, k=method.k_nearest)
+        dist_km, spatial_idx = spatial_nearest(grid_stacked, self.points, k=method.k_nearest)
         valid_spatial = dist_km <= method.max_dist_km
 
         idx_count = len(self.points.lon)
         if grid_full.regime == "3D":
             assert flat_grid.time is not None
-            time_delta, temporal_idx = temporal_index(flat_grid.time, self.points, k=method.k_nearest)
+            time_delta, temporal_idx = temporal_nearest(flat_grid.time, self.points, k=method.k_nearest)
             valid = valid_spatial & (time_delta <= method.max_time_seconds)
         else:
             time_delta = np.full(idx_count, np.nan)

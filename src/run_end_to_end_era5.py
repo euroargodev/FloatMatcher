@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore", category=SyntaxWarning)
 from floatmatcher.orchestrator import Orchestrator
 from floatmatcher.products import ERA5Product
 from floatmatcher.profile_loader import ProfileLoader
-from floatmatcher.nearest import NearestNeighbor
+from floatmatcher.matchup import NearestNeighbor
 
 
 file_path = "/runtime/data/era5/data_stream-oper_stepType-instant.nc"

@@ -7,7 +7,7 @@ import pytest
 
 from floatmatcher.orchestrator import Orchestrator
 from floatmatcher.products import ERA5Product
-from floatmatcher.nearest import NearestNeighbor
+from floatmatcher.matchup import NearestNeighbor
 from floatmatcher.pointset import PointSet
 from floatmatcher.results import MatchupResult
 

@@ -2,7 +2,7 @@
 import numpy as np
 import numpy.testing as npt
 
-from floatmatcher.nearest import NearestNeighbor
+from floatmatcher.matchup import NearestNeighbor
 from floatmatcher.gridset import GridSet
 from floatmatcher.pointset import PointSet
 from floatmatcher.method import Constraints

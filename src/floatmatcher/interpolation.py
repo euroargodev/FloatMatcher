@@ -7,7 +7,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .gridset import GridSet
-from .method import Constraints, MatchupMethod
 from .pointset import PointSet
 from .results import MatchupResult
 
@@ -46,12 +45,12 @@ def _within_bounds(ds: xr.Dataset, regime: str, lon: NDArray[np.float64],
     return inside
 
 
-class Interpolation(MatchupMethod):
+class Interpolation():
     def __init__(self, method: str = "linear") -> None:
         self.method = method              # "linear", "nearest", "cubic"…
 
     def match(self, grid: GridSet, points: PointSet,
-              constraints: Constraints) -> MatchupResult:
+              constraints) -> MatchupResult:
         ds = pad_periodic_lon(grid.dataset)
         lon = points.change_lon_convention(grid.lon_range)
         interp_coords = dict(

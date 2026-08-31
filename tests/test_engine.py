@@ -2,9 +2,8 @@
 import numpy as np
 import pytest
 
-from floatmatcher.nearest import NearestNeighbor
+from floatmatcher.matchup import NearestNeighbor
 from floatmatcher.interpolation import Interpolation
-from floatmatcher.method import MatchupMethod, Constraints
 from floatmatcher.gridset import GridSet
 from floatmatcher.pointset import PointSet
 

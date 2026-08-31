@@ -9,7 +9,7 @@ from pathlib import Path
 from floatmatcher.local_source import PathTemplate, LocalSource, resolve_path
 from floatmatcher.orchestrator import Orchestrator
 from floatmatcher.products import ERA5Product
-from floatmatcher.nearest import NearestNeighbor
+from floatmatcher.matchup import NearestNeighbor
 from floatmatcher.pointset import PointSet
 
 from helpers import constraints
