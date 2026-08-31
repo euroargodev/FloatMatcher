@@ -34,15 +34,3 @@ class MatchupResult:
             out[f"{k}_coloc"] = (dim, v)
 
         return out
-
-    def update_best(self, other: "MatchupResult") -> "MatchupResult":
-        """Replace current result if a new result presents better distances."""
-        # `~self.valid` catches points where self has nothing yet: there
-        # self.time_delta is NaN and the delta comparison alone would be False.
-        improve = other.valid & (~self.valid | (other.time_delta < self.time_delta))
-        self.distance_km = np.where(improve, other.distance_km, self.distance_km)
-        self.time_delta = np.where(improve, other.time_delta, self.time_delta)
-        for var in self.values:
-            self.values[var] = np.where(improve, other.values[var], self.values[var])
-        self.valid = self.valid | other.valid
-        return self

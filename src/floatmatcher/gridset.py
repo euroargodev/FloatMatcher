@@ -39,11 +39,12 @@ class GridSet:
         # select regime 3D/2D
         if "time" in self.dataset.coords : 
             self.regime = "3D"
-        else:
-            self.regime = "2D"
-
-        # test time unicity if 3D regime
-        if self.regime == "3D":
+            # test time unicity if 3D regime
             times = self.dataset["time"].values
             if len(np.unique(times)) != len(times):
                 raise ValueError("grid: duplicate timestamps (overlapping files?)")
+        else:
+            self.regime = "2D"
+
+
+            

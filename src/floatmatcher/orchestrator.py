@@ -79,9 +79,9 @@ class Orchestrator:
         # select indexes of spatial and time
         idx = np.where(valid)[0] 
         node_idx = spatial_idx[idx]       # grid node index of retained points
-        tsel_idx = None              # set temporal case
+        tsel_idx = None              # set temporal case 
         if temporal_idx is not None:
-            tsel_idx = temporal_idx[idx]
+            tsel_idx = temporal_idx[idx] # apply on every node. filtering is made after (costless)
 
         # retreive data only at good positions : select in dataset stacked of FlatGrid object
         picked = flat_grid.read_values(node_idx, tsel_idx) 

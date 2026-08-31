@@ -1,70 +1,72 @@
-# tests/test_reference.py
+# tests/test_flatgrid.py
 #
-# FlatGrid is now LAZY: grid_to_reference no longer materializes the value
-# cube. It exposes read_values(node_idx, time_idx) to pull only the retained
-# nodes. So the alignment tests read values through read_values instead of the
-# old ref.values dict.
+# FlatGrid flattens a grid into a node cloud and stays LAZY: read_values pulls
+# only the retained (node[, time]) pairs, never the whole cube.
 
 import numpy as np
 import numpy.testing as npt
 
 from floatmatcher.flatgrid import FlatGrid
 
-from helpers import make_grid, pos_field, daily_timestamps
+# Reminder 
+# 3D (grid_3d_ds): 
+#        n0    n1    n2    n3     n4     n5     n6     n7     n8     n9    n10    n11
+#  t=0  10.0  20.0  30.0  40.0  110.0  120.0  130.0  140.0  210.0  220.0  230.0  240.0
+#  t=1  11.0  21.0  31.0  41.0  111.0  121.0  131.0  141.0  211.0  221.0  231.0  241.0
+
+# 2D (grid_2d_ds) : 
+#        n0    n1    n2    n3     n4     n5     n6     n7     n8     n9    n10    n11
+#  t=0  10.0  20.0  30.0  40.0  110.0  120.0  130.0  140.0  210.0  220.0  230.0  240.0
 
 
-def test_flatten_preserves_alignment():
-    """Each flattened node's value matches its own coordinates.
+def test_flatten_preserves_alignment(grid_2d_ds):
+    """Each flattened node keeps the value of its own coordinates"""
+    flat_grid = FlatGrid.from_grid(grid_2d_ds)
 
-    The grid value encodes position (1000*lat + lon). Reading every node via
-    read_values must return, per node, exactly 1000*lat + lon — proving coords
-    and values share the same flattening order.
-    """
-    ds = make_grid([30.0, 31.0, 32.0], [-50.0, -49.0, -48.0, -47.0],
-                   fill=pos_field, fill_args=(1000.0, 0.0))
+    assert flat_grid.lon.size == 3 * 4                     # lat * lon
 
-    ref = FlatGrid.from_grid(ds)
-
-    assert ref.lon.size == 3 * 4                          # 3 * 4 = 12
-
-    all_nodes = np.arange(ref.lon.size)
-    values = ref.read_values(all_nodes)["v"]              # 2D: no time_idx
-    expected = 1000.0 * ref.lat + ref.lon
-    npt.assert_allclose(values, expected, atol=1e-9)
+    values = flat_grid.read_values(np.arange(12))["v"]     # 2D: no time index
+    npt.assert_allclose(values, [10.0, 20.0, 30.0, 40.0,
+                                 110.0, 120.0, 130.0, 140.0,
+                                 210.0, 220.0, 230.0, 240.0])
 
 
-def test_reference_is_2d_has_no_time():
+def test_flatgrid_is_2d_has_no_time(grid_2d_ds):
     """A 2D grid produces a FlatGrid with time=None."""
-    ds = make_grid([0.0, 1.0], [10.0, 11.0])
-    ref = FlatGrid.from_grid(ds)
-    assert ref.time is None
+    assert FlatGrid.from_grid(grid_2d_ds).time is None
 
 
-def test_reference_xyz_shape():
+def test_flatgrid_xyz_shape(grid_2d_ds):
     """xyz exposes one (x, y, z) row per node."""
-    ds = make_grid([0.0, 1.0, 2.0], [10.0, 11.0])
-    ref = FlatGrid.from_grid(ds)
-    assert ref.xyz.shape == (6, 3)                        # 3*2 nodes, 3 coords each
+    assert FlatGrid.from_grid(grid_2d_ds).xyz.shape == (12, 3)
 
 
-def test_flatten_3d_reads_correct_node_and_time():
-    """A 3D grid: read_values pulls the right value for a given (node, time).
+def test_retreive_right_indexes(grid_3d_ds):
+    """Indices are paired element-wise, not crossed: node[i] with time[i]"""
+    flat_grid = FlatGrid.from_grid(grid_3d_ds)
 
-    Value encodes position AND time index (1000*lat + lon + 0.5*t), so reading
-    all nodes at time 0 then time 1 must match the encoded values.
-    """
-    ds = make_grid([30.0, 31.0], [-50.0, -49.0, -48.0],
-                   time=daily_timestamps(2),
-                   fill=pos_field, fill_args=(1000.0, 0.5))
+    # node 3 read at t=0 -> 40 ; node 4 read at t=1 -> 111
+    flat_grid_v = flat_grid.read_values([3, 4], [0, 1])["v"]
+    expected_values = [40.0, 111.0]
+    npt.assert_allclose(flat_grid_v, expected_values)
 
-    ref = FlatGrid.from_grid(ds)
-    assert ref.time is not None
 
-    nodes = np.arange(ref.lon.size)
-    base = 1000.0 * ref.lat + ref.lon
 
-    v_t0 = ref.read_values(nodes, np.zeros(nodes.size, dtype=int))["v"]
-    npt.assert_allclose(v_t0, base, atol=1e-9)
+def test_read_values_returns_every_variable(grid_2d_ds):
+    """read_values loops over data_vars"""
+    grid_2d_ds["sst"] = grid_2d_ds["v"]
+    grid_2d_ds["t2m"] = grid_2d_ds["v"] + 1000.0
 
-    v_t1 = ref.read_values(nodes, np.ones(nodes.size, dtype=int))["v"]
-    npt.assert_allclose(v_t1, base + 0.5, atol=1e-9)
+    flat_grid = FlatGrid.from_grid(grid_2d_ds)
+    grid_values = flat_grid.read_values([0, 4]) # read node 0 and 4 on 2d grid --> dict
+
+    assert set(grid_values) == {"v", "sst", "t2m"}
+    npt.assert_allclose(grid_values["sst"], [10.0, 110.0])
+    npt.assert_allclose(grid_values["t2m"], [1010.0, 1110.0])
+
+
+def test_xyz_is_cached(grid_2d_ds):
+    """xyz is computed once: the same array object comes back.
+    test if @property works well"""
+    flat_grid = FlatGrid.from_grid(grid_2d_ds)
+    assert flat_grid.xyz is flat_grid.xyz

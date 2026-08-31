@@ -7,31 +7,41 @@ import xarray as xr
 import pandas as pd
 from floatmatcher.pointset import PointSet
 
-from helpers import make_grid, linear_field, pos_field, daily_timestamps
- 
+from helpers import make_grid, daily_timestamps
+
+
+# Reminder 
+# 3D (grid_3d_ds): 
+#        n0    n1    n2    n3     n4     n5     n6     n7     n8     n9    n10    n11
+#  t=0  10.0  20.0  30.0  40.0  110.0  120.0  130.0  140.0  210.0  220.0  230.0  240.0
+#  t=1  11.0  21.0  31.0  41.0  111.0  121.0  131.0  141.0  211.0  221.0  231.0  241.0
+
+# 2D (grid_2d_ds) : 
+#        n0    n1    n2    n3     n4     n5     n6     n7     n8     n9    n10    n11
+#  t=0  10.0  20.0  30.0  40.0  110.0  120.0  130.0  140.0  210.0  220.0  230.0  240.0
+
+
 
 # ---------- grids ----------
 
-@pytest.fixture
-def grid_3d_ds():
-    return make_grid([0.0, 1.0, 2.0], [10.0, 11.0, 12.0],
-                     time=daily_timestamps(2), variables="t2m")
+lat = [0.0, 1.0, 2.0]
+lon = [10.0, 20.0, 30.0, 40.0]
+
 
 @pytest.fixture
 def grid_2d_ds():
-    return make_grid([0.0, 1.0, 2.0], [10.0, 11.0, 12.0], variables="2DdummyVar")
+    ds = make_grid(lat, lon)
+    ds["v"] = 100.0 * ds["lat"] + ds["lon"]
+    return ds
+
 
 @pytest.fixture
-def grid_0_360():
-    return make_grid([0.0, 1.0], [200.0, 201.0, 202.0])
+def grid_3d_ds():
+    ds = make_grid(lat, lon, time=daily_timestamps(2))
+    ds["v"] = (100.0 * ds["lat"] + ds["lon"]
+               + xr.DataArray(np.arange(ds.sizes["time"]), dims="time"))
+    return ds
 
-def _equal_all_times(lon2d, lat2d, t):
-    return linear_field(lon2d, lat2d)
-
-
-
-
-# ---------- points ----------
 
 @pytest.fixture
 def points_with_origin():
@@ -42,14 +52,6 @@ def points_with_origin():
         time=np.array(["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]"),
         origin_index=np.array([0, 1, 2]),
         origin_dim="N_POINTS",
-    )
-
-@pytest.fixture
-def points_in_grid():
-    return PointSet(
-        lon=[9.5, 10.5],
-        lat=[35.0, 25.0],
-        time=np.array(["2015-06-01T03", "2015-06-01T03"], dtype="datetime64[ns]"),
     )
 
 
@@ -108,32 +110,6 @@ def fake_era5_file(write_era5):
 
 
 # ---------- interp lineaire ----------
-@pytest.fixture
-def grid_3d_equalalltimes():
-    return make_grid(np.arange(30.0, 40.0), np.arange(-50.0, -40.0),
-                     time=daily_timestamps(3), fill=_equal_all_times)
-
-
-
-# ---------- standard grids ----------
-
-@pytest.fixture
-def standard_grid_2d():
-    return make_grid([30.0, 31.0, 32.0], [-50.0, -49.0, -48.0, -47.0],
-                     fill=pos_field, fill_args=(1000.0, 0.0))
- 
- 
-@pytest.fixture
-def standard_grid_3d():
-    return make_grid([30.0, 31.0, 32.0], [-50.0, -49.0, -48.0, -47.0],
-                     time=daily_timestamps(3),
-                     fill=pos_field, fill_args=(1000.0, 100000.0))
- 
- 
-
-
-
-# ---------- fixtures for profile_loader ----------
 
 @pytest.fixture
 def argopy_like_ds():

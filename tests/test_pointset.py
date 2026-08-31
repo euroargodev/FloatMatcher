@@ -9,6 +9,15 @@ from helpers import daily_timestamps
 
 
 # ───────────── validation ─────────────
+def test_lon_dtype():
+    """test dtype of time array"""
+    ps = PointSet([-45.0, -44.0], [32.0, 33.0], daily_timestamps(2))
+    assert ps.lon.dtype == float
+
+def test_lat_dtype():
+    """test dtype of time array"""
+    ps = PointSet([-45.0, -44.0], [32.0, 33.0], daily_timestamps(2))
+    assert ps.lat.dtype == float
 
 def test_time_dtype():
     """test dtype of time array"""

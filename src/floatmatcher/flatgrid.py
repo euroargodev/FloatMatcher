@@ -36,12 +36,7 @@ class FlatGrid:
 
     def read_values(self, node_idx: ArrayLike,
                     tsel_idx: ArrayLike | None = None) -> dict[str, NDArray[np.float64]]:
-        """Read variable values ONLY at the retained (node[, time]) indices.
- 
-        Vectorized isel over a shared 'pts' dimension: on a lazy dataset this
-        materializes just the selected points, not the full cube. `time_idx` is
-        None for 2D grids, an array aligned with `node_idx` for 3D.
-        """
+        """Read variable values ONLY at the retained (node[, time]) indices"""
         node = xr.DataArray(np.asarray(node_idx), dims="pts")
         out = {}
         for var in self._stacked.data_vars: # _stacked is a lazy dataset with only lon/lat/time materialized
