@@ -3,6 +3,7 @@
 import numpy as np
 import numpy.testing as npt
 import xarray as xr
+import pytest
 
 from floatmatcher.resolver import PathTemplate, ExplicitFiles
 from floatmatcher.products import (
@@ -95,3 +96,25 @@ def test_lut_normalize():
 def test_from_local_with_pattern_builds_a_pathtemplate():
     product = ERA5Product.from_local(path="/data", pattern="{year}/x.nc")
     assert isinstance(product.resolver, PathTemplate)
+
+
+def test_from_local_without_pattern_builds_explicitfiles():
+    product = ERA5Product.from_local(path="/data/2018")
+    assert isinstance(product.resolver, ExplicitFiles)
+
+    
+def test_from_local_without_path_raise_error():
+    product = ERA5Product.from_local(pattern="{year}/x.nc")
+    assert isinstance(product.resolver, PathTemplate)
+
+
+def test_from_local_returns_the_good_product():
+    assert isinstance(ERA5Product.from_local(path="/data"), ERA5Product)
+    assert isinstance(LUTProduct.from_local(path="/data"), LUTProduct)
+
+
+def test_from_local_without_path_raise_error():
+    with pytest.raises(ValueError):
+        ERA5Product.from_local(pattern="{year}/x.nc")     # pattern sans path
+    with pytest.raises(ValueError):
+        ERA5Product.from_local() 
