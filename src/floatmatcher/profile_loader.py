@@ -13,24 +13,20 @@ from .exceptions import ProfileFormatError
 #  (the name-lookup logic lives HERE, never in PointSet)
 # ─────────────────────────────────────────────────────────────
 
-def _find_key(ds: xr.Dataset, *names: str) -> str:
-    """Base level: return the FIRST of `names` present in ds (coord or variable).
-    Raise ProfileFormatError if none match. The only place that knows the
-    lookup rule."""
-    for name in names:
-        if name in ds.coords or name in ds.variables:
-            return name
-    raise ProfileFormatError(f"No dataset name matches these candidates: {names}")
+def _find_key(ds: xr.Dataset, name: str) -> str:
+    if name in ds.coords or name in ds.variables:
+        return name
+    raise ProfileFormatError(f"No dataset name matches: {name}")
 
 
-def _get(ds: xr.Dataset, *names: str) -> xr.DataArray:
-    """Return the DataArray (xarray object) — used when .dims is needed after."""
-    return ds[_find_key(ds, *names)]
+def _get(ds: xr.Dataset, name: str) -> xr.DataArray:
+    """Return the DataArray object"""
+    return ds[_find_key(ds, name)]
 
 
-def _extract(ds: xr.Dataset, *names: str) -> NDArray[Any]:
+def _extract(ds: xr.Dataset, name: str) -> NDArray[Any]:
     """Return the .values (raw ndarray) — the common case."""
-    return _get(ds, *names).values
+    return _get(ds, name).values
 
 
 # ─────────────────────────────────────────────────────────────
@@ -65,7 +61,16 @@ class ProfileLoader:
         # 2. extract the three arrays as ndarrays
         lon_arr  = da_lon.values
         lat_arr  = _extract(ds, lat)
-        time_arr = _extract(ds, time, "JULD")  # <-- multi-name ONLY here (minimal option)
+        time_arr = None
+        candidates = [time, "JULD"]
+        for name in candidates:
+            if name in ds.coords or name in ds.variables:
+                time_arr = _extract(ds, name)
+                break
+        if time_arr is None:
+            raise ProfileFormatError(
+                f"No dataset name matches time candidates: {candidates}")
+
 
         return PointSet(lon=lon_arr, 
                         lat=lat_arr, 

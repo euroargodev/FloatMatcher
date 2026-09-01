@@ -57,55 +57,42 @@ def points_object():
 # ---------- fake era5 ----------
 
 @pytest.fixture
-def write_era5(tmp_path):
-    """Factory for ERA5-like NetCDF files."""
-    def _write(name, times, lon, lat, values=None,
-               variables=("u10", "t2m", "sst")):
-        lon, lat = np.asarray(lon, float), np.asarray(lat, float)
-        times = np.asarray(times, dtype="datetime64[ns]")
-        shape = (times.size, lat.size, lon.size)
+def era5_files(tmp_path):
+    """Five daily ERA5-like files (2015/06/01 to 2015/06/05).
+    first timestep : 
+              lon=9     lon=10   lon=11    lon=350
+    lat=40    1.03      11.03     21.03     31.03
+    lat=30    101.03    111.03    121.03    131.03
+    lat=20    201.03    211.03    221.03    231.03
+    """
+    lat = [40.0, 30.0, 20.0]
+    lon = [9.0, 10.0, 11.0, 350.0]
+    sst = np.array([[  0.,  10.,  20.,  30.],
+                    [100., 110., 120., 130.],
+                    [200., 210., 220., 230.]])
 
-        if values is None:
-            data = {}
-            for v in variables:
-                data[v] = np.random.rand(*shape).astype("float32")
-        else:
-            field = values(
-                np.arange(lon.size)[None, None, :],
-                np.arange(lat.size)[None, :, None],
-                np.arange(times.size)[:, None, None],
-            )
-            field = (field * np.ones(shape)).astype("float32")
-            data = {}
-            for v in variables:
-                data[v] = field
+    paths = []
+    for day in range(1, 6):
+        times = np.array([f"2015-06-{day:02d}T03", f"2015-06-{day:02d}T23"],
+                         dtype="datetime64[ns]")
+        shape_lst = list(np.shape(sst))
+        shape_lst.append(len(times))
+        shape = tuple(shape_lst)
+        field = np.zeros(shape)
 
-        data_vars = {}
-        for v, d in data.items():
-            data_vars[v] = (("valid_time", "latitude", "longitude"), d)
-
+        for t in range(len(times)) :
+            h = times[t].astype("datetime64[h]").astype(int) % 24 /100
+            field[:,:,t] = sst+day+h
+        dims = ("latitude", "longitude", "valid_time")
         ds = xr.Dataset(
-            data_vars,
-            coords={"valid_time": times, "latitude": lat, "longitude": lon},
+            {"sst": (dims, field), "t2m": (dims, field + 1000.0)},
+            coords={"latitude": lat, "longitude": lon, "valid_time": times},
         )
-        path = tmp_path / name
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path = tmp_path / f"era5_201506{day:02d}.nc"
         ds.to_netcdf(path)
-        return str(path)
+        paths.append(str(path))
 
-    return _write
-
-
-@pytest.fixture
-def fake_era5_file(write_era5):
-    """Tiny ERA5-like NetCDF: raw names, 0-360 (a lon > 180), decreasing lat."""
-    return write_era5(
-        "fake_era5.nc",
-        times=["2015-06-01T00", "2015-06-01T06"],
-        lon=[9.0, 10.0, 11.0, 350.0],
-        lat=[40.0, 30.0, 20.0],
-    )
-
+    return paths
 
 
 # ---------- interp lineaire ----------
@@ -125,20 +112,7 @@ def argopy_like_ds():
         coords={"N_PROF": np.arange(n)},   # real coordinate on the point dim
     )
  
- 
-@pytest.fixture
-def raw_ds_no_coord():
-    """xarray Dataset on a non-standard dimension 'obs' WITHOUT a coordinate
-    -> exercises dimension-name discovery AND positional provenance (arange)."""
-    return xr.Dataset(
-        {
-            "LONGITUDE": (("obs",), np.array([-45.0, -44.0, -43.0])),
-            "LATITUDE": (("obs",), np.array([32.0, 33.0, 34.0])),
-            "TIME": (("obs",), np.array(
-                ["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]")),
-        },
-        # no coords -> 'obs' is a bare dimension
-    )
+
 
 @pytest.fixture
 def juld_ds():

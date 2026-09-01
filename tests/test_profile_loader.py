@@ -1,11 +1,5 @@
-# Tests for ProfileLoader and its private extraction helpers.
-#
-# Each test targets a DESIGN DECISION we made, so a regression on that decision
-# fails loudly. No I/O, no network: everything runs on in-memory objects.
-#
-# NOTE: fix the imports below to match your package layout.
-#   - ProfileLoader / helpers module path
-#   - whether ProfileFormatError is public
+# Tests for ProfileLoader and helpers.
+
 
 import numpy as np
 import numpy.testing as npt
@@ -21,18 +15,12 @@ from floatmatcher.profile_loader import (
 )
 from floatmatcher.exceptions import ProfileFormatError
 
-# Fixtures argopy_like_ds / raw_ds_no_coord / juld_ds / df_datetime_index
+# Fixtures argopy_like_ds / juld_ds / df_datetime_index
 # are expected to be available (from loader_fixtures.py or a conftest).
 
 # ─────────────────────────────────────────────────────────────
 #  Helpers: _find_key / _get / _extract
 # ─────────────────────────────────────────────────────────────
-
-def test_find_key_returns_first_present_skipping_absent(argopy_like_ds):
-    # "TIME" is absent as a first candidate? no -> use one we know is absent first.
-    # LONGITUDE exists; a bogus name before it must be skipped, not raise.
-    assert _find_key(argopy_like_ds, "NOPE", "LONGITUDE") == "LONGITUDE"
-
 
 def test_find_key_matches_variable_or_coord(argopy_like_ds):
     # variable match
@@ -43,7 +31,7 @@ def test_find_key_matches_variable_or_coord(argopy_like_ds):
 
 def test_find_key_raises_when_no_candidate_matches(argopy_like_ds):
     with pytest.raises(ProfileFormatError):
-        _find_key(argopy_like_ds, "NOPE", "STILL_NOPE")
+        _find_key(argopy_like_ds, "DUMMY")
 
 
 def test_get_returns_dataarray_extract_returns_ndarray(argopy_like_ds):
@@ -63,8 +51,9 @@ def test_from_arrays_builds_without_provenance():
         lat=[32.0, 33.0],
         time=np.array(["2015-01-01", "2015-01-02"], dtype="datetime64[ns]"),
     )
-    assert len(ps.lon) == 2
+    npt.assert_allclose(ps.lon, [-45.0, -44.0])
     assert ps.origin_dim is None
+    assert ps.origin_ds is None
 
 
 def test_from_arrays_length_mismatch_raises():
@@ -104,13 +93,15 @@ def test_from_dataframe_unnamed_index_falls_back_to_index():
 
 
 # ─────────────────────────────────────────────────────────────
-#  from_xrdataset — the core decisions
+#  from_xrdataset
 # ─────────────────────────────────────────────────────────────
 
 def test_from_xrdataset_time_juld_tolerance(juld_ds):
     # time defaults to "TIME"; JULD must still be found as a fallback.
     ps = ProfileLoader.from_xrdataset(juld_ds)
-    assert len(ps.time) == 3
+    npt.assert_array_equal(ps.time,
+                           np.array(["2015-01-01", "2015-01-02", "2015-01-03"],
+                                    dtype="datetime64[ns]"))
 
 
 def test_from_xrdataset_user_can_override_names():
@@ -121,7 +112,7 @@ def test_from_xrdataset_user_can_override_names():
             ["2015-01-01", "2015-01-02"], dtype="datetime64[ns]")),
     })
     ps = ProfileLoader.from_xrdataset(ds, lon="my_lon", lat="my_lat", time="my_time")
-    assert len(ps.lon) == 2
+    npt.assert_allclose(ps.lon, [-45.0, -44.0])
 
 
 def test_from_xrdataset_missing_coordinate_raises():
@@ -133,3 +124,20 @@ def test_from_xrdataset_missing_coordinate_raises():
     })
     with pytest.raises(ProfileFormatError):
         ProfileLoader.from_xrdataset(ds)
+
+
+# ───────────── origin_ds: the provenance the reinjection relies on ─────────────
+
+def test_from_xrdataset_carries_the_original_dataset(argopy_like_ds):
+    ps = ProfileLoader.from_xrdataset(argopy_like_ds)
+
+    assert ps.origin_ds is argopy_like_ds
+    assert ps.origin_dim == "N_PROF"
+
+
+def test_from_dataframe_has_no_original_dataset(df_datetime_index):
+    """A DataFrame is not a Dataset: origin_dim is known, origin_ds is not."""
+    ps = ProfileLoader.from_dataframe(df_datetime_index)
+
+    assert ps.origin_ds is None
+    assert ps.origin_dim == "profile_date"
