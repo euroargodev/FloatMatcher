@@ -1,7 +1,4 @@
 # tests/test_orchestrator.py
-#
-# The orchestrator on a tiny ERA5-like NetCDF written in tmp_path:
-# resolve -> open -> normalize -> select -> GridSet -> nearest -> MatchupResult.
 
 import numpy as np
 import numpy.testing as npt
