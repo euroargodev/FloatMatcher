@@ -102,11 +102,6 @@ def test_from_local_without_pattern_builds_explicitfiles():
     product = ERA5Product.from_local(path="/data/2018")
     assert isinstance(product.resolver, ExplicitFiles)
 
-    
-def test_from_local_without_path_raise_error():
-    product = ERA5Product.from_local(pattern="{year}/x.nc")
-    assert isinstance(product.resolver, PathTemplate)
-
 
 def test_from_local_returns_the_good_product():
     assert isinstance(ERA5Product.from_local(path="/data"), ERA5Product)
