@@ -13,7 +13,7 @@ authors = [
     {name = "Clement WEBER", email = "clement.weber@pokapok.org"},
 ]
 dependencies = [
-    "numpy",
+    "numpy<2.5",        # 2.5+ stubs need Python 3.12 syntax;
     "xarray",
 ]
 
@@ -42,4 +42,6 @@ disallow_untyped_defs = true
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F"]
