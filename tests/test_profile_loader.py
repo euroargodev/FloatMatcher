@@ -15,9 +15,6 @@ from floatmatcher.profile_loader import (
 )
 from floatmatcher.exceptions import ProfileFormatError
 
-# Fixtures argopy_like_ds / juld_ds / df_datetime_index
-# are expected to be available (from loader_fixtures.py or a conftest).
-
 # ─────────────────────────────────────────────────────────────
 #  Helpers: _find_key / _get / _extract
 # ─────────────────────────────────────────────────────────────

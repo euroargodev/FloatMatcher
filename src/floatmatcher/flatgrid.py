@@ -39,7 +39,7 @@ class FlatGrid:
         """Read variable values ONLY at the retained (node[, time]) indices"""
         node = xr.DataArray(np.asarray(node_idx), dims="pts")
         out = {}
-        for var in self._stacked.data_vars: # _stacked is a lazy dataset with only lon/lat/time materialized
+        for var in self._stacked.data_vars: # _stacked is lazy ds with only lon/lat/time in memory
             da_var = self._stacked[var]
             if tsel_idx is None:
                 sel = da_var.isel(node=node)

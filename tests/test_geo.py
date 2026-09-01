@@ -2,7 +2,6 @@
 
 import numpy as np
 import numpy.testing as npt
-import pytest
 from floatmatcher.constants import EARTH_RADIUS_KM
 from floatmatcher.geo import (
     lonlat_to_xyz

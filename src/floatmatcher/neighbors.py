@@ -21,15 +21,21 @@ def _to_seconds(times: NDArray[np.datetime64]) -> NDArray[np.float64]:
     and returning *seconds* makes the max_time_seconds constraint directly comparable.
     """
     delta = np.asarray(times, dtype=f"datetime64[{TIME_UNIT}]") - REF_TIME
-    return delta / np.timedelta64(1, "s")
+    seconds: NDArray[np.float64] = delta / np.timedelta64(1, "s")
+    return seconds
 
 
-def spatial_nearest(grid_xyz, points, k=1):
+def spatial_nearest(grid_xyz: NDArray[np.float64], points: PointSet,
+                    k: int = 1) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+    dist: NDArray[np.float64]
+    idx: NDArray[np.int64]
     dist, idx = cKDTree(grid_xyz).query(points.xyz, k=k)
     return dist, idx
     
-def temporal_nearest(grid_times: NDArray[np.datetime64],
-                   points: PointSet, k: int = 1) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+def temporal_nearest(grid_times: NDArray[np.datetime64], points: PointSet,
+                     k: int = 1) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+    time_delta: NDArray[np.float64]
+    idx: NDArray[np.int64]
     grid_tree = cKDTree(_to_seconds(grid_times)[:, None])
     time_delta, idx = grid_tree.query(_to_seconds(points.time)[:, None], k=k)
     return time_delta, idx

@@ -22,7 +22,7 @@ def test_dataset_is_kept(grid_3d_ds):
     grid = GridSet(grid_3d_ds)
     assert grid.dataset is grid_3d_ds          # same object, not a copy
 
-def test_missing_lat_2d_raises(grid_3d_ds):
+def test_missing_lat_3d_raises(grid_3d_ds):
     """A grid without lat is rejected."""
     with pytest.raises(ValueError):
         GridSet(grid_3d_ds.drop_vars("lat"))

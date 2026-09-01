@@ -33,10 +33,9 @@ def test_rename_maps_present_keys():
 
 
 def test_rename_ignores_absent_keys():
-    # 'foo' does not exist -> skipped, not an error
     out = to_standard(_era5_raw(), {"longitude": "lon", "foo": "bar"})
     assert "lon" in out.coords
-    assert "bar" not in out.variables
+    assert "bar" not in out.variables  # 'foo' does not exist -> skipped, not an error
 
 
 def test_rename_mapping_already_well_named():
@@ -74,7 +73,7 @@ def test_data_variable_is_promoted_to_coord():
 
 def test_rename_does_not_affect_input():
     ds = _era5_raw()
-    out = to_standard(ds, {"longitude": "lon"})
+    _ = to_standard(ds, {"longitude": "lon"})
     assert "longitude" in ds.coords     # original left untouched
 
 

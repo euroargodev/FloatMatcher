@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 import numpy as np
 import xarray as xr
 from numpy.typing import NDArray
-from typing import Any
 from .geo import lonlat_to_xyz
 from .constants import TIME_UNIT
 

@@ -5,8 +5,6 @@
 # in other files without whole class import
 
 import xarray as xr
-from numpy.typing import ArrayLike, NDArray
-import numpy as np
 
 
 def _select_variables(ds: xr.Dataset, variables: str | list[str] | None = None) -> xr.Dataset:

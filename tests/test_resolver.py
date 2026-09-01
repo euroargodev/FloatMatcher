@@ -1,7 +1,5 @@
 # tests/test_resolver.py
-#
-# resolve_path is pure (no disk) -> tested directly.
-# PathTemplate needs fake files 
+
 
 
 import warnings

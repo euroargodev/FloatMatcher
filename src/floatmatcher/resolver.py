@@ -7,13 +7,12 @@
 
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
-import xarray as xr
 
 from .pointset import PointSet
 
@@ -74,7 +73,7 @@ class ExplicitFiles(FileResolver):
 
 
 class PathTemplate(FileResolver):
-    """Resolve files from a declared directory pattern (e.g. Datarmor).
+    """Resolve files from a declared directory pattern (ex: Datarmor).
 
     The user declares the shape of their tree once; for each date PRESENT in the
     points, one path is built by substituting the date into the pattern. Only
@@ -88,7 +87,8 @@ class PathTemplate(FileResolver):
     """
 
     def __init__(self, root: str | Path, pattern: str,
-                 granularity: str = "D", pad: int = 1) -> None:
+                 granularity: Literal["Y", "M", "D", "h", "m", "s"] = "D", 
+                 pad: int = 1) -> None:
         self.root = root
         self.pattern = pattern
         self.granularity = granularity

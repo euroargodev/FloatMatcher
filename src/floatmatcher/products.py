@@ -21,9 +21,7 @@ def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
     Rename keys found in mapping. If key not found, skip and let it as it is.
     set variables lon/lat/time as coords if not already
     """
-    # mapping is {source_name: standard_name}, e.g. {"longitude": "lon"}.
-    # A renamable name can be a variable, a coordinate, or a bare dimension,
-    # so we test membership against the union of variables and dims.
+  
     renamable = set(ds.variables) | set(ds.dims)
     valid={}
     for src, dst in mapping.items() :
@@ -50,16 +48,23 @@ class Product(ABC):
         self.resolver = resolver
     
     @classmethod
-    def from_local(cls, path: str | Path | Sequence[str] | None = None,
-               pattern: str | None = None) -> Self:
-        if path and pattern:
-            resolver = PathTemplate(path, pattern)
-        elif path and not pattern:
-            resolver = ExplicitFiles(path)
-        elif pattern and not path: 
+    def from_local(cls, 
+                   path: str | Path | Sequence[str] | None = None,
+                   pattern: str | None = None) -> Self:
+        resolver: FileResolver
+        if pattern and not path:
             raise ValueError("pattern given without a root path")
-        else:
+        if not path:
             raise ValueError("no path or pattern provided for opening data")
+
+        if pattern:
+            # a pattern is substituted under ONE root, not a list of paths
+            if not isinstance(path, (str, Path)):
+                raise ValueError("a pattern needs a single root path, not a list")
+            resolver = PathTemplate(path, pattern)
+        else:
+            resolver = ExplicitFiles(path)
+
         return cls(resolver)
 
     def files_for(self, points: PointSet | None = None) -> list[str]:
