@@ -17,6 +17,8 @@ dependencies = [
     "xarray",
     "scipy",
     "pandas",
+    "dask",
+    "netCDF4",
 ]
 
 [dependency-groups]
