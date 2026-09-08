@@ -43,7 +43,7 @@ print(f"\nload pointset from arrays : {len(points.lon)} points between "
 
 # ---- load product with simple resolver : root path ----
 # case of root path
-january = ERA5Product.from_local(path=f"/runtime/data/era5_daily/2018/01")
+january = ERA5Product.from_local(path="/runtime/data/era5_daily/2018/01")
 
 # ::: perform matchup :::
 # The orchestrator holds what to colocalize (points, variables, product).
@@ -87,7 +87,7 @@ print(f"\nload era5 product : {len(files)} files selected, first one: {files[0]}
 orchestrator = Orchestrator(points=points, variables=["sst"], product=product)
 method = NearestNeighbor(max_dist_km=300, max_time=np.timedelta64(6, "h"))
 
-# trigger the matchup
+# ::: perform matchup :::
 result = orchestrator.match(method=method)
 
 
