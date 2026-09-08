@@ -16,7 +16,7 @@ dependencies = [
     "numpy<2.5",        # 2.5+ stubs need Python 3.12 syntax;
     "xarray",
     "scipy",
-    pandas
+    "pandas",
 ]
 
 [dependency-groups]
