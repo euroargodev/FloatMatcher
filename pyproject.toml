@@ -16,6 +16,7 @@ dependencies = [
     "numpy<2.5",        # 2.5+ stubs need Python 3.12 syntax;
     "xarray",
     "scipy",
+    "pandas",
 ]
 
 [dependency-groups]
@@ -42,7 +43,7 @@ disallow_untyped_defs = true
 exclude = ["^tests/"]
 
 [[tool.mypy.overrides]]
-module = ["scipy.*"]
+module = ["scipy.*", "pandas.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
