@@ -44,7 +44,7 @@ class Orchestrator:
             raise AttributeError("unknown method")
 
     def _match_nearest(self, method: NearestNeighbor) -> MatchupResult:
-        print("matchin nearest method : no batching method yet")
+        # print("matchin nearest method : no batching method yet")
         files_to_process = self.files # property is only trigger when called the first time
         grid_full = self._open_lazy_grid(files_to_process) # GridSet object
 
