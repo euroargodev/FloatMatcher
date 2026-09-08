@@ -44,7 +44,7 @@ def _pts(*timestamps):
 
 def test_resolve_path():
     p = resolve_path("/data", PATTERN, np.datetime64("2015-01-01"))
-    assert p == "/data/2015/01/era5_20150101.nc"
+    assert Path(p) == Path("/data/2015/01/era5_20150101.nc")
 
 
 # ───────────── ExplicitFiles ─────────────
