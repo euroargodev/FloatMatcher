@@ -15,6 +15,7 @@ authors = [
 dependencies = [
     "numpy<2.5",        # 2.5+ stubs need Python 3.12 syntax;
     "xarray",
+    "scipy",
 ]
 
 [dependency-groups]
@@ -38,8 +39,11 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
-
 exclude = ["^tests/"]
+
+[[tool.mypy.overrides]]
+module = ["scipy.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 110
