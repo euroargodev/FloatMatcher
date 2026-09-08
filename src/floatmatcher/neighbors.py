@@ -1,4 +1,4 @@
-# index.py: spatial and temporal KDTree lookups over a reference grid.
+# neighbors.py: spatial and temporal KDTree lookups over a reference grid.
 #
 # Spatial and temporal are SEPARATED because they now have different lifetimes:
 #   - SpatialIndex is built ONCE (grid geometry is identical on every packet);

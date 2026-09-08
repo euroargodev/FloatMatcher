@@ -8,12 +8,7 @@
 import numpy as np
 
 class NearestNeighbor():
-    """Nearest-neighbor colocalization.
-
-    ``max_files`` is the batching granularity: it caps how many files are opened
-    simultaneously per packet, bounding open_mfdataset I/O. The orchestrator
-    reads it to size the packets; the packet loop lives in the orchestrator.
-    """
+    """Nearest-neighbor matchup method"""
 
     def __init__(self, max_dist_km: int = 25, 
                  max_time: np.timedelta64 = np.timedelta64(1, "D"),
