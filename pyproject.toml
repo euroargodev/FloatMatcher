@@ -44,7 +44,7 @@ module = "tests.*"
 disallow_untyped_defs = false
 
 [tool.ruff]
-line-length = 88
+line-length = 110s
 target-version = "py311"
 
 [tool.ruff.lint]
