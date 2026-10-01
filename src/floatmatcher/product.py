@@ -44,7 +44,9 @@ def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
 class Product(ABC):
     COORD_MAP: dict[str, str] = {}
 
-    def __init__(self, resolver: FileResolver | None = None) -> None:
+    def __init__(self, 
+                 resolver: FileResolver | None = None
+                 ) -> None:
         self.resolver = resolver
     
     @classmethod
@@ -101,12 +103,12 @@ class Product(ABC):
 
 class ERA5Product(Product):
     COORD_MAP = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
-    def normalize(self, raw: xr.Dataset) -> xr.Dataset:
-        ds = to_standard(raw, self.COORD_MAP)
+    def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
+        ds = to_standard(ds_raw, self.COORD_MAP)
         return ds
     
 class LUTProduct(Product):
     COORD_MAP = {"lon": "lon", "lat": "lat"}
-    def normalize(self, raw: xr.Dataset) -> xr.Dataset:
-        ds = to_standard(raw, self.COORD_MAP)
+    def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
+        ds = to_standard(ds_raw, self.COORD_MAP)
         return ds

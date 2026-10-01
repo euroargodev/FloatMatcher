@@ -14,8 +14,8 @@ import numpy as np
 import xarray as xr
 
 from floatmatcher.matchup import NearestNeighbor
-from floatmatcher.orchestrator import Orchestrator
-from floatmatcher.products import ERA5Product
+from floatmatcher.floatmatcher import FloatMatcher
+from floatmatcher.product import ERA5Product
 from floatmatcher.profile_loader import ProfileLoader
 
 # silence the noise
@@ -46,10 +46,10 @@ print(f"\nload pointset from arrays : {len(points.lon)} points between "
 january = ERA5Product.from_local(path="/runtime/data/era5_daily/2018/01")
 
 # ::: perform matchup :::
-# The orchestrator holds what to colocalize (points, variables, product).
-# The method holds the constraints to be able to rerun the same orchestrator 
+# The FloatMatcher holds what to colocalize (points, variables, product).
+# The method holds the constraints to be able to rerun the same FloatMatcher 
 # with other constraints without reopening anything.
-result = Orchestrator(points=points, variables=["sst"],
+result = FloatMatcher(points=points, variables=["sst"],
                               product=january).match(NearestNeighbor(max_dist_km=300,
                                                                     max_time=np.timedelta64(6, "h")))
 print(f"\nload era5 product from a folder : {len(january.files_for())} files")
@@ -66,7 +66,7 @@ file_list = ["/runtime/data/era5_daily/2018/01/era5_single-levels_20180101.nc",
 three_days = ERA5Product.from_local(path=file_list)
 
 # ::: perform matchup :::
-three_days_result = Orchestrator(points=points, variables=["sst"],
+three_days_result = FloatMatcher(points=points, variables=["sst"],
                               product=three_days).match(NearestNeighbor(max_dist_km=300,
                                                                     max_time=np.timedelta64(6, "h")))
 print(f"\nload era5 product from a list : {len(three_days.files_for())} files")
@@ -84,11 +84,11 @@ product = ERA5Product.from_local(path=ERA5_ROOT, pattern=ERA5_PATTERN)
 
 files = product.files_for(points)
 print(f"\nload era5 product : {len(files)} files selected, first one: {files[0]}")
-orchestrator = Orchestrator(points=points, variables=["sst"], product=product)
+FloatMatcher = FloatMatcher(points=points, variables=["sst"], product=product)
 method = NearestNeighbor(max_dist_km=300, max_time=np.timedelta64(6, "h"))
 
 # ::: perform matchup :::
-result = orchestrator.match(method=method)
+result = FloatMatcher.match(method=method)
 
 
 # ---- Explore matchupresults ---- 
@@ -122,7 +122,7 @@ profiles = xr.Dataset(
 )
 
 argo_points = ProfileLoader.from_xrdataset(profiles)
-argo_result = Orchestrator(points=argo_points, variables=["sst"],
+argo_result = FloatMatcher(points=argo_points, variables=["sst"],
                            product=product).match(method=method)
 
 enriched = argo_result.to_dataset()

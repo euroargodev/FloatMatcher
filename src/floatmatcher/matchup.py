@@ -2,7 +2,7 @@
 #
 # The spatial half is prepared ONCE (prepare) and reused on every temporal
 # packet (match_packet), because the grid geometry is identical across packets.
-# The packet loop itself lives in the orchestrator; this module provides the
+# The packet loop itself lives in the FloatMatcher; this module provides the
 # two halves and a single-pass `match` for the non-batched case.
 
 import numpy as np

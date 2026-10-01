@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from floatmatcher.results import MatchupResult
+from floatmatcher.matchup_results import MatchupResult
 from floatmatcher.pointset import PointSet
 
 

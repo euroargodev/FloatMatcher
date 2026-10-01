@@ -1,32 +1,53 @@
-# orchestrator.py: the top-level coordinator (public API of the library).
-
+# FloatMatcher.py: the top-level coordinator (public API of the library).
 
 from collections.abc import Sequence
 
 import numpy as np 
+from numpy.typing import NDArray
 
 from .gridset import GridSet
 from .matchup import NearestNeighbor
 # from .interpolation import Interpolation
 from .pointset import PointSet
-from .results import MatchupResult
-from .products import Product
+from .matchup_results import MatchupResult
+from .product import Product
 from .flatgrid import FlatGrid
 from .utils import _select_variables
 from .neighbors import spatial_nearest, temporal_nearest
 
-class Orchestrator:
-    """Orchestrator gather all Points Pointset(), variables needed, setup Product(). 
+class FloatMatcher:
+    """FloatMatcher gather all Points Pointset(), variables needed, setup Product(). 
     It prepares all elements to call the method in .match() function. 
     All constraints and parametrization lives in .match()
     """
 
-    def __init__(self, points: PointSet, 
-                 variables: str | list[str] | None, product: Product) -> None:
+    def __init__(self, 
+                 points: PointSet | None = None, 
+                 product: Product | None = None,
+                 variables: str | list[str] | None = None
+                 ) -> None:
+        
         self.points = points
-        self.variables = variables
         self.product = product
+        self.variables = variables
         self._files: list[str] | None = None
+
+
+
+    def __repr__(self,) -> str:
+        return f"points:{self.points} \nproduct:{self.product} \nvariables:{self.variables}"
+
+    def set_points_from_arrays(self, 
+                               lon: NDArray[np.float64] ,   
+                               lat: NDArray[np.float64],
+                               time: NDArray[np.datetime64] | None = None):
+        self.points = PointSet(lon, lat, time)
+
+    def set_product(self,
+                    product: Product | None = None
+                    ):
+        self.product = Product()
+        
 
     @property
     def files(self) -> list[str]:
@@ -49,7 +70,9 @@ class Orchestrator:
         grid_full = self._open_lazy_grid(files_to_process) # GridSet object
 
         # starting by lonlat2xy on spatial grid
-        flat_grid = FlatGrid.from_grid(grid_full.dataset) # return FlatGrid object
+        # return FlatGrid object, flatten grid
+        flat_grid = FlatGrid.from_grid(grid_full.dataset) 
+        # convert into carthesian coordinates
         grid_stacked = flat_grid.xyz
 
         # starting Nearest method : apply kdtree on spatial 

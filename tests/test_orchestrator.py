@@ -1,12 +1,12 @@
-# tests/test_orchestrator.py
+# tests/test_FloatMatcher.py
 #
 
 import numpy as np
 import numpy.testing as npt
 
 from floatmatcher.matchup import NearestNeighbor
-from floatmatcher.orchestrator import Orchestrator
-from floatmatcher.products import ERA5Product
+from floatmatcher.floatmatcher import FloatMatcher
+from floatmatcher.product import ERA5Product
 from floatmatcher.profile_loader import ProfileLoader
 
 
@@ -18,7 +18,7 @@ def test_match_nearest_get_good_node(era5_files):
     )
     product = ERA5Product.from_local(path=era5_files)
 
-    res = Orchestrator(points, "sst", product).match(NearestNeighbor())
+    res = FloatMatcher(points, "sst", product).match(NearestNeighbor())
 
     assert res.valid.all()
     assert set(res.values) == {"sst"} # only sst has been taken into account
@@ -38,7 +38,7 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
                       dtype="datetime64[ns]"),
     )
     product = ERA5Product.from_local(path=era5_files)
-    orch = Orchestrator(points, "sst", product)
+    orch = FloatMatcher(points, "sst", product)
 
     res = orch.match(NearestNeighbor())
 
@@ -64,7 +64,7 @@ def test_match_nearest_over_two_variable(era5_files):
     )
     product = ERA5Product.from_local(path=era5_files)
 
-    res = Orchestrator(points, ["sst", "t2m"], product).match(NearestNeighbor())
+    res = FloatMatcher(points, ["sst", "t2m"], product).match(NearestNeighbor())
 
     assert set(res.values) == {"sst", "t2m"}
     npt.assert_allclose(res.values["sst"], [121.03], atol=1e-4)
