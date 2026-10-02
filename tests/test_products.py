@@ -6,7 +6,7 @@ import xarray as xr
 import pytest
 
 from floatmatcher.resolver import PathTemplate, ExplicitFiles
-from floatmatcher.products import (
+from floatmatcher.product import (
     to_standard,
     ERA5Product,
     LUTProduct,

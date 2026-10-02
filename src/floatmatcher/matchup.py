@@ -7,7 +7,7 @@
 
 import numpy as np
 
-class NearestNeighbor():
+class NearestNeighbor:
     """Nearest-neighbor matchup method"""
 
     def __init__(self, max_dist_km: int = 25, 

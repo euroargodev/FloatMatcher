@@ -10,7 +10,7 @@ from .matchup import NearestNeighbor
 # from .interpolation import Interpolation
 from .pointset import PointSet
 from .matchup_results import MatchupResult
-from .product import Product
+from .product import Product, ERA5Product, LUTProduct
 from .flatgrid import FlatGrid
 from .utils import _select_variables
 from .neighbors import spatial_nearest, temporal_nearest
@@ -24,18 +24,21 @@ class FloatMatcher:
     def __init__(self, 
                  points: PointSet | None = None, 
                  product: Product | None = None,
-                 variables: str | list[str] | None = None
+                 variables: str | list[str] | None = None,
+                 method: NearestNeighbor | None = None 
                  ) -> None:
         
         self.points = points
         self.product = product
         self.variables = variables
+        self.method = method
         self._files: list[str] | None = None
-
 
 
     def __repr__(self,) -> str:
         return f"points:{self.points} \nproduct:{self.product} \nvariables:{self.variables}"
+
+
 
     def set_points_from_arrays(self, 
                                lon: NDArray[np.float64] ,   
@@ -43,11 +46,34 @@ class FloatMatcher:
                                time: NDArray[np.datetime64] | None = None):
         self.points = PointSet(lon, lat, time)
 
-    def set_product(self,
-                    product: Product | None = None
+
+
+    def set_local_product(self,
+                    type:ERA5Product|LUTProduct, 
+                    subset_variables: list | str | None = None,
+                    path: list | str | None = None
                     ):
-        self.product = Product()
         
+        self.product = Product()
+
+        
+    def set_method(self,
+                   type,
+                   max_dist,
+                   max_time,
+                   k_neighbors
+                   ):
+        match type:
+            case "nearest":
+                self.method = NearestNeighbor(
+                                max_dist_km = max_dist,
+                                max_time = max_time,
+                                k_nearest = k_neighbors
+                                )
+            
+            
+
+
 
     @property
     def files(self) -> list[str]:
