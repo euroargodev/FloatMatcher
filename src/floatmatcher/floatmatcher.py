@@ -1,19 +1,18 @@
 # FloatMatcher.py: the top-level coordinator (public API of the library).
 
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np 
 from numpy.typing import NDArray
 
 from .gridset import GridSet
-from .matchup import NearestNeighbor
+from .matchup import Method, available_methods
 # from .interpolation import Interpolation
 from .pointset import PointSet
 from .matchup_results import MatchupResult
 from .product import Product, ERA5Product, LUTProduct
-from .flatgrid import FlatGrid
 from .utils import _select_variables
-from .neighbors import spatial_nearest, temporal_nearest
 
 class FloatMatcher:
     """FloatMatcher gather all Points Pointset(), variables needed, setup Product(). 
@@ -25,7 +24,7 @@ class FloatMatcher:
                  points: PointSet | None = None, 
                  product: Product | None = None,
                  variables: str | list[str] | None = None,
-                 method: NearestNeighbor | None = None 
+                 method: Method | None = None 
                  ) -> None:
         
         self.points = points
@@ -57,22 +56,10 @@ class FloatMatcher:
         self.product = Product()
 
         
-    def set_method(self,
-                   type,
-                   max_dist,
-                   max_time,
-                   k_neighbors
-                   ):
-        match type:
-            case "nearest":
-                self.method = NearestNeighbor(
-                                max_dist_km = max_dist,
-                                max_time = max_time,
-                                k_nearest = k_neighbors
-                                )
-            
-            
-
+    def set_method(self, type: str, **params: Any) -> None:
+        if type not in available_methods:
+            raise ValueError(f"unknown method {type!r}, available: {list(available_methods)}")
+        self.method = available_methods[type](**params)
 
 
     @property
@@ -82,69 +69,14 @@ class FloatMatcher:
             self._files = self.product.files_for(self.points)
         return self._files
 
-    def match(self, method: NearestNeighbor) -> MatchupResult:
-        if isinstance(method, NearestNeighbor):
-            return self._match_nearest(method)
-        # elif isinstance(method, Interpolation):
-        #     return self._match_interp()
-        else:
-            raise AttributeError("unknown method")
-
-    def _match_nearest(self, method: NearestNeighbor) -> MatchupResult:
-        # print("matchin nearest method : no batching method yet")
-        files_to_process = self.files # property is only trigger when called the first time
-        grid_full = self._open_lazy_grid(files_to_process) # GridSet object
-
-        # starting by lonlat2xy on spatial grid
-        # return FlatGrid object, flatten grid
-        flat_grid = FlatGrid.from_grid(grid_full.dataset) 
-        # convert into carthesian coordinates
-        grid_stacked = flat_grid.xyz
-
-        # starting Nearest method : apply kdtree on spatial 
-        dist_km, spatial_idx = spatial_nearest(grid_stacked, self.points, k=method.k_nearest)
-        valid_spatial = dist_km <= method.max_dist_km
-
-        idx_count = len(self.points.lon)
-        if grid_full.regime == "3D":
-            assert flat_grid.time is not None
-            time_delta, temporal_idx = temporal_nearest(flat_grid.time, 
-                                                        self.points, 
-                                                        k=method.k_nearest
-                                                        )
-            valid = valid_spatial & (time_delta <= method.max_time_seconds)
-        else:
-            time_delta = np.full(idx_count, np.nan)
-            temporal_idx = None
-            valid = valid_spatial
-
-        # read ONLY at valid points: no wasted read for out-of-window points
-        # select indexes of spatial and time
-        idx = np.where(valid)[0] 
-        node_idx = spatial_idx[idx]       # grid node index of retained points
-        tsel_idx = None              # set temporal case 
-        if temporal_idx is not None:
-            tsel_idx = temporal_idx[idx] # apply on every node. filtering is made after (costless)
-
-        # retreive data only at good positions : select in dataset stacked of FlatGrid object
-        picked = flat_grid.read_values(node_idx, tsel_idx) 
-
-        # scatter each variable's valid values back to full PointSet-length. 
-        # picked is from _stacked which is flatten, not PointSet lenght :)
-        values = {}
-        for var, vals in picked.items():
-            full = np.full(idx_count, np.nan)
-            full[idx] = vals
-            values[var] = full
-
-        # invalid points carry no meaningful distance/time either
-        dist_out = np.full(idx_count, np.nan)
-        dist_out[idx] = dist_km[idx]
-        time_delta_out = np.full(idx_count, np.nan)
-        time_delta_out[idx] = time_delta[idx]
-
-        return MatchupResult(values=values, distance_km=dist_out,
-                                time_delta=time_delta_out, valid=valid, points=self.points)
+    def match(self) -> MatchupResult:
+        if self.points is None:
+            raise ValueError("match(): no points set, call set_points_from_arrays(...)")
+        if self.product is None:
+            raise ValueError("match(): no product set, call set_local_product(...)")
+        if self.method is None:
+            raise ValueError("match(): no method set, call set_method(...)")
+        return self.method.apply(self._open_lazy_grid(self.files), self.points)
 
 
     def _open_lazy_grid(self, paths: Sequence[str]) -> GridSet:
