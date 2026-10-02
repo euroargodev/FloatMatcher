@@ -50,8 +50,8 @@ january = ERA5Product.from_local(path="/runtime/data/era5_daily/2018/01")
 # The method holds the constraints to be able to rerun the same FloatMatcher 
 # with other constraints without reopening anything.
 result = FloatMatcher(points=points, variables=["sst"],
-                              product=january).match(NearestNeighbor(max_dist_km=300,
-                                                                    max_time=np.timedelta64(6, "h")))
+                              product=january).match(NearestNeighbor(max_distance=300,
+                                                                    max_time_gap=np.timedelta64(6, "h")))
 print(f"\nload era5 product from a folder : {len(january.files_for())} files")
 print(f"matchup january folder : {int(result.valid.sum())} points matched")
 
@@ -67,8 +67,8 @@ three_days = ERA5Product.from_local(path=file_list)
 
 # ::: perform matchup :::
 three_days_result = FloatMatcher(points=points, variables=["sst"],
-                              product=three_days).match(NearestNeighbor(max_dist_km=300,
-                                                                    max_time=np.timedelta64(6, "h")))
+                              product=three_days).match(NearestNeighbor(max_distance=300,
+                                                                    max_time_gap=np.timedelta64(6, "h")))
 print(f"\nload era5 product from a list : {len(three_days.files_for())} files")
 print(f"matchup file_list : {int(three_days_result.valid.sum())} points matched")
 
@@ -85,7 +85,7 @@ product = ERA5Product.from_local(path=ERA5_ROOT, pattern=ERA5_PATTERN)
 files = product.files_for(points)
 print(f"\nload era5 product : {len(files)} files selected, first one: {files[0]}")
 FloatMatcher = FloatMatcher(points=points, variables=["sst"], product=product)
-method = NearestNeighbor(max_dist_km=300, max_time=np.timedelta64(6, "h"))
+method = NearestNeighbor(max_distance=300, max_time_gap=np.timedelta64(6, "h"))
 
 # ::: perform matchup :::
 result = FloatMatcher.match(method=method)
@@ -101,7 +101,7 @@ result = FloatMatcher.match(method=method)
 
 n_valid = int(result.valid.sum())
 print(f"\nMatchupResults : {n_valid}/{len(points.lon)} points matched within "
-      f"{method.max_dist_km} km and {method.max_time_seconds / 3600:.0f} h")
+      f"{method.max_distance} km and {method.max_time_seconds / 3600:.0f} h")
 
 kept = result.valid
 print(f"   sst        : {np.round(result.values['sst'][kept][:5], 2)} ...")

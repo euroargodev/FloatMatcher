@@ -27,16 +27,16 @@ class Method(ABC):
 class NearestNeighbor(Method):
     """Nearest-neighbor matchup method"""
 
-    def __init__(self, max_dist_km: int = 25,
-                 max_time: np.timedelta64 = np.timedelta64(1, "D"),
+    def __init__(self, max_distance: int = 25,
+                 max_time_gap: np.timedelta64 = np.timedelta64(1, "D"),
                  k_nearest : int = 1) -> None :
-        self.max_dist_km = max_dist_km
-        self.max_time = max_time
+        self.max_distance = max_distance
+        self.max_time_gap = max_time_gap
         self.k_nearest = k_nearest
 
     @property
     def max_time_seconds(self) -> float:
-        return float(self.max_time / np.timedelta64(1, "s"))
+        return float(self.max_time_gap / np.timedelta64(1, "s"))
 
     def apply(self, grid: GridSet, points: PointSet) -> MatchupResult:
         # starting by lonlat2xy on spatial grid
@@ -47,7 +47,7 @@ class NearestNeighbor(Method):
 
         # starting Nearest method : apply kdtree on spatial
         dist_km, spatial_idx = spatial_nearest(grid_stacked, points, k=self.k_nearest)
-        valid_spatial = dist_km <= self.max_dist_km
+        valid_spatial = dist_km <= self.max_distance
 
         idx_count = len(points.lon)
         if grid.regime == "3D":
