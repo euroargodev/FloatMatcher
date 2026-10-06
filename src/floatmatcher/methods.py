@@ -1,4 +1,4 @@
-# matchup.py: matchup methods.
+# methods.py: matchup methods.
 
 # The spatial half is prepared ONCE (prepare) and reused on every temporal
 # packet (match_packet), because the grid geometry is identical across packets.

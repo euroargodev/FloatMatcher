@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .gridset import GridSet
-from .matchup import Method, available_methods
+from .methods import Method, available_methods
 # from .interpolation import Interpolation
 from .pointset import PointSet
 from .matchup_results import MatchupResult

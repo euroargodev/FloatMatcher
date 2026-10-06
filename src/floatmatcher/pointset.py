@@ -29,7 +29,7 @@ class PointSet:
     time: NDArray[np.datetime64] | None = None
     # TODO: introduce PointSetOrigin class (ds and df)
     origin_dim: str | None = None       # source dimension name
-    origin_ds: pd.DataFrame | pd.Series | xr.Dataset | None = None  # source dataset
+    origin_ds: pd.DataFrame | xr.Dataset | None = None  # source dataset
     _xyz: NDArray[np.float64] | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -87,7 +87,8 @@ class PointSet:
             time_arr = np.atleast_1d(np.asarray(df[time]))
 
         origin_dim = str(df.index.name) if df.index.name is not None else "index"
-        return cls(lon_arr, lat_arr, time_arr, origin_ds=df, origin_dim=origin_dim)
+        origin_df = df.to_frame().T.infer_objects() if isinstance(df, pd.Series) else df
+        return cls(lon_arr, lat_arr, time_arr, origin_ds=origin_df, origin_dim=origin_dim)
 
     # --- 3. xarray Dataset ---
     @classmethod
@@ -117,3 +118,5 @@ class PointSet:
                         origin_dim=str(point_dim),
                         origin_ds=ds
                         )
+
+    # --- TODO: 4. argopy ---

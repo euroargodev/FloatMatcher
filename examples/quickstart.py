@@ -13,7 +13,7 @@ import warnings
 import numpy as np
 import xarray as xr
 
-from floatmatcher.matchup import NearestNeighbor
+from floatmatcher.methods import NearestNeighbor
 from floatmatcher.floatmatcher import FloatMatcher
 from floatmatcher.product import ERA5Product
 from floatmatcher.profile_loader import ProfileLoader
