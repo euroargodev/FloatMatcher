@@ -35,7 +35,7 @@ class FloatMatcher:
 
 
     def __repr__(self,) -> str:
-        return f"points:{self.points} \nproduct:{self.product} \nvariables:{self.variables}"
+        return f"points:{self.points} \nproduct:{self.product} \nvariables:{self.variables} \nmethod: {self.method}"
 
 
 
@@ -68,6 +68,9 @@ class FloatMatcher:
             # always give points just not used in case of ExplicitFiles resolver
             self._files = self.product.files_for(self.points)
         return self._files
+
+
+
 
     def match(self) -> MatchupResult:
         if self.points is None:

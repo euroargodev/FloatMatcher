@@ -49,7 +49,7 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
     assert np.isnan(res.time_delta[1:]).all()         # nor time gap
 
     # p1 was out on DISTANCE only
-    loose_dist = orch.match(NearestNeighbor(max_dist_km=100000))
+    loose_dist = orch.match(NearestNeighbor(distance_gap=100000))
     assert loose_dist.valid.tolist() == [True, True, False]
 
     # p2 was out on TIME only

@@ -18,7 +18,7 @@ def _to_seconds(times: NDArray[np.datetime64]) -> NDArray[np.float64]:
     """Convert datetime64 to floating-point seconds since a fixed epoch.
 
     Working in a common float unit lets the 1D KDTree measure time distance,
-    and returning *seconds* makes the max_time_seconds constraint directly comparable.
+    and returning *seconds* makes the time_gap_seconds constraint directly comparable.
     """
     delta = np.asarray(times, dtype=f"datetime64[{TIME_UNIT}]") - REF_TIME
     seconds: NDArray[np.float64] = delta / np.timedelta64(1, "s")

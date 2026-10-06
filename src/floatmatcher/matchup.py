@@ -23,20 +23,26 @@ class Method(ABC):
     def apply(self, grid: GridSet, points: PointSet) -> MatchupResult:
         ...
 
+    def __repr__(self) -> str:
+        text = f"\n    type: {type(self).__name__}"
+        for name, value in self.__dict__.items():
+            text += f"\n    {name}: {value}"
+        return text
+
 
 class NearestNeighbor(Method):
     """Nearest-neighbor matchup method"""
 
-    def __init__(self, max_distance: int = 25,
-                 max_time_gap: np.timedelta64 = np.timedelta64(1, "D"),
+    def __init__(self, radius: int = 25,
+                 time_gap: np.timedelta64 = np.timedelta64(1, "D"),
                  k_nearest : int = 1) -> None :
-        self.max_distance = max_distance
-        self.max_time_gap = max_time_gap
+        self.radius = radius
+        self.time_gap = time_gap
         self.k_nearest = k_nearest
 
     @property
-    def max_time_seconds(self) -> float:
-        return float(self.max_time_gap / np.timedelta64(1, "s"))
+    def time_gap_seconds(self) -> float:
+        return float(self.time_gap / np.timedelta64(1, "s"))
 
     def apply(self, grid: GridSet, points: PointSet) -> MatchupResult:
         # starting by lonlat2xy on spatial grid
@@ -47,7 +53,7 @@ class NearestNeighbor(Method):
 
         # starting Nearest method : apply kdtree on spatial
         dist_km, spatial_idx = spatial_nearest(grid_stacked, points, k=self.k_nearest)
-        valid_spatial = dist_km <= self.max_distance
+        valid_spatial = dist_km <= self.radius
 
         idx_count = len(points.lon)
         if grid.regime == "3D":
@@ -56,7 +62,7 @@ class NearestNeighbor(Method):
                                                         points,
                                                         k=self.k_nearest
                                                         )
-            valid = valid_spatial & (time_delta <= self.max_time_seconds)
+            valid = valid_spatial & (time_delta <= self.time_gap_seconds)
         else:
             time_delta = np.full(idx_count, np.nan)
             temporal_idx = None
