@@ -21,8 +21,8 @@ class MatchupResult:
         Reinject the colocalized values into the dataset
         The source Dataset travels inside the PointSet
         """
-        ds = points.origin_ds
-        dim = points.origin_dim
+        ds = points.original_data
+        dim = points.points_dim
         if ds is None or dim is None:
             raise ValueError(
                 "Cannot reinject: these points have no origin dataset "
@@ -45,7 +45,7 @@ class MatchupResult:
         Reinject the colocalized values into the dataframe
         The source DataFrame travels inside the PointSet
         """
-        df = points.origin_ds
+        df = points.original_data
         if df is None:
             raise ValueError(
                 "Cannot reinject: these points have no origin dataframe "

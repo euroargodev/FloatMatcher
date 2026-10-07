@@ -71,7 +71,7 @@ def test_xyz_is_cached():
 def test_provenance_defaults_to_none():
     """Without a source, provenance fields are None."""
     ps = PointSet([1.0], [2.0], daily_timestamps(1))
-    assert ps.origin_dim is None
+    assert ps.points_dim is None
 
 
 def test_time_is_optional():
@@ -153,8 +153,8 @@ def test_from_arrays_builds_without_provenance():
         time=np.array(["2015-01-01", "2015-01-02"], dtype="datetime64[ns]"),
     )
     npt.assert_allclose(ps.lon, [-45.0, -44.0])
-    assert ps.origin_dim is None
-    assert ps.origin_ds is None
+    assert ps.points_dim is None
+    assert ps.original_data is None
 
 
 def test_from_arrays_length_mismatch_raises():
@@ -173,10 +173,10 @@ def test_from_arrays_without_time():
 
 # ---------- from_dataframe ----------
 def test_from_dataframe_uses_the_index_name(df_datetime_index):
-    """origin_dim comes from df.index.name"""
+    """points_dim comes from df.index.name"""
     ps = PointSet.from_dataframe(df_datetime_index)
 
-    assert ps.origin_dim == "profile_date"
+    assert ps.points_dim == "profile_date"
     npt.assert_allclose(ps.lon, [-45.0, -44.0, -43.0])
     npt.assert_allclose(ps.lat, [32.0, 33.0, 34.0])
     npt.assert_array_equal(ps.time,
@@ -191,14 +191,14 @@ def test_from_dataframe_unnamed_index_falls_back_to_index():
         "date": pd.to_datetime(["2015-01-01", "2015-01-02"]),
     })  # default RangeIndex, name is None
     ps = PointSet.from_dataframe(df)
-    assert ps.origin_dim == "index"
+    assert ps.points_dim == "index"
 
 
 def test_from_dataframe_carries_the_original_dataframe(df_datetime_index):
     ps = PointSet.from_dataframe(df_datetime_index)
 
-    assert ps.origin_ds is df_datetime_index
-    assert ps.origin_dim == "profile_date"
+    assert ps.original_data is df_datetime_index
+    assert ps.points_dim == "profile_date"
 
 
 def test_from_dataframe_without_time_column(df_datetime_index):
@@ -218,8 +218,8 @@ def test_from_dataframe_single_row_series(df_datetime_index):
     npt.assert_allclose(ps.lon, [-45.0])
     npt.assert_allclose(ps.lat, [32.0])
     assert len(ps.time) == 1
-    assert isinstance(ps.origin_ds, pd.DataFrame)
-    assert len(ps.origin_ds) == 1
+    assert isinstance(ps.original_data, pd.DataFrame)
+    assert len(ps.original_data) == 1
 
 
 # ---------- from_xrdataset ----------
@@ -257,5 +257,5 @@ def test_from_xrdataset_missing_coordinate_raises():
 def test_from_xrdataset_carries_the_original_dataset(argopy_like_ds):
     ps = PointSet.from_xrdataset(argopy_like_ds)
 
-    assert ps.origin_ds is argopy_like_ds
-    assert ps.origin_dim == "N_PROF"
+    assert ps.original_data is argopy_like_ds
+    assert ps.points_dim == "N_PROF"

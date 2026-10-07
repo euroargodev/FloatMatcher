@@ -21,7 +21,7 @@ def points_object():
         lon=[-45.0, -44.0, -43.0],
         lat=[32.0, 33.0, 34.0],
         time=np.array(["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]"),
-        origin_dim="N_POINTS",
+        points_dim="N_POINTS",
     )
 
 

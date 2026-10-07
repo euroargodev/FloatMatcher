@@ -22,8 +22,8 @@ def ds_result():
         lon=ds["LONGITUDE"].values,
         lat=ds["LATITUDE"].values,
         time=ds["TIME"].values,
-        origin_dim="N_PROF",
-        origin_ds=ds,
+        points_dim="N_PROF",
+        original_data=ds,
     )
     return MatchupResult(
         values={"dummy_variable": np.array([280.0, 281.0, np.nan])},
@@ -83,7 +83,7 @@ def test_to_dataset_adds_coloc_variable(ds_result):
 
 def test_to_dataset_does_not_mutate_the_source(ds_result):
     ds_result.to_dataset()
-    assert "dummy_variable_coloc" not in ds_result.points.origin_ds.data_vars
+    assert "dummy_variable_coloc" not in ds_result.points.original_data.data_vars
 
 
 def test_to_dataset_without_provenance_raises(raw_result):
@@ -108,7 +108,7 @@ def test_to_dataframe_adds_coloc_column(df_result):
 
 def test_to_dataframe_does_not_mutate_the_source(df_result):
     df_result.to_dataframe()
-    assert "dummy_variable_coloc" not in df_result.points.origin_ds.columns
+    assert "dummy_variable_coloc" not in df_result.points.original_data.columns
 
 
 def test_to_dataframe_without_provenance_raises(raw_result):

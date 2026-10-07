@@ -21,15 +21,15 @@ class PointSet:
     works directly on the underlying NumPy arrays (``points.lon``), never on
     the object itself inside loops.
 
-    Dataset travels along origin_ds
+    Dataset travels along original_data
     """
 
     lon: NDArray[np.float64]
     lat: NDArray[np.float64]
     time: NDArray[np.datetime64] | None = None
     # TODO: introduce PointSetOrigin class (ds and df)
-    origin_dim: str | None = None       # source dimension name
-    origin_ds: pd.DataFrame | xr.Dataset | None = None  # source dataset
+    points_dim: str | None = None       # source dimension name
+    original_data: pd.DataFrame | xr.Dataset | None = None  # source dataset
     _xyz: NDArray[np.float64] | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -87,9 +87,9 @@ class PointSet:
         if time is not None and time in df:
             time_arr = np.atleast_1d(np.asarray(df[time]))
 
-        origin_dim = str(df.index.name) if df.index.name is not None else "index"
+        points_dim = str(df.index.name) if df.index.name is not None else "index"
         origin_df = df.to_frame().T.infer_objects() if isinstance(df, pd.Series) else df
-        return cls(lon_arr, lat_arr, time_arr, origin_ds=origin_df, origin_dim=origin_dim)
+        return cls(lon_arr, lat_arr, time_arr, original_data=origin_df, points_dim=points_dim)
 
     # --- 3. xarray Dataset ---
     @classmethod
@@ -116,8 +116,8 @@ class PointSet:
         return PointSet(lon=lon_arr, 
                         lat=lat_arr, 
                         time=time_arr, 
-                        origin_dim=str(point_dim),
-                        origin_ds=ds
+                        points_dim=str(point_dim),
+                        original_data=ds
                         )
 
     # --- TODO: 4. argopy ---
