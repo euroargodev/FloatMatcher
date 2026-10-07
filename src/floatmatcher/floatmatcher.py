@@ -31,6 +31,7 @@ class FloatMatcher:
         self.product = product
         self.variables = variables
         self.method = method
+        self.result = None
         self._files: list[str] | None = None
 
 
@@ -47,10 +48,11 @@ class FloatMatcher:
 
 
 
-    def set_local_product(self,
-                    type:ERA5Product|LUTProduct, 
-                    subset_variables: list | str | None = None,
-                    path: list | str | None = None
+    def set_product(self,
+                    type: str, 
+                    source,
+                    path: list | str | None = None,
+                    selected_variables: list | str | None = None,
                     ):
         
         self.product = Product()
@@ -79,7 +81,8 @@ class FloatMatcher:
             raise ValueError("match(): no product set, call set_local_product(...)")
         if self.method is None:
             raise ValueError("match(): no method set, call set_method(...)")
-        return self.method.apply(self._open_lazy_grid(self.files), self.points)
+        self.result = self.method.apply(self.product, self.points)
+        return self.result
 
 
     def _open_lazy_grid(self, paths: Sequence[str]) -> GridSet:

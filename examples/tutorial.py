@@ -58,7 +58,28 @@ my_fm.set_method(type="nearest", radius=300,
 
 
 
+# 2) matched product 
+#   2.1) product type 
+#   2.2) product source (local / remote)
+#   2.3) Subset variables: all or list of output product variables (add enum available)
 
+
+my_fm.set_product(type="era5", 
+                  source = ;....
+                  subset_variables=["sst"], 
+                            
+                            path="/runtime/data/era5_daily/2018/01")
+
+my_fm.download() # arriere plan (avec un state) .status
+
+# my_fm.status() # TODO
+
+
+my_fm.match() # or resultats = my_fm.match()
+
+# Compte rendu / visualisation etc.. 
+# my_fm.result_summary()
+# my_fm.result_viz(header=Npoints)
 
 
 

@@ -1,10 +1,10 @@
 import xarray as xr
+import numpy as np
 from abc import ABC, abstractmethod
 from pathlib import Path
 from collections.abc import Sequence
 from typing import Self
 from dask.utils import SerializableLock
-
 
 from .pointset import PointSet
 from .resolver import FileResolver, ExplicitFiles, PathTemplate
@@ -45,10 +45,22 @@ class Product(ABC):
     COORD_MAP: dict[str, str] = {}
 
     def __init__(self, 
-                 resolver: FileResolver | None = None
-                 ) -> None:
+                 resolver: FileResolver | None = None,
+                 type: None = None,
+                 source: None = None, 
+                 path: None = None, 
+                 selected_variables: None = None,
+                ) -> None:
         self.resolver = resolver
-    
+        self.type = type
+        self.source = source    # local / api
+        self.path = path        # manuel ou tmp si src = api 
+        self.selected_variables = selected_variables
+
+        self._src_dataset = None
+        self._regime = None
+        self._available_variables = None
+
     @classmethod
     def from_local(cls, 
                    path: str | Path | Sequence[str] | None = None,
@@ -95,6 +107,35 @@ class Product(ABC):
             compat="override",
             coords="minimal",
         )
+
+    def _src_dataset_checker(self, dataset):
+        if "lon" not in dataset.coords or "lat" not in dataset.coords:
+            raise ValueError(
+                "The dataset given to GridSet object doesn't have lon or lat "
+                "coordinates"
+            )
+
+        if len(dataset.data_vars)<1:
+            raise ValueError("There is no variable in the dataset given to GridSet")
+
+        # test of lat/lon unicity
+        lon = dataset["lon"].values
+        lat = dataset["lat"].values
+        if len(np.unique(lon)) != len(lon):
+            raise ValueError("grid: duplicated longitudes in array")
+        if len(np.unique(lat)) != len(lat):
+            raise ValueError("grid: duplicated latitudes in array")
+
+    def _id_regime(self, dataset):
+        # select regime 3D/2D
+        if "time" in dataset.coords : 
+            self._regime = "3D"
+            # test time unicity if 3D regime
+            times = dataset["time"].values
+            if len(np.unique(times)) != len(times):
+                raise ValueError("grid: duplicate timestamps (overlapping files?)")
+        else:
+            self._regime = "2D"
     
     @abstractmethod
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
@@ -112,3 +153,13 @@ class LUTProduct(Product):
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         ds = to_standard(ds_raw, self.COORD_MAP)
         return ds
+
+
+
+
+
+# key given to FloatMatcher.set_product(type=...) -> Product class
+available_product: dict[str, type[Product]] = {
+    "era5": ERA5Product,
+    "lut" : LUTProduct
+}
