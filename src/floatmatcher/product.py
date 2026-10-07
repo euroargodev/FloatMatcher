@@ -1,14 +1,12 @@
 import xarray as xr
 import numpy as np
 from abc import ABC, abstractmethod
-from pathlib import Path
 from collections.abc import Sequence
-from typing import Self
+from typing import Any
 from dask.utils import SerializableLock
-
-from .pointset import PointSet
-from .resolver import FileResolver, ExplicitFiles, PathTemplate
-
+from pathlib import Path
+from .sources import available_sources
+from .utils import indented_repr
 
 _NETCDF_LOCK = SerializableLock()
 
@@ -42,52 +40,42 @@ def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
 
 
 class Product(ABC):
-    COORD_MAP: dict[str, str] = {}
+    name: str
+    coord_map: dict[str, str] = {}
+    src_available: list[str] = []
 
     def __init__(self, 
-                 resolver: FileResolver | None = None,
-                 type: None = None,
-                 source: None = None, 
-                 path: None = None, 
-                 selected_variables: None = None,
+                 source: str, 
+                 path: str, 
+                 selected_variables: list[str] | None,
+                 **source_params: Any
                 ) -> None:
-        self.resolver = resolver
-        self.type = type
+        if selected_variables is not None and (
+                not isinstance(selected_variables, list) or not selected_variables):
+            raise ValueError(
+                f"selected_variables must be None (keep all) or a non-empty list of variable names,\
+                \n not {selected_variables!r}"
+            )
         self.source = source    # local / api
-        self.path = path        # manuel ou tmp si src = api 
         self.selected_variables = selected_variables
 
         self._src_dataset = None
-        self._regime = None
+        self._regime: str | None = None
         self._available_variables = None
 
-    @classmethod
-    def from_local(cls, 
-                   path: str | Path | Sequence[str] | None = None,
-                   pattern: str | None = None) -> Self:
-        resolver: FileResolver
-        if pattern and not path:
-            raise ValueError("pattern given without a root path")
-        if not path:
-            raise ValueError("no path or pattern provided for opening data")
+        if self.source not in self.src_available:
+            raise ValueError(f"{type(self).__name__} supports {self.src_available}, not {source!r}")
+      
+        self._source = available_sources[source](path, **source_params)
 
-        if pattern:
-            # a pattern is substituted under ONE root, not a list of paths
-            if not isinstance(path, (str, Path)):
-                raise ValueError("a pattern needs a single root path, not a list")
-            resolver = PathTemplate(path, pattern)
-        else:
-            resolver = ExplicitFiles(path)
 
-        return cls(resolver)
 
-    def files_for(self, points: PointSet | None = None) -> list[str]:
-        if self.resolver is None:
-            raise ValueError(
-                "this product carries no source; build it with "
-                f"{type(self).__name__}.from_local(...) before resolving files"
-            )
-        return self.resolver.files_for(points)
+
+    # allow to store path in ._source object but to access it from Product 
+    # avoid duplication of path storage into Product and Source 
+    @property
+    def path(self) -> str | Path | list[str]:
+        return self._source.path
 
     def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
         """ open several files as a xr mf_dataset with options
@@ -108,7 +96,7 @@ class Product(ABC):
             coords="minimal",
         )
 
-    def _src_dataset_checker(self, dataset):
+    def _src_dataset_checker(self, dataset: xr.Dataset) -> None:
         if "lon" not in dataset.coords or "lat" not in dataset.coords:
             raise ValueError(
                 "The dataset given to GridSet object doesn't have lon or lat "
@@ -126,7 +114,7 @@ class Product(ABC):
         if len(np.unique(lat)) != len(lat):
             raise ValueError("grid: duplicated latitudes in array")
 
-    def _id_regime(self, dataset):
+    def _id_regime(self, dataset: xr.Dataset) -> None:
         # select regime 3D/2D
         if "time" in dataset.coords : 
             self._regime = "3D"
@@ -137,21 +125,30 @@ class Product(ABC):
         else:
             self._regime = "2D"
     
+    def __repr__(self) -> str:
+        return indented_repr(self)
+
     @abstractmethod
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         ...
 
 
 class ERA5Product(Product):
-    COORD_MAP = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
+    name = "era5"
+    coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
+    src_available = ["local"]
+
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
-        ds = to_standard(ds_raw, self.COORD_MAP)
+        ds = to_standard(ds_raw, self.coord_map)
         return ds
     
 class LUTProduct(Product):
-    COORD_MAP = {"lon": "lon", "lat": "lat"}
+    name = "lut"
+    coord_map = {"lon": "lon", "lat": "lat"}
+    src_available = ["local"]
+
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
-        ds = to_standard(ds_raw, self.COORD_MAP)
+        ds = to_standard(ds_raw, self.coord_map)
         return ds
 
 
@@ -159,7 +156,7 @@ class LUTProduct(Product):
 
 
 # key given to FloatMatcher.set_product(type=...) -> Product class
-available_product: dict[str, type[Product]] = {
+available_products: dict[str, type[Product]] = {
     "era5": ERA5Product,
     "lut" : LUTProduct
 }

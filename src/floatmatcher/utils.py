@@ -39,3 +39,16 @@ def get(ds: xr.Dataset, name: str) -> xr.DataArray:
 def extract(ds: xr.Dataset, name: str) -> NDArray[Any]:
     """Return the .values (raw ndarray) — the common case."""
     return get(ds, name).values
+
+
+def indented_repr(obj: object, indent: int = 4) -> str:
+    """Indented listing of obj attributes. Attributes that are floatmatcher
+    objects are listed one level deeper."""
+    pad = " " * indent
+    text = f"\n{pad}type: {type(obj).__name__}"
+    for name, value in obj.__dict__.items():
+        if type(value).__module__.startswith("floatmatcher"):
+            text += f"\n{pad}{name}:{indented_repr(value, indent + 4)}"
+        else:
+            text += f"\n{pad}{name}: {value}"
+    return text

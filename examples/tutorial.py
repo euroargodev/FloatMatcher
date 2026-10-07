@@ -63,14 +63,13 @@ my_fm.set_method(type="nearest", radius=300,
 #   2.2) product source (local / remote)
 #   2.3) Subset variables: all or list of output product variables (add enum available)
 
-
 my_fm.set_product(type="era5", 
-                  source = ;....
-                  subset_variables=["sst"], 
-                            
-                            path="/runtime/data/era5_daily/2018/01")
+                  source="local", 
+                  selected_variables=["sst"], 
+                  path="/data/era5"
+                  )
 
-my_fm.download() # arriere plan (avec un state) .status
+# my_fm.download() # arriere plan (avec un state) .status
 
 # my_fm.status() # TODO
 

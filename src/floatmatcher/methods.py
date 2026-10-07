@@ -14,20 +14,19 @@ from .gridset import GridSet
 from .matchup_results import MatchupResult
 from .neighbors import spatial_nearest, temporal_nearest
 from .pointset import PointSet
+from .utils import indented_repr
 
 
 class Method(ABC):
     """Contract shared by every matchup method."""
 
+    def __repr__(self) -> str:
+        return indented_repr(self)
+
     @abstractmethod
     def apply(self, grid: GridSet, points: PointSet) -> MatchupResult:
         ...
 
-    def __repr__(self) -> str:
-        text = f"\n    type: {type(self).__name__}"
-        for name, value in self.__dict__.items():
-            text += f"\n    {name}: {value}"
-        return text
 
 
 class NearestNeighbor(Method):

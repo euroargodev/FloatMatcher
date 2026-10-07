@@ -11,7 +11,7 @@ from .methods import Method, available_methods
 # from .interpolation import Interpolation
 from .pointset import PointSet
 from .matchup_results import MatchupResult
-from .product import Product, ERA5Product, LUTProduct
+from .product import Product, available_products
 from .utils import _select_variables
 
 class FloatMatcher:
@@ -50,12 +50,21 @@ class FloatMatcher:
 
     def set_product(self,
                     type: str, 
-                    source,
-                    path: list | str | None = None,
-                    selected_variables: list | str | None = None,
-                    ):
+                    source: str,
+                    path: str, 
+                    selected_variables: list[str] | None,
+                    **src_params: Any
+                    ) -> None:
+
+        if type not in available_products:
+            raise ValueError(f"unknown product {type!r}, available: {list(available_products)}")
         
-        self.product = Product()
+        self.product = available_products[type](source, 
+                                                path, 
+                                                selected_variables, 
+                                                **src_params
+                                                )
+        
 
         
     def set_method(self, type: str, **params: Any) -> None:
