@@ -6,7 +6,10 @@ from typing import Any
 from dask.utils import SerializableLock
 from pathlib import Path
 from .sources import available_sources
-from .utils import indented_repr
+
+from .utils import indented_repr, _select_variables
+from .pointset  import PointSet
+
 
 _NETCDF_LOCK = SerializableLock()
 
@@ -50,6 +53,7 @@ class Product(ABC):
                  selected_variables: list[str] | None,
                  **source_params: Any
                 ) -> None:
+        
         if selected_variables is not None and (
                 not isinstance(selected_variables, list) or not selected_variables):
             raise ValueError(
@@ -59,15 +63,13 @@ class Product(ABC):
         self.source = source    # local / api
         self.selected_variables = selected_variables
 
-        self._src_dataset = None
-        self._regime: str | None = None
-        self._available_variables = None
+        self.src_dataset : xr.Dataset | None = None
+        self.regime: str | None = None
 
         if self.source not in self.src_available:
             raise ValueError(f"{type(self).__name__} supports {self.src_available}, not {source!r}")
       
         self._source = available_sources[source](path, **source_params)
-
 
 
 
@@ -77,7 +79,23 @@ class Product(ABC):
     def path(self) -> str | Path | list[str]:
         return self._source.path
 
-    def open_paths(self, paths: Sequence[str]) -> xr.Dataset:
+    # view of src_dataset restricted to selected_variables : no data copy,
+    # src_dataset stays complete
+    @property
+    def selected_dataset(self) -> xr.Dataset:
+        if self.src_dataset is None:
+            raise ValueError("product not opened, call open(points) first")
+        return _select_variables(self.src_dataset, self.selected_variables)
+
+    # property of available variables in dataset 
+    @property
+    def available_variables(self) -> list[str]:
+        if self.src_dataset is None:
+            raise ValueError("product not opened, call open(points) first")
+        return [str(v) for v in self.src_dataset.data_vars]
+
+
+    def _open_paths(self, paths: Sequence[str]) -> xr.Dataset:
         """ open several files as a xr mf_dataset with options
         // lock option fix made by AI to avoid segfault : open_mfdataset 
         returns dask arrays read by multiple threads, but netCDF4/HDF5 
@@ -117,13 +135,25 @@ class Product(ABC):
     def _id_regime(self, dataset: xr.Dataset) -> None:
         # select regime 3D/2D
         if "time" in dataset.coords : 
-            self._regime = "3D"
+            self.regime = "3D"
             # test time unicity if 3D regime
             times = dataset["time"].values
             if len(np.unique(times)) != len(times):
                 raise ValueError("grid: duplicate timestamps (overlapping files?)")
         else:
-            self._regime = "2D"
+            self.regime = "2D"
+
+
+
+    def open(self, points: PointSet) -> None:
+        """ open files and src_dataset """
+        files = self._source.resolve(points)
+        ds = self._open_paths(files)
+        ds = self.normalize(ds)
+        self._src_dataset_checker(ds)
+        self._id_regime(ds)
+        self.src_dataset = ds
+
     
     def __repr__(self) -> str:
         return indented_repr(self)

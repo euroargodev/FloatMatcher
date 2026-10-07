@@ -6,7 +6,6 @@ from typing import Any
 import numpy as np 
 from numpy.typing import NDArray
 
-from .gridset import GridSet
 from .methods import Method, available_methods
 # from .interpolation import Interpolation
 from .pointset import PointSet
@@ -32,7 +31,6 @@ class FloatMatcher:
         self.variables = variables
         self.method = method
         self.result = None
-        self._files: list[str] | None = None
 
 
     def __repr__(self,) -> str:
@@ -41,7 +39,7 @@ class FloatMatcher:
 
 
     def set_points_from_arrays(self, 
-                               lon: NDArray[np.float64] ,   
+                               lon: NDArray[np.float64],   
                                lat: NDArray[np.float64],
                                time: NDArray[np.datetime64] | None = None):
         self.points = PointSet(lon, lat, time)
@@ -73,15 +71,6 @@ class FloatMatcher:
         self.method = available_methods[type](**params)
 
 
-    @property
-    def files(self) -> list[str]:
-        if self._files is None:
-            # always give points just not used in case of ExplicitFiles resolver
-            self._files = self.product.files_for(self.points)
-        return self._files
-
-
-
 
     def match(self) -> MatchupResult:
         if self.points is None:
@@ -90,13 +79,12 @@ class FloatMatcher:
             raise ValueError("match(): no product set, call set_local_product(...)")
         if self.method is None:
             raise ValueError("match(): no method set, call set_method(...)")
+
+        # Get files opened as a mfDataset in product.src_dataset
+        self.product.open(points=self.points)
+
         self.result = self.method.apply(self.product, self.points)
         return self.result
 
 
-    def _open_lazy_grid(self, paths: Sequence[str]) -> GridSet:
-        """Open set of files -> normalized, variable selected and validated GridSet."""
-        ds_raw = self.product.open_paths(paths)
-        ds = _select_variables(self.product.normalize(ds_raw), self.variables)
-        return GridSet(ds)
     

@@ -6,11 +6,11 @@ from floatmatcher.gridset import GridSet
 
 # ───────────── regime derivation ─────────────
 
-def test_regime_3d(grid_3d_ds):
+def testregime_3d(grid_3d_ds):
     """A grid with a time coord is 3D."""
     assert GridSet(grid_3d_ds).regime == "3D"
 
-def test_regime_2d(grid_2d_ds):
+def testregime_2d(grid_2d_ds):
     """A grid without a time coord is 2D."""
     assert GridSet(grid_2d_ds).regime == "2D"
 

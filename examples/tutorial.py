@@ -66,7 +66,7 @@ my_fm.set_method(type="nearest", radius=300,
 my_fm.set_product(type="era5", 
                   source="local", 
                   selected_variables=["sst"], 
-                  path="/data/era5"
+                  path="/runtime/data/era5_daily/2018/01"
                   )
 
 # my_fm.download() # arriere plan (avec un state) .status

@@ -1,4 +1,4 @@
-# reference.py: the reference point cloud (flattened grid), internal to nearest
+# flatgrid.py: the reference point cloud (flattened grid), internal to nearest
 
 from dataclasses import dataclass, field
 
