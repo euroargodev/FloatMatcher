@@ -36,6 +36,8 @@ def temporal_nearest(grid_times: NDArray[np.datetime64], points: PointSet,
                      k: int = 1) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
     time_delta: NDArray[np.float64]
     idx: NDArray[np.int64]
+    if points.time is None:
+        raise ValueError("points have no time: they cannot be matched on a grid with a time axis")
     grid_tree = cKDTree(_to_seconds(grid_times)[:, None])
     time_delta, idx = grid_tree.query(_to_seconds(points.time)[:, None], k=k)
     return time_delta, idx

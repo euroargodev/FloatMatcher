@@ -10,7 +10,7 @@ from .exceptions import ProfileFormatError
 from numpy.typing import ArrayLike, NDArray
 from .geo import lonlat_to_xyz
 from .constants import TIME_UNIT
-from .utils import extract, get, find_key
+from .utils import extract, get
 
 
 @dataclass(repr=False)
@@ -51,7 +51,8 @@ class PointSet:
 
     def __repr__(self) -> str:
         if self.time is not None:
-            return f"\n    type: {type(self).__name__} \n    lon:{len(self.lon)} \n    lat:{len(self.lat)} \n    time:{len(self.time)}"
+            return (f"\n    type: {type(self).__name__} \n    lon:{len(self.lon)} "
+                    f"\n    lat:{len(self.lat)} \n    time:{len(self.time)}")
         else:
             return f"\n    lon:{len(self.lon)} \n    lat:{len(self.lat)}"
 

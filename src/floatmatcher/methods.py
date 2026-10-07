@@ -8,10 +8,8 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-import xarray as xr
 
 from .flatgrid import FlatGrid
-from .gridset import GridSet
 from .matchup_results import MatchupResult
 from .neighbors import spatial_nearest, temporal_nearest
 from .pointset import PointSet

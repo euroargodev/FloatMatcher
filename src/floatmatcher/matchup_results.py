@@ -16,7 +16,7 @@ class MatchupResult:
     time_delta:  NDArray[np.float64]
     valid:       NDArray[np.bool_]
 
-    def _to_dataset(self, points) -> xr.Dataset:
+    def _to_dataset(self, points: PointSet) -> xr.Dataset:
         """
         Reinject the colocalized values into the dataset
         The source Dataset travels inside the PointSet
@@ -40,7 +40,7 @@ class MatchupResult:
 
         return out
 
-    def _to_dataframe(self, points) -> pd.DataFrame:
+    def _to_dataframe(self, points: PointSet) -> pd.DataFrame:
         """
         Reinject the colocalized values into the dataframe
         The source DataFrame travels inside the PointSet

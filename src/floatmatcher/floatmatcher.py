@@ -1,6 +1,5 @@
 # FloatMatcher.py: the top-level coordinator (public API of the library).
 
-from collections.abc import Sequence
 from typing import Any
 
 import numpy as np 
@@ -11,7 +10,6 @@ from .methods import Method, available_methods
 from .pointset import PointSet
 from .matchup_results import MatchupResult
 from .product import Product, available_products
-from .utils import _select_variables
 
 class FloatMatcher:
     """FloatMatcher gather all Points Pointset(), variables needed, setup Product(). 
@@ -30,18 +28,19 @@ class FloatMatcher:
         self.product = product
         self.variables = variables
         self.method = method
-        self.result = None
+        self.result: MatchupResult | None = None
 
 
     def __repr__(self,) -> str:
-        return f"points:{self.points} \nproduct:{self.product} \nvariables:{self.variables} \nmethod: {self.method}"
+        return (f"points:{self.points} \nproduct:{self.product} "
+                f"\nvariables:{self.variables} \nmethod: {self.method}")
 
 
 
     def set_points_from_arrays(self, 
                                lon: NDArray[np.float64],   
                                lat: NDArray[np.float64],
-                               time: NDArray[np.datetime64] | None = None):
+                               time: NDArray[np.datetime64] | None = None) -> None:
         self.points = PointSet(lon, lat, time)
 
 
