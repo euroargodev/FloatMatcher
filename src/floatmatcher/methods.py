@@ -8,13 +8,13 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
+import xarray as xr
 
 from .flatgrid import FlatGrid
 from .matchup_results import MatchupResult
 from .neighbors import spatial_nearest, temporal_nearest
 from .pointset import PointSet
 from .utils import indented_repr
-from .product import Product
 
 
 class Method(ABC):
@@ -24,7 +24,7 @@ class Method(ABC):
         return indented_repr(self)
 
     @abstractmethod
-    def apply(self, product: Product, points: PointSet) -> MatchupResult:
+    def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
         ...
 
 
@@ -43,11 +43,11 @@ class NearestNeighbor(Method):
     def time_gap_seconds(self) -> float:
         return float(self.time_gap / np.timedelta64(1, "s"))
 
-    def apply(self, product: Product, points: PointSet) -> MatchupResult:
+    def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
         
         # starting by lonlat2xy on spatial grid
         # return FlatGrid object, flatten grid
-        flat_grid = FlatGrid.from_grid(product.selected_dataset)
+        flat_grid = FlatGrid.from_grid(dataset)
         # convert into carthesian coordinates
         grid_stacked = flat_grid.xyz
 
@@ -56,8 +56,7 @@ class NearestNeighbor(Method):
         valid_spatial = dist_km <= self.radius
 
         idx_count = len(points.lon)
-        if product.regime == "3D":
-            assert flat_grid.time is not None
+        if flat_grid.time is not None:
             time_delta, temporal_idx = temporal_nearest(flat_grid.time,
                                                         points,
                                                         k=self.k_nearest

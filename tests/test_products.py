@@ -2,6 +2,7 @@
 
 import numpy as np
 import numpy.testing as npt
+import pytest
 import xarray as xr
 
 from floatmatcher.product import (
@@ -93,3 +94,61 @@ def test_lut_normalize(tmp_path):
 def test_product_built_from_local_keeps_its_path():
     assert ERA5Product("local", "/data", None).path == "/data"
     assert LUTProduct("local", "/data", None).path == "/data"
+
+
+# ---------- open : grid validation and regime ----------
+# grids come from conftest (grid_3d_ds / grid_2d_ds), opened through open_product
+
+def test_regime_3d(open_product, grid_3d_ds):
+    """A grid with a time coord is 3D."""
+    assert open_product(grid_3d_ds).regime == "3D"
+
+
+def test_regime_2d(open_product, grid_2d_ds):
+    """A grid without a time coord is 2D."""
+    assert open_product(grid_2d_ds, LUTProduct).regime == "2D"
+
+
+def test_src_dataset_keeps_the_grid(open_product, grid_3d_ds):
+    """open keeps the whole dataset, the variable selection is done afterwards."""
+    product = open_product(grid_3d_ds)
+    xr.testing.assert_equal(product.src_dataset, grid_3d_ds)
+
+
+def test_missing_lat_3d_raises(open_product, grid_3d_ds):
+    """A grid without lat is rejected."""
+    with pytest.raises(ValueError):
+        open_product(grid_3d_ds.drop_vars("lat"))
+
+
+def test_missing_lat_2d_raises(open_product, grid_2d_ds):
+    """A grid without lat is rejected."""
+    with pytest.raises(ValueError):
+        open_product(grid_2d_ds.drop_vars("lat"), LUTProduct)
+
+
+def test_no_data_variable_raises(open_product, grid_2d_ds):
+    """A grid with coords but no data variable is rejected."""
+    with pytest.raises(ValueError):
+        open_product(grid_2d_ds.drop_vars("v"), LUTProduct)   # removes the only variable
+
+
+# ---------- open : shuffled and duplicated coordinates ----------
+
+def test_shuffled_lon_is_accepted(open_product, grid_3d_ds):
+    """ order does not matter: the KDTree works on a point cloud"""
+    ds = grid_3d_ds.isel(lon=[2, 0, 1])            # [30,10,20]
+    assert open_product(ds).regime == "3D"
+
+
+def test_duplicate_lon_raises(open_product, grid_3d_ds):
+    """two nodes at the same position would make the nearest lookup ambiguous"""
+    ds = grid_3d_ds.isel(lon=[0, 1, 1])
+    with pytest.raises(ValueError):
+        open_product(ds)
+
+
+def test_decreasing_time_is_accepted(open_product, grid_3d_ds):
+    """ decreasing time is accepted """
+    ds = grid_3d_ds.isel(time=slice(None, None, -1))
+    assert open_product(ds).regime == "3D"

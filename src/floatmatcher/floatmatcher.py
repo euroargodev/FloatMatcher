@@ -83,7 +83,7 @@ class FloatMatcher:
         # Get files opened as a mfDataset in product.src_dataset
         self.product.open(points=self.points)
 
-        self.result = self.method.apply(self.product, self.points)
+        self.result = self.method.apply(self.product.selected_dataset, self.points)
         return self.result
 
 

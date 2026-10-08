@@ -20,7 +20,7 @@ my_fm = fm.FloatMatcher()
 
 # -------------------------------------------
 # Random points case
-lon, lat, time = mocking.random_positions(1)
+lon, lat, time = mocking.random_positions(100)
 print(type(lon))
 # positions = np.array([lon, lat, time])
 # points_from_arrays = ProfileLoader.from_arrays(lon, lat, time)
@@ -45,20 +45,8 @@ print(type(lon))
 my_fm.set_points_from_arrays(lon, lat, time)
 
 
+
 # -------------------------------------------
-# 3) matching method
-    # 3.1) method selection (Nearest / interpolation)
-    # 3.2) method configuration 
-    #   radius (km)
-    #   time
-    
-my_fm.set_method(type="nearest", radius=300, 
-              time_gap=np.timedelta64(3, "h"),
-              k_nearest=1
-              )
-
-
-
 # 2) matched product 
 #   2.1) product type 
 #   2.2) product source (local / remote)
@@ -67,13 +55,28 @@ my_fm.set_method(type="nearest", radius=300,
 my_fm.set_product(type="era5", 
                   source="local", 
                   selected_variables=["sst"], 
-                  path="/runtime/data/era5_daily/2018/01"
+                  path="/runtime/data/era5_daily",
+                  pattern="{year}/{month:02d}/era5_single-levels_{year}{month:02d}{day:02d}.nc"
                   )
+
+
+
+# -------------------------------------------
+# 3) matching method
+    # 3.1) method selection (Nearest / interpolation)
+    # 3.2) method configuration 
+    #   radius (km)
+    #   time
+    
+my_fm.set_method(type="nearest", radius=12, 
+              time_gap=np.timedelta64(3, "h"),
+              k_nearest=1
+              )
+
 
 # my_fm.download() # arriere plan (avec un state) .status
 
 # my_fm.status() # TODO
-
 
 my_fm.match() # or resultats = my_fm.match()
 

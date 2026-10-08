@@ -4,7 +4,6 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from floatmatcher.gridset import GridSet
 from floatmatcher.methods import Method, NearestNeighbor, available_methods
 from floatmatcher.pointset import PointSet
 
@@ -57,7 +56,7 @@ def test_apply_picks_the_nearest_node(grid_3d_ds):
     points = PointSet.from_arrays(lon=[20.0], lat=[1.0],
                                   time=np.array(["2015-01-02"], dtype="datetime64[ns]"))
 
-    res = NearestNeighbor().apply(GridSet(grid_3d_ds), points)
+    res = NearestNeighbor().apply(grid_3d_ds, points)
 
     assert res.valid.tolist() == [True]
     npt.assert_allclose(res.values["v"], [121.0])
@@ -75,7 +74,7 @@ def test_apply_rejects_out_of_radius_and_out_of_time_gap(grid_3d_ds):
                       dtype="datetime64[ns]"),
     )
 
-    res = NearestNeighbor().apply(GridSet(grid_3d_ds), points)
+    res = NearestNeighbor().apply(grid_3d_ds, points)
 
     assert res.valid.tolist() == [True, False, False]
     assert np.isnan(res.values["v"][1:]).all()
@@ -86,7 +85,7 @@ def test_apply_rejects_out_of_radius_and_out_of_time_gap(grid_3d_ds):
 def test_apply_on_2d_grid_ignores_time(grid_2d_ds):
     points = PointSet.from_arrays(lon=[30.0], lat=[2.0])
 
-    res = NearestNeighbor().apply(GridSet(grid_2d_ds), points)
+    res = NearestNeighbor().apply(grid_2d_ds, points)
 
     assert res.valid.tolist() == [True]
     npt.assert_allclose(res.values["v"], [230.0])

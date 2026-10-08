@@ -71,7 +71,7 @@ class Product(ABC):
       
         self._source = available_sources[source](path, **source_params)
 
-
+    # TODO : get essential product metadata 
 
     # allow to store path in ._source object but to access it from Product 
     # avoid duplication of path storage into Product and Source 

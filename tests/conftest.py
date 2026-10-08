@@ -5,6 +5,8 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from floatmatcher.pointset import PointSet
+from floatmatcher.product import ERA5Product
 from helpers import make_grid, daily_timestamps
 
 
@@ -80,3 +82,18 @@ def era5_files(tmp_path):
         paths.append(str(path))
 
     return paths
+
+
+# ---------- opened product ----------
+
+@pytest.fixture
+def open_product(tmp_path):
+    """Factory: write a grid to a netCDF file, then open it through a Product
+    (source.resolve -> open -> normalize -> checks), the way a user would."""
+    def _open(ds, product_cls=ERA5Product):
+        path = tmp_path / "grid.nc"
+        ds.to_netcdf(path)
+        product = product_cls("local", str(path), None)
+        product.open(PointSet.from_arrays([0.0], [0.0]))
+        return product
+    return _open
