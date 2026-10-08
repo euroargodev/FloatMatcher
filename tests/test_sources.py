@@ -6,7 +6,7 @@ from floatmatcher.resolver import PathTemplate, ExplicitFiles
 from floatmatcher.sources import LocalSource
 
 
-# ───────────── LocalSource ─────────────
+# ---------- LocalSource ----------
 
 def test_local_with_pattern_builds_a_pathtemplate():
     source = LocalSource(path="/data", pattern="{year}/x.nc")

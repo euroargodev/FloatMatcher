@@ -3,7 +3,6 @@
 import numpy as np
 import numpy.testing as npt
 import xarray as xr
-import pytest
 
 from floatmatcher.product import (
     to_standard,
@@ -24,7 +23,7 @@ def _era5_raw():
     )
 
 
-# ───────────── to_standard ─────────────
+# ---------- to_standard ----------
 
 def test_rename_maps_present_keys():
     out = to_standard(_era5_raw(), {"longitude": "lon", "latitude": "lat", "valid_time": "time"})
@@ -77,7 +76,7 @@ def test_rename_does_not_affect_input():
 
 
 
-# ───────────── Products ─────────────
+# ---------- Products ----------
 
 def test_era5_normalize(tmp_path):
     out = ERA5Product("local", tmp_path, None).normalize(_era5_raw())

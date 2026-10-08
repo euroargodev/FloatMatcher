@@ -8,7 +8,7 @@ from floatmatcher.geo import (
 )
 
 
-# ───────────── lonlat_to_xyz ─────────────
+# ---------- lonlat_to_xyz ----------
 
 def test_reference_points():
     """ set special points to verify the computations """

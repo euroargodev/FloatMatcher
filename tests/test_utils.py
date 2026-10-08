@@ -13,9 +13,7 @@ def _grid_4vars():
         coords={"lat": [0.0, 1.0], "lon": [10.0, 11.0]},
     )
 
-# ─────────────────────────────────────────────────────────────
-#  _select_variables
-# ─────────────────────────────────────────────────────────────
+# ---------- _select_variables ----------
 
 def test_select_none_keeps_all():
     out = _select_variables(_grid_4vars(), None)

@@ -145,7 +145,7 @@ def test_get_returns_dataarray_extract_returns_ndarray(argopy_like_ds):
     assert isinstance(arr, np.ndarray)       # raw values
 
 
-#  ---------- from_arrays ----------
+# ---------- from_arrays ----------
 def test_from_arrays_builds_without_provenance():
     ps = PointSet.from_arrays(
         lon=[-45.0, -44.0],

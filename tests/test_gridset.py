@@ -4,7 +4,7 @@ import pytest
 from floatmatcher.gridset import GridSet
 
 
-# ───────────── regime derivation ─────────────
+# ---------- regime derivation ----------
 
 def testregime_3d(grid_3d_ds):
     """A grid with a time coord is 3D."""
@@ -15,7 +15,7 @@ def testregime_2d(grid_2d_ds):
     assert GridSet(grid_2d_ds).regime == "2D"
 
 
-# ───────────── validation ─────────────
+# ---------- validation ----------
 
 def test_dataset_is_kept(grid_3d_ds):
     """GridSet wraps the dataset without transforming it."""
@@ -40,7 +40,7 @@ def test_no_data_variable_raises(grid_2d_ds):
 
  
  
-# ───────────── suffled and duplicated coordinates ─────────────
+# ---------- suffled and duplicated coordinates ----------
  
 def test_shuffled_lon_is_accepted(grid_3d_ds):
     """ order does not matter: the KDTree works on a point cloud"""
