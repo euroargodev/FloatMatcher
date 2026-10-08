@@ -11,7 +11,7 @@ from helpers import make_grid, daily_timestamps
 
 
 # Reminder 
-# 3D (grid_3d_ds): 
+# 3D (grid_3d_ds): variables sst (below) and t2m = sst + 1000
 #        n0    n1    n2    n3     n4     n5     n6     n7     n8     n9    n10    n11
 #  t=0  10.0  20.0  30.0  40.0  110.0  120.0  130.0  140.0  210.0  220.0  230.0  240.0
 #  t=1  11.0  21.0  31.0  41.0  111.0  121.0  131.0  141.0  211.0  221.0  231.0  241.0
@@ -37,9 +37,10 @@ def grid_2d_ds():
 
 @pytest.fixture
 def grid_3d_ds():
-    ds = make_grid(lat, lon, time=daily_timestamps(2))
-    ds["v"] = (100.0 * ds["lat"] + ds["lon"]
-               + xr.DataArray(np.arange(ds.sizes["time"]), dims="time"))
+    ds = make_grid(lat, lon, time=daily_timestamps(2), variables=("sst", "t2m"))
+    ds["sst"] = (100.0 * ds["lat"] + ds["lon"]
+                 + xr.DataArray(np.arange(ds.sizes["time"]), dims="time"))
+    ds["t2m"] = ds["sst"] + 1000.0
     return ds
 
 
@@ -84,16 +85,24 @@ def era5_files(tmp_path):
     return paths
 
 
-# ---------- opened product ----------
+# ---------- grids written to disk ----------
 
 @pytest.fixture
-def open_product(tmp_path):
+def grid_file(tmp_path):
+    """Factory: write a grid to a netCDF file and return its path."""
+    def _write(ds):
+        path = tmp_path / "grid.nc"
+        ds.to_netcdf(path)
+        return str(path)
+    return _write
+
+
+@pytest.fixture
+def open_product(grid_file):
     """Factory: write a grid to a netCDF file, then open it through a Product
     (source.resolve -> open -> normalize -> checks), the way a user would."""
     def _open(ds, product_cls=ERA5Product):
-        path = tmp_path / "grid.nc"
-        ds.to_netcdf(path)
-        product = product_cls("local", str(path), None)
+        product = product_cls("local", grid_file(ds), None)
         product.open(PointSet.from_arrays([0.0], [0.0]))
         return product
     return _open

@@ -4,21 +4,21 @@
 import numpy as np
 import numpy.testing as npt
 
-from floatmatcher.matchup import NearestNeighbor
+from floatmatcher.methods import NearestNeighbor
 from floatmatcher.floatmatcher import FloatMatcher
+from floatmatcher.pointset import PointSet
 from floatmatcher.product import ERA5Product
-from floatmatcher.profile_loader import ProfileLoader
 
 
 def test_match_nearest_get_good_node(era5_files):
-    points = ProfileLoader.from_arrays(
+    points = PointSet.from_arrays(
         lon=[11.1, 9.05, 349.9],
         lat=[30.05, 39.95, 20.1],
         time=np.array(["2015-06-01T02", "2015-06-02T00", "2015-06-02T22"], dtype="datetime64[ns]"),
     )
-    product = ERA5Product.from_local(path=era5_files)
+    product = ERA5Product("local", era5_files, ["sst"])
 
-    res = FloatMatcher(points, "sst", product).match(NearestNeighbor())
+    res = FloatMatcher(points=points, product=product, method=NearestNeighbor()).match()
 
     assert res.valid.all()
     assert set(res.values) == {"sst"} # only sst has been taken into account
@@ -29,7 +29,7 @@ def test_match_nearest_get_good_node(era5_files):
 
 
 def test_match_nearest_rejects_out_of_range_points(era5_files):
-    points = ProfileLoader.from_arrays(
+    points = PointSet.from_arrays(
         lon=[11.1,    230, 11.1],
         lat=[30.05, -40.0, 30.05],
         time=np.array(["2015-06-01T02",      # p0 in range
@@ -37,10 +37,11 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
                        "2015-09-01T02"],     # p2 far away in time
                       dtype="datetime64[ns]"),
     )
-    product = ERA5Product.from_local(path=era5_files)
-    orch = FloatMatcher(points, "sst", product)
+    product = ERA5Product("local", era5_files, ["sst"])
+    orch = FloatMatcher(points=points, product=product)
+    orch.set_method("nearest")
 
-    res = orch.match(NearestNeighbor())
+    res = orch.match()
 
     assert res.valid.tolist() == [True, False, False]
     npt.assert_allclose(res.values["sst"][:1], [121.03], atol=1e-4)
@@ -49,22 +50,24 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
     assert np.isnan(res.time_delta[1:]).all()         # nor time gap
 
     # p1 was out on DISTANCE only
-    loose_dist = orch.match(NearestNeighbor(distance_gap=100000))
+    orch.set_method("nearest", radius=100000)
+    loose_dist = orch.match()
     assert loose_dist.valid.tolist() == [True, True, False]
 
     # p2 was out on TIME only
-    loose_time = orch.match(NearestNeighbor(max_time=np.timedelta64(300, "D")))
+    orch.set_method("nearest", time_gap=np.timedelta64(300, "D"))
+    loose_time = orch.match()
     assert loose_time.valid.tolist() == [True, False, True]
 
 
 def test_match_nearest_over_two_variable(era5_files):
-    points = ProfileLoader.from_arrays(
+    points = PointSet.from_arrays(
         lon=[11.1], lat=[30.05],
         time=np.array(["2015-06-01T02"], dtype="datetime64[ns]"),
     )
-    product = ERA5Product.from_local(path=era5_files)
+    product = ERA5Product("local", era5_files, ["sst", "t2m"])
 
-    res = FloatMatcher(points, ["sst", "t2m"], product).match(NearestNeighbor())
+    res = FloatMatcher(points=points, product=product, method=NearestNeighbor()).match()
 
     assert set(res.values) == {"sst", "t2m"}
     npt.assert_allclose(res.values["sst"], [121.03], atol=1e-4)

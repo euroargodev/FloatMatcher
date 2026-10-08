@@ -38,7 +38,8 @@ def test_unknown_param_raises():
 
 
 # ---------- NearestNeighbor.apply : no FloatMatcher needed ----------
-# grid_3d_ds: v = 100*lat + lon + time_index, nodes lat [0, 1, 2] x lon [10..40]
+# grid_3d_ds: sst = 100*lat + lon + time_index (t2m = sst + 1000), nodes lat [0, 1, 2] x lon [10..40]
+# grid_2d_ds: v = 100*lat + lon
 
 # --> Reminder 
 # 3D (grid_3d_ds): 
@@ -59,7 +60,7 @@ def test_apply_picks_the_nearest_node(grid_3d_ds):
     res = NearestNeighbor().apply(grid_3d_ds, points)
 
     assert res.valid.tolist() == [True]
-    npt.assert_allclose(res.values["v"], [121.0])
+    npt.assert_allclose(res.values["sst"], [121.0])
     assert res.distance_km[0] < 1e-6
     assert res.time_delta[0] == 0.0
 
@@ -77,7 +78,7 @@ def test_apply_rejects_out_of_radius_and_out_of_time_gap(grid_3d_ds):
     res = NearestNeighbor().apply(grid_3d_ds, points)
 
     assert res.valid.tolist() == [True, False, False]
-    assert np.isnan(res.values["v"][1:]).all()
+    assert np.isnan(res.values["sst"][1:]).all()
     assert np.isnan(res.distance_km[1:]).all()
     assert np.isnan(res.time_delta[1:]).all()
 
