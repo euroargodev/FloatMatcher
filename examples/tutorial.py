@@ -1,8 +1,3 @@
-
-
-
-
-
 import warnings
 
 import numpy as np
@@ -53,10 +48,10 @@ my_fm.set_points_from_arrays(lon, lat, time)
 #   2.3) Subset variables: all or list of output product variables (add enum available)
 
 my_fm.set_product(type="era5", 
-                  source="local", 
+                  source="local", # remote-zarr , remote-s3 , download-API
                   selected_variables=["sst"], 
                   path="/runtime/data/era5_daily",
-                  pattern="{year}/{month:02d}/era5_single-levels_{year}{month:02d}{day:02d}.nc"
+                #   pattern="{year}/{month:02d}/era5_single-levels_{year}{month:02d}{day:02d}.nc"
                   )
 
 
@@ -78,7 +73,7 @@ my_fm.set_method(type="nearest", radius=12,
 
 # my_fm.status() # TODO
 
-my_fm.match() # or resultats = my_fm.match()
+result = my_fm.match() # or resultats = my_fm.match()
 
 # Compte rendu / visualisation etc.. 
 my_fm.result
