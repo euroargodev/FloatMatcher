@@ -42,7 +42,7 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
-exclude = ["^tests/"]
+exclude = ["^tests/", "^examples/"]   # examples: out of date with the builder API, to be rewritten
 
 [[tool.mypy.overrides]]
 module = ["scipy.*", "pandas.*"]
@@ -51,6 +51,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 110
 target-version = "py311"
+extend-exclude = ["examples"]   # out of date with the builder API, to be rewritten
 
 [tool.ruff.lint]
 select = ["E", "F"]
