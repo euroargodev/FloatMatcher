@@ -64,7 +64,6 @@ class Product(ABC):
         self.selected_variables = selected_variables
 
         self.src_dataset : xr.Dataset | None = None
-        self.regime: str | None = None
 
         if self.source not in self.src_available:
             raise ValueError(f"{type(self).__name__} supports {self.src_available}, not {source!r}")
@@ -132,18 +131,12 @@ class Product(ABC):
         if len(np.unique(lat)) != len(lat):
             raise ValueError("grid: duplicated latitudes in array")
 
-    def _id_regime(self, dataset: xr.Dataset) -> None:
-        # select regime 3D/2D
-        if "time" in dataset.coords : 
-            self.regime = "3D"
-            # test time unicity if 3D regime
+    def _check_time_unicity(self, dataset: xr.Dataset) -> None:
+        # a grid without time axis (2D) has nothing to check
+        if "time" in dataset.coords:
             times = dataset["time"].values
             if len(np.unique(times)) != len(times):
                 raise ValueError("grid: duplicate timestamps (overlapping files?)")
-        else:
-            self.regime = "2D"
-
-
 
     def open(self, points: PointSet) -> None:
         """ open files and src_dataset """
@@ -151,7 +144,7 @@ class Product(ABC):
         ds = self._open_paths(files)
         ds = self.normalize(ds)
         self._src_dataset_checker(ds)
-        self._id_regime(ds)
+        self._check_time_unicity(ds)
         self.src_dataset = ds
 
     

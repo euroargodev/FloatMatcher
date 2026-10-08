@@ -17,8 +17,10 @@ class MatchupResult:
     valid:       NDArray[np.bool_]
 
     def __repr__(self) -> str:
-        return (f"\n    variables: {self.values.keys()} \n    mean_dist:{np.round(np.nanmean(self.distance_km), 2)} (km)"
-                f"\n    mean_time_delta:{np.round(np.nanmean(self.time_delta), 2)} (seconds) \n    nb_match_found:{int(self.valid.sum())}")
+        return (f"\n    variables: {self.values.keys()} \
+                \n    mean_dist:{np.round(np.nanmean(self.distance_km), 2)} (km)"
+                f"\n    mean_time_delta:{np.round(np.nanmean(self.time_delta), 2)} (seconds) \
+                \n    nb_match_found:{int(self.valid.sum())}")
 
     
     def _to_dataset(self, points: PointSet) -> xr.Dataset:

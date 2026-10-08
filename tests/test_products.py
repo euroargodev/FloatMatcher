@@ -96,17 +96,17 @@ def test_product_built_from_local_keeps_its_path():
     assert LUTProduct("local", "/data", None).path == "/data"
 
 
-# ---------- open : grid validation and regime ----------
+# ---------- open : grid validation ----------
 # grids come from conftest (grid_3d_ds / grid_2d_ds), opened through open_product
 
-def test_regime_3d(open_product, grid_3d_ds):
-    """A grid with a time coord is 3D."""
-    assert open_product(grid_3d_ds).regime == "3D"
+def test_3d_grid_keeps_its_time_axis(open_product, grid_3d_ds):
+    """A grid with a time coord is opened as it is."""
+    assert "time" in open_product(grid_3d_ds).src_dataset.coords
 
 
-def test_regime_2d(open_product, grid_2d_ds):
-    """A grid without a time coord is 2D."""
-    assert open_product(grid_2d_ds, LUTProduct).regime == "2D"
+def test_2d_grid_has_no_time_axis(open_product, grid_2d_ds):
+    """A grid without a time coord is opened as it is."""
+    assert "time" not in open_product(grid_2d_ds, LUTProduct).src_dataset.coords
 
 
 def test_src_dataset_keeps_the_grid(open_product, grid_3d_ds):
@@ -138,7 +138,7 @@ def test_no_data_variable_raises(open_product, grid_2d_ds):
 def test_shuffled_lon_is_accepted(open_product, grid_3d_ds):
     """ order does not matter: the KDTree works on a point cloud"""
     ds = grid_3d_ds.isel(lon=[2, 0, 1])            # [30,10,20]
-    assert open_product(ds).regime == "3D"
+    assert open_product(ds).src_dataset.sizes["lon"] == 3
 
 
 def test_duplicate_lon_raises(open_product, grid_3d_ds):
@@ -148,7 +148,14 @@ def test_duplicate_lon_raises(open_product, grid_3d_ds):
         open_product(ds)
 
 
+def test_duplicate_time_raises(open_product, grid_3d_ds):
+    """the same timestamp twice (overlapping files) would make the temporal lookup ambiguous"""
+    ds = grid_3d_ds.isel(time=[0, 0])
+    with pytest.raises(ValueError, match="duplicate timestamps"):
+        open_product(ds)
+
+
 def test_decreasing_time_is_accepted(open_product, grid_3d_ds):
     """ decreasing time is accepted """
     ds = grid_3d_ds.isel(time=slice(None, None, -1))
-    assert open_product(ds).regime == "3D"
+    assert open_product(ds).src_dataset.sizes["time"] == 2
