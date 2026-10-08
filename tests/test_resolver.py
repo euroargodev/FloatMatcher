@@ -21,7 +21,7 @@ def points_object():
         lon=[-45.0, -44.0, -43.0],
         lat=[32.0, 33.0, 34.0],
         time=np.array(["2015-01-01", "2015-01-02", "2015-01-03"], dtype="datetime64[ns]"),
-        origin_dim="N_POINTS",
+        points_dim="N_POINTS",
     )
 
 
@@ -40,14 +40,14 @@ def _pts(*timestamps):
                     time=np.array(timestamps, dtype="datetime64[ns]"))
 
 
-# ───────────── resolve_path (pure, no disk) ─────────────
+# ---------- resolve_path (pure, no disk) ----------
 
 def test_resolve_path():
     p = resolve_path("/data", PATTERN, np.datetime64("2015-01-01"))
     assert Path(p) == Path("/data/2015/01/era5_20150101.nc")
 
 
-# ───────────── ExplicitFiles ─────────────
+# ---------- ExplicitFiles ----------
 
 def test_explicit_single_path_becomes_list():
     assert ExplicitFiles("a.nc").files_for() == ["a.nc"]
@@ -81,7 +81,7 @@ def test_explicitfiles_mixes_files_and_directories(tmp_path):
     assert out == [str(loose), str(inner)]
 
 
-# ───────────── PathTemplate (fake tree via tmp_path) ─────────────
+# ---------- PathTemplate (fake tree via tmp_path) ----------
 # points_object has dates 2015-01-01 / 02 / 03.
 
 def test_pathtemplate_resolves_present_dates(tmp_path, points_object):
@@ -119,7 +119,7 @@ def test_same_day_points_give_one_file_and_no_warning(tmp_path):
     assert [Path(f).name for f in out] == ["era5_20150101.nc"]   # good file has beed found
 
 
-# ───────────── padding ─────────────
+# ---------- padding ----------
 
 def test_pad_pulls_the_neighbouring_files(tmp_path):
     """A point in the day may match in the next or previous file --> returned both"""

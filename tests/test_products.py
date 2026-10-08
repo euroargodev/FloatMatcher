@@ -2,11 +2,10 @@
 
 import numpy as np
 import numpy.testing as npt
-import xarray as xr
 import pytest
+import xarray as xr
 
-from floatmatcher.resolver import PathTemplate, ExplicitFiles
-from floatmatcher.products import (
+from floatmatcher.product import (
     to_standard,
     ERA5Product,
     LUTProduct,
@@ -25,7 +24,7 @@ def _era5_raw():
     )
 
 
-# ───────────── to_standard ─────────────
+# ---------- to_standard ----------
 
 def test_rename_maps_present_keys():
     out = to_standard(_era5_raw(), {"longitude": "lon", "latitude": "lat", "valid_time": "time"})
@@ -78,37 +77,85 @@ def test_rename_does_not_affect_input():
 
 
 
-# ───────────── Products ─────────────
+# ---------- Products ----------
 
-def test_era5_normalize():
-    out = ERA5Product().normalize(_era5_raw())
+def test_era5_normalize(tmp_path):
+    out = ERA5Product("local", tmp_path, None).normalize(_era5_raw())
     assert "lon" in out.coords and "lat" in out.coords and "time" in out.coords
 
 
-def test_lut_normalize():
+def test_lut_normalize(tmp_path):
     ds = xr.Dataset({"chl": (("lat", "lon"), np.zeros((2, 2)))},
                     coords={"lat": [0.0, 1.0], "lon": [-10.0, -9.0]})
-    out = LUTProduct().normalize(ds)
+    out = LUTProduct("local", tmp_path, None).normalize(ds)
     assert "lon" in out.coords and "lat" in out.coords
 
 
-def test_from_local_with_pattern_builds_a_pathtemplate():
-    product = ERA5Product.from_local(path="/data", pattern="{year}/x.nc")
-    assert isinstance(product.resolver, PathTemplate)
+def test_product_built_from_local_keeps_its_path():
+    assert ERA5Product("local", "/data", None).path == "/data"
+    assert LUTProduct("local", "/data", None).path == "/data"
 
 
-def test_from_local_without_pattern_builds_explicitfiles():
-    product = ERA5Product.from_local(path="/data/2018")
-    assert isinstance(product.resolver, ExplicitFiles)
+# ---------- open : grid validation ----------
+# grids come from conftest (grid_3d_ds / grid_2d_ds), opened through open_product
+
+def test_3d_grid_keeps_its_time_axis(open_product, grid_3d_ds):
+    """A grid with a time coord is opened as it is."""
+    assert "time" in open_product(grid_3d_ds).src_dataset.coords
 
 
-def test_from_local_returns_the_good_product():
-    assert isinstance(ERA5Product.from_local(path="/data"), ERA5Product)
-    assert isinstance(LUTProduct.from_local(path="/data"), LUTProduct)
+def test_2d_grid_has_no_time_axis(open_product, grid_2d_ds):
+    """A grid without a time coord is opened as it is."""
+    assert "time" not in open_product(grid_2d_ds, LUTProduct).src_dataset.coords
 
 
-def test_from_local_without_path_raise_error():
+def test_src_dataset_keeps_the_grid(open_product, grid_3d_ds):
+    """open keeps the whole dataset, the variable selection is done afterwards."""
+    product = open_product(grid_3d_ds)
+    xr.testing.assert_equal(product.src_dataset, grid_3d_ds)
+
+
+def test_missing_lat_3d_raises(open_product, grid_3d_ds):
+    """A grid without lat is rejected."""
     with pytest.raises(ValueError):
-        ERA5Product.from_local(pattern="{year}/x.nc")     # pattern sans path
+        open_product(grid_3d_ds.drop_vars("lat"))
+
+
+def test_missing_lat_2d_raises(open_product, grid_2d_ds):
+    """A grid without lat is rejected."""
     with pytest.raises(ValueError):
-        ERA5Product.from_local() 
+        open_product(grid_2d_ds.drop_vars("lat"), LUTProduct)
+
+
+def test_no_data_variable_raises(open_product, grid_2d_ds):
+    """A grid with coords but no data variable is rejected."""
+    with pytest.raises(ValueError):
+        open_product(grid_2d_ds.drop_vars("v"), LUTProduct)   # removes the only variable
+
+
+# ---------- open : shuffled and duplicated coordinates ----------
+
+def test_shuffled_lon_is_accepted(open_product, grid_3d_ds):
+    """ order does not matter: the KDTree works on a point cloud"""
+    ds = grid_3d_ds.isel(lon=[2, 0, 1])            # [30,10,20]
+    assert open_product(ds).src_dataset.sizes["lon"] == 3
+
+
+def test_duplicate_lon_raises(open_product, grid_3d_ds):
+    """two nodes at the same position would make the nearest lookup ambiguous"""
+    ds = grid_3d_ds.isel(lon=[0, 1, 1])
+    with pytest.raises(ValueError):
+        open_product(ds)
+
+
+def test_duplicate_time_raises(open_product, grid_3d_ds):
+    """the same timestamp twice (overlapping files) would make the temporal lookup ambiguous"""
+    ds = grid_3d_ds.isel(time=[0, 0])
+    with pytest.raises(ValueError, match="duplicate timestamps"):
+        open_product(ds)
+
+
+def test_decreasing_time_is_accepted(open_product, grid_3d_ds):
+    """ decreasing time is accepted """
+    ds = grid_3d_ds.isel(time=slice(None, None, -1))
+    assert open_product(ds).src_dataset.sizes["time"] == 2

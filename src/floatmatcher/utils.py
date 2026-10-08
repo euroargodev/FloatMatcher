@@ -5,6 +5,9 @@
 # in other files without whole class import
 
 import xarray as xr
+from .exceptions import ProfileFormatError
+from numpy.typing import NDArray
+from typing import Any
 
 
 def _select_variables(ds: xr.Dataset, variables: str | list[str] | None = None) -> xr.Dataset:
@@ -20,3 +23,32 @@ def _select_variables(ds: xr.Dataset, variables: str | list[str] | None = None) 
             f"Available: {list(ds.data_vars)}."
         )
     return ds[wanted]
+
+
+def find_key(ds: xr.Dataset, name: str) -> str:
+    if name in ds.coords or name in ds.variables:
+        return name
+    raise ProfileFormatError(f"No dataset name matches: {name}")
+
+
+def get(ds: xr.Dataset, name: str) -> xr.DataArray:
+    """Return the DataArray object"""
+    return ds[find_key(ds, name)]
+
+
+def extract(ds: xr.Dataset, name: str) -> NDArray[Any]:
+    """Return the .values (raw ndarray) — the common case."""
+    return get(ds, name).values
+
+
+def indented_repr(obj: object, indent: int = 4) -> str:
+    """Indented listing of obj attributes. Attributes that are floatmatcher
+    objects are listed one level deeper."""
+    pad = " " * indent
+    text = f"\n{pad}type: {type(obj).__name__}"
+    for name, value in obj.__dict__.items():
+        if type(value).__module__.startswith("floatmatcher"):
+            text += f"\n{pad}{name}:{indented_repr(value, indent + 4)}"
+        else:
+            text += f"\n{pad}{name}: {value}"
+    return text
