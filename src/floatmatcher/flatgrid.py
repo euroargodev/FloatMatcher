@@ -1,4 +1,4 @@
-# reference.py: the reference point cloud (flattened grid), internal to nearest
+# flatgrid.py: the reference point cloud (flattened grid), internal to nearest
 
 from dataclasses import dataclass, field
 
@@ -31,7 +31,7 @@ class FlatGrid:
         """Flatten a grid (2D or 3D) into a node cloud. Values stay lazy."""
         stacked = ds.stack(node=("lat", "lon"))
         time = ds["time"].values if "time" in ds.coords else None
-        return cls(lon=stacked["lon"].values, lat=stacked["lat"].values,
+        return cls(lon=stacked["lon"].values, lat=stacked["lat"].values, # trigger memory import xr dataset 
                    time=time, _stacked=stacked)
 
     def read_values(self, node_idx: ArrayLike,

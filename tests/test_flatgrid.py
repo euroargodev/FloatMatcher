@@ -46,9 +46,9 @@ def test_retreive_right_indexes(grid_3d_ds):
     flat_grid = FlatGrid.from_grid(grid_3d_ds)
 
     # node 3 read at t=0 -> 40 ; node 4 read at t=1 -> 111
-    flat_grid_v = flat_grid.read_values([3, 4], [0, 1])["v"]
+    flat_grid_sst = flat_grid.read_values([3, 4], [0, 1])["sst"]
     expected_values = [40.0, 111.0]
-    npt.assert_allclose(flat_grid_v, expected_values)
+    npt.assert_allclose(flat_grid_sst, expected_values)
 
 
 
