@@ -76,7 +76,7 @@ class FloatMatcher:
         if self.points is None:
             raise ValueError("match(): no points set, call set_points_from_arrays(...)")
         if self.product is None:
-            raise ValueError("match(): no product set, call set_local_product(...)")
+            raise ValueError("match(): no product set, call set_product(...)")
         if self.method is None:
             raise ValueError("match(): no method set, call set_method(...)")
 
