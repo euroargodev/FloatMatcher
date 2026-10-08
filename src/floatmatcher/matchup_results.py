@@ -16,6 +16,11 @@ class MatchupResult:
     time_delta:  NDArray[np.float64]
     valid:       NDArray[np.bool_]
 
+    def __repr__(self) -> str:
+        return (f"\n    values_keys: {len(self.values.keys())} \n    mean_dist:{np.nanmean(self.distance_km)} "
+                f"\n    mean_time_delta:{np.nanmean(self.time_delta)} \n    nb_match_found:{len(self.valid==True)}")
+
+    
     def _to_dataset(self, points: PointSet) -> xr.Dataset:
         """
         Reinject the colocalized values into the dataset

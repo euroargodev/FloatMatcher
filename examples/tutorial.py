@@ -53,7 +53,8 @@ my_fm.set_points_from_arrays(lon, lat, time)
     #   time
     
 my_fm.set_method(type="nearest", radius=300, 
-              time_gap=np.timedelta64(6, "h")
+              time_gap=np.timedelta64(3, "h"),
+              k_nearest=1
               )
 
 
@@ -77,6 +78,7 @@ my_fm.set_product(type="era5",
 my_fm.match() # or resultats = my_fm.match()
 
 # Compte rendu / visualisation etc.. 
+my_fm.result
 # my_fm.result_summary()
 # my_fm.result_viz(header=Npoints)
 

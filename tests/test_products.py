@@ -5,7 +5,6 @@ import numpy.testing as npt
 import xarray as xr
 import pytest
 
-from floatmatcher.resolver import PathTemplate, ExplicitFiles
 from floatmatcher.product import (
     to_standard,
     ERA5Product,
@@ -80,35 +79,18 @@ def test_rename_does_not_affect_input():
 
 # ───────────── Products ─────────────
 
-def test_era5_normalize():
-    out = ERA5Product().normalize(_era5_raw())
+def test_era5_normalize(tmp_path):
+    out = ERA5Product("local", tmp_path, None).normalize(_era5_raw())
     assert "lon" in out.coords and "lat" in out.coords and "time" in out.coords
 
 
-def test_lut_normalize():
+def test_lut_normalize(tmp_path):
     ds = xr.Dataset({"chl": (("lat", "lon"), np.zeros((2, 2)))},
                     coords={"lat": [0.0, 1.0], "lon": [-10.0, -9.0]})
-    out = LUTProduct().normalize(ds)
+    out = LUTProduct("local", tmp_path, None).normalize(ds)
     assert "lon" in out.coords and "lat" in out.coords
 
 
-def test_from_local_with_pattern_builds_a_pathtemplate():
-    product = ERA5Product.from_local(path="/data", pattern="{year}/x.nc")
-    assert isinstance(product.resolver, PathTemplate)
-
-
-def test_from_local_without_pattern_builds_explicitfiles():
-    product = ERA5Product.from_local(path="/data/2018")
-    assert isinstance(product.resolver, ExplicitFiles)
-
-
-def test_from_local_returns_the_good_product():
-    assert isinstance(ERA5Product.from_local(path="/data"), ERA5Product)
-    assert isinstance(LUTProduct.from_local(path="/data"), LUTProduct)
-
-
-def test_from_local_without_path_raise_error():
-    with pytest.raises(ValueError):
-        ERA5Product.from_local(pattern="{year}/x.nc")     # pattern sans path
-    with pytest.raises(ValueError):
-        ERA5Product.from_local() 
+def test_product_built_from_local_keeps_its_path():
+    assert ERA5Product("local", "/data", None).path == "/data"
+    assert LUTProduct("local", "/data", None).path == "/data"

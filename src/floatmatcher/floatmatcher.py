@@ -33,7 +33,8 @@ class FloatMatcher:
 
     def __repr__(self,) -> str:
         return (f"points:{self.points} \nproduct:{self.product} "
-                f"\nvariables:{self.variables} \nmethod: {self.method}")
+                f"\nvariables:{self.variables} \nmethod: {self.method}"
+                f"\nresults: {self.result}")
 
 
 
