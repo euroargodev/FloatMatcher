@@ -1,4 +1,6 @@
 # tests/test_pointset.py
+import warnings
+
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -201,13 +203,23 @@ def test_from_dataframe_carries_the_original_dataframe(df_datetime_index):
     assert ps.points_dim == "profile_date"
 
 
-def test_from_dataframe_without_time_column(df_datetime_index):
-    ps = PointSet.from_dataframe(df_datetime_index.drop(columns="date"))
+def test_from_dataframe_without_time_column_warns(df_datetime_index):
+    with pytest.warns(UserWarning, match="no time"):
+        ps = PointSet.from_dataframe(df_datetime_index.drop(columns="date"))
     assert ps.time is None
 
 
+def test_from_dataframe_missing_lon_or_lat_raises(df_datetime_index):
+    with pytest.raises(ProfileFormatError, match="latitude"):
+        PointSet.from_dataframe(df_datetime_index.drop(columns="latitude"))
+    with pytest.raises(ProfileFormatError, match="available"):
+        PointSet.from_dataframe(df_datetime_index, lon="lon")       # wrong name given
+
+
 def test_from_dataframe_time_none(df_datetime_index):
-    ps = PointSet.from_dataframe(df_datetime_index, time=None)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")                # time=None is explicit: no warning
+        ps = PointSet.from_dataframe(df_datetime_index.drop(columns="date"), time=None)
     assert ps.time is None
 
 
@@ -230,6 +242,24 @@ def test_from_xrdataset_time_juld_tolerance(juld_ds):
     npt.assert_array_equal(ps.time,
                            np.array(["2015-01-01", "2015-01-02", "2015-01-03"],
                                     dtype="datetime64[ns]"))
+
+
+def test_from_xrdataset_without_time_variable():
+    ds = xr.Dataset({
+        "LONGITUDE": (("obs",), np.array([-45.0, -44.0])),
+        "LATITUDE": (("obs",), np.array([32.0, 33.0])),
+    })
+    with pytest.warns(UserWarning, match="no time"):
+        ps = PointSet.from_xrdataset(ds)
+    assert ps.time is None
+    assert ps.points_dim == "obs"
+
+
+def test_from_xrdataset_time_none(argopy_like_ds):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")                # time=None is explicit: no warning
+        ps = PointSet.from_xrdataset(argopy_like_ds, time=None)
+    assert ps.time is None
 
 
 def test_from_xrdataset_user_can_override_names():
