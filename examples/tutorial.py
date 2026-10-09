@@ -73,10 +73,11 @@ my_fm.set_method(type="nearest", radius=12,
 
 # my_fm.status() # TODO
 
-result = my_fm.match() # or resultats = my_fm.match()
+# my_fm.match() # or resultats = my_fm.match()
 
 # Compte rendu / visualisation etc.. 
 my_fm.result
+
 # my_fm.result_summary()
 # my_fm.result_viz(header=Npoints)
 

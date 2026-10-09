@@ -19,7 +19,9 @@ def test_match_nearest_get_good_node(era5_files):
     )
     product = ERA5Product("local", era5_files, ["sst"])
 
-    res = FloatMatcher(points=points, product=product, method=NearestNeighbor()).match()
+    fm = FloatMatcher(points=points, product=product, method=NearestNeighbor())
+    fm.match()
+    res = fm.result
 
     assert res.valid.all()
     assert set(res.values) == {"sst"} # only sst has been taken into account
@@ -42,7 +44,8 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
     orch = FloatMatcher(points=points, product=product)
     orch.set_method("nearest")
 
-    res = orch.match()
+    orch.match()
+    res = orch.result
 
     assert res.valid.tolist() == [True, False, False]
     npt.assert_allclose(res.values["sst"][:1], [121.03], atol=1e-4)
@@ -52,12 +55,14 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
 
     # p1 was out on DISTANCE only
     orch.set_method("nearest", radius=100000)
-    loose_dist = orch.match()
+    orch.match()
+    loose_dist = orch.result
     assert loose_dist.valid.tolist() == [True, True, False]
 
     # p2 was out on TIME only
     orch.set_method("nearest", time_gap=np.timedelta64(300, "D"))
-    loose_time = orch.match()
+    orch.match()
+    loose_time = orch.result
     assert loose_time.valid.tolist() == [True, False, True]
 
 
@@ -68,7 +73,9 @@ def test_match_nearest_over_two_variable(era5_files):
     )
     product = ERA5Product("local", era5_files, ["sst", "t2m"])
 
-    res = FloatMatcher(points=points, product=product, method=NearestNeighbor()).match()
+    fm = FloatMatcher(points=points, product=product, method=NearestNeighbor())
+    fm.match()
+    res = fm.result
 
     assert set(res.values) == {"sst", "t2m"}
     npt.assert_allclose(res.values["sst"], [121.03], atol=1e-4)
@@ -136,11 +143,11 @@ def test_match_through_the_builder(era5_files):
     fm.set_product("era5", "local", era5_files, ["sst"])
     fm.set_method("nearest")
 
-    res = fm.match()
+    fm.match()
+    res = fm.result
 
     assert res.valid.tolist() == [True]
     npt.assert_allclose(res.values["sst"], [121.03], atol=1e-4)
-    assert fm.result is res
 
 
 # ---------- match : missing inputs ----------
@@ -164,3 +171,21 @@ def test_match_without_method_raises(era5_files):
     fm = FloatMatcher(points=_points(), product=ERA5Product("local", era5_files, ["sst"]))
     with pytest.raises(ValueError, match="no method set"):
         fm.match()
+
+
+# ---------- result property ----------
+
+def test_result_before_match_raises():
+    fm = FloatMatcher()
+
+    with pytest.raises(AttributeError, match="no result yet"):
+        fm.result
+    assert not hasattr(fm, "result")      # attribute-like: hasattr answers instead of raising
+
+
+def test_result_is_read_only():
+    """the result only comes from match()"""
+    fm = FloatMatcher()
+
+    with pytest.raises(AttributeError):
+        fm.result = None

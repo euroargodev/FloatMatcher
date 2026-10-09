@@ -38,7 +38,7 @@ class MatchupResult:
         if not isinstance(ds, xr.Dataset):
             raise TypeError(
                 f"Cannot reinject into a Dataset: the origin is a {type(ds).__name__}. "
-                "Use to_dataframe()."
+                "Use FloatMatcher.to_dataframe()."
             )
 
         out = ds.copy()
@@ -61,7 +61,7 @@ class MatchupResult:
         if not isinstance(df, pd.DataFrame):
             raise TypeError(
                 f"Cannot reinject into a DataFrame: the origin is a {type(df).__name__}. "
-                "Use to_dataset()."
+                "Use FloatMatcher.to_dataset()."
             )
 
         out = df.copy()
