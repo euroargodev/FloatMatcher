@@ -17,6 +17,13 @@ class FloatMatcher:
     Fill it with the ``set_*`` methods (points, product, method), then call ``match()``
     and read the result with ``result`` or ``reinject()``.
 
+    Parameters
+    ----------
+    points : PointSet, optional
+    product : Product, optional
+    method : Method, optional
+        Objects already built. Prefer the ``set_*`` methods.
+
     Attributes
     ----------
     points : PointSet or None
@@ -41,13 +48,11 @@ class FloatMatcher:
     def __init__(self, 
                  points: PointSet | None = None, 
                  product: Product | None = None,
-                 variables: str | list[str] | None = None,
                  method: Method | None = None 
                  ) -> None:
         
         self.points = points
         self.product = product
-        self.variables = variables
         self.method = method
         self._result: MatchupResult | None = None
 
@@ -55,7 +60,7 @@ class FloatMatcher:
 
     def __repr__(self,) -> str:
         return (f"points:{self.points} \nproduct:{self.product} "
-                f"\nvariables:{self.variables} \nmethod: {self.method}"
+                f"\nmethod: {self.method}"
                 f"\nresults: {self._result}")
 
 
