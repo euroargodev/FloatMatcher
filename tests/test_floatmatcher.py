@@ -3,12 +3,28 @@
 
 import numpy as np
 import numpy.testing as npt
+import pandas as pd
 import pytest
+import xarray as xr
 
 from floatmatcher.methods import NearestNeighbor
 from floatmatcher.floatmatcher import FloatMatcher
 from floatmatcher.pointset import PointSet
 from floatmatcher.product import ERA5Product, LUTProduct
+
+
+# times of the two points used with the grid_3d_ds file (t0 + 2 h, t1 - 1 h)
+TIMES = np.array(["2015-01-01T02", "2015-01-01T23"], dtype="datetime64[ns]")
+
+
+def _matched(grid_3d_ds, grid_file, *data, **names):
+    """FloatMatcher with the given points, matched on the grid_3d_ds file."""
+    fm = FloatMatcher()
+    fm.set_points(*data, **names)
+    fm.set_product("era5", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_method("nearest")
+    fm.match()
+    return fm
 
 
 def test_match_nearest_get_good_node(era5_files):
@@ -84,9 +100,9 @@ def test_match_nearest_over_two_variable(era5_files):
 
 # ---------- builder : set_points / set_product / set_method ----------
 
-def test_set_points_from_arrays():
+def test_set_points():
     fm = FloatMatcher()
-    fm.set_points_from_arrays([11.1, 9.05], [30.05, 39.95],
+    fm.set_points([11.1, 9.05], [30.05, 39.95],
                               np.array(["2015-06-01T02", "2015-06-02T00"], dtype="datetime64[ns]"))
 
     assert isinstance(fm.points, PointSet)
@@ -135,11 +151,81 @@ def test_set_method_unknown_param_raises():
         FloatMatcher().set_method("nearest", dummy_param=50)
 
 
+# ---------- builder : set_points input types ----------
+
+def test_set_points_without_time():
+    fm = FloatMatcher()
+    fm.set_points([11.1, 9.05], [30.05, 39.95])
+
+    assert fm.points.time is None
+
+
+def test_set_points_from_dataset():
+    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
+                     "LATITUDE": ("N_PROF", [1.05, 1.95]),
+                     "TIME": ("N_PROF", TIMES)})
+    fm = FloatMatcher()
+    fm.set_points(ds)
+
+    npt.assert_allclose(fm.points.lon, [20.1, 10.05])
+    assert fm.points.original_data is ds
+    assert fm.points.points_dim == "N_PROF"
+
+
+def test_set_points_from_dataset_with_names():
+    ds = xr.Dataset({"x": ("obs", [20.1, 10.05]), "y": ("obs", [1.05, 1.95]), "t": ("obs", TIMES)})
+    fm = FloatMatcher()
+    fm.set_points(ds, lon="x", lat="y", time="t")
+
+    npt.assert_allclose(fm.points.lat, [1.05, 1.95])
+    assert fm.points.points_dim == "obs"
+
+
+def test_set_points_from_dataframe():
+    df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
+    fm = FloatMatcher()
+    fm.set_points(df)
+
+    npt.assert_allclose(fm.points.lon, [20.1, 10.05])
+    assert fm.points.original_data is df
+
+
+def test_set_points_from_dataframe_with_names():
+    df = pd.DataFrame({"LON": [20.1, 10.05], "LAT": [1.05, 1.95], "DATE": TIMES})
+    fm = FloatMatcher()
+    fm.set_points(df, lon="LON", lat="LAT", time="DATE")
+
+    npt.assert_allclose(fm.points.lat, [1.05, 1.95])
+    assert len(fm.points.time) == 2
+
+
+def test_set_points_from_a_pointset():
+    points = PointSet.from_arrays([20.1], [1.05])
+    fm = FloatMatcher()
+    fm.set_points(points)
+
+    assert fm.points is points
+
+
+def test_set_points_unsupported_input_raises():
+    with pytest.raises(TypeError):
+        FloatMatcher().set_points("not points")
+    with pytest.raises(TypeError):
+        FloatMatcher().set_points()
+
+
+def test_set_points_names_only_for_dataframe_or_dataset():
+    with pytest.raises(TypeError):
+        FloatMatcher().set_points([20.1], [1.05], lon="x")
+    with pytest.raises(TypeError):
+        FloatMatcher().set_points(PointSet.from_arrays([20.1], [1.05]), lon="x")
+
+
 # ---------- builder : match through the set_* ----------
 
 def test_match_through_the_builder(era5_files):
     fm = FloatMatcher()
-    fm.set_points_from_arrays([11.1], [30.05], np.array(["2015-06-01T02"], dtype="datetime64[ns]"))
+    fm.set_points([11.1], [30.05], np.array(["2015-06-01T02"], dtype="datetime64[ns]"))
     fm.set_product("era5", "local", era5_files, ["sst"])
     fm.set_method("nearest")
 
@@ -148,6 +234,111 @@ def test_match_through_the_builder(era5_files):
 
     assert res.valid.tolist() == [True]
     npt.assert_allclose(res.values["sst"], [121.03], atol=1e-4)
+
+
+# ---------- builder : reinject through the set_points input ----------
+# grid_3d_ds, sst = 100*lat + lon + time_index: p0 -> node (1, 20) at t0 = 120, p1 -> node (2, 10) at t1 = 211
+
+def test_to_dataset_through_the_builder(grid_3d_ds, grid_file):
+    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
+                     "LATITUDE": ("N_PROF", [1.05, 1.95]),
+                     "TIME": ("N_PROF", TIMES)},
+                    coords={"N_PROF": [10, 11]})
+    fm = FloatMatcher()
+    fm.set_points(ds)
+    fm.set_product("era5", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_method("nearest")
+    fm.match()
+
+    out = fm.to_dataset()
+
+    assert out["sst_coloc"].dims == ("N_PROF",)
+    npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
+    assert "sst_coloc" not in ds.data_vars            # the source is not modified
+
+
+def test_to_dataframe_through_the_builder(grid_3d_ds, grid_file):
+    df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
+    fm = FloatMatcher()
+    fm.set_points(df)
+    fm.set_product("era5", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_method("nearest")
+    fm.match()
+
+    out = fm.to_dataframe()
+
+    npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
+    assert "sst_coloc" not in df.columns              # the source is not modified
+
+
+def test_reinject_before_match_raises():
+    fm = FloatMatcher()
+    fm.set_points([20.1], [1.05])
+
+    with pytest.raises(ValueError, match="no result yet"):
+        fm.to_dataset()
+    with pytest.raises(ValueError, match="no result yet"):
+        fm.to_dataframe()
+
+
+def test_to_dataframe_refuses_points_from_a_dataset(grid_3d_ds, grid_file):
+    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
+                     "LATITUDE": ("N_PROF", [1.05, 1.95]),
+                     "TIME": ("N_PROF", TIMES)})
+    fm = _matched(grid_3d_ds, grid_file, ds)
+
+    with pytest.raises(TypeError, match="to_dataset"):
+        fm.to_dataframe()
+
+
+def test_to_dataset_refuses_points_from_a_dataframe(grid_3d_ds, grid_file):
+    df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
+    fm = _matched(grid_3d_ds, grid_file, df)
+
+    with pytest.raises(TypeError, match="to_dataframe"):
+        fm.to_dataset()
+
+
+def test_reinject_refuses_points_from_arrays(grid_3d_ds, grid_file):
+    """arrays carry no origin to reinject into"""
+    fm = _matched(grid_3d_ds, grid_file, [20.1, 10.05], [1.05, 1.95], TIMES)
+
+    with pytest.raises(ValueError):
+        fm.to_dataset()
+    with pytest.raises(ValueError):
+        fm.to_dataframe()
+
+
+def test_reinject_gives_a_dataset_for_points_from_a_dataset(grid_3d_ds, grid_file):
+    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
+                     "LATITUDE": ("N_PROF", [1.05, 1.95]),
+                     "TIME": ("N_PROF", TIMES)})
+    fm = _matched(grid_3d_ds, grid_file, ds)
+
+    out = fm.reinject()
+
+    assert isinstance(out, xr.Dataset)
+    npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
+
+
+def test_reinject_gives_a_dataframe_for_points_from_a_dataframe(grid_3d_ds, grid_file):
+    df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
+    fm = _matched(grid_3d_ds, grid_file, df)
+
+    out = fm.reinject()
+
+    assert isinstance(out, pd.DataFrame)
+    npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
+
+
+# ---------- repr ----------
+
+def test_repr_before_and_after_match(grid_3d_ds, grid_file):
+    fm = FloatMatcher()
+    assert "results: None" in repr(fm)                 # printing an empty FloatMatcher works
+
+    fm = _matched(grid_3d_ds, grid_file, [20.1], [1.05], TIMES[:1])
+    assert "nb_match_found" in repr(fm)
 
 
 # ---------- match : missing inputs ----------

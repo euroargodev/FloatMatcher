@@ -2,10 +2,8 @@
 
 from typing import Any
 
-import numpy as np 
 import pandas as pd
 import xarray as xr
-from numpy.typing import NDArray
 
 from .methods import Method, available_methods
 # from .interpolation import Interpolation
@@ -14,35 +12,32 @@ from .matchup_results import MatchupResult
 from .product import Product, available_products
 
 class FloatMatcher:
-    """A `FloatMatcher` starts empty and is filled with the ``set_*`` methods:
-    the points to match, the product to match them with, and the matching
-    method. The function ``match()`` then runs the matchup.
-    Results are stored in result object
-    
+    """Match positions with a gridded product.
+
+    Fill it with the ``set_*`` methods (points, product, method), then call ``match()``
+    and read the result with ``result`` or ``reinject()``.
 
     Attributes
     ----------
     points : PointSet or None
         Positions (lon, lat, time) to match.
     product : Product or None
-        Gridded product the points are matched with.
+        Product the points are matched with.
     method : Method or None
         Matching method and its parameters.
-    result : MatchupResult or None
-        Result of the last ``match()`` call.
+    result : MatchupResult
+        Result of the last ``match()``. Raises if there is none yet.
 
     Examples
     --------
     >>> fm = FloatMatcher()
-    >>> fm.set_points_from_arrays(lon, lat, time)
+    >>> fm.set_points(lon, lat, time)
     >>> fm.set_product("era5", "local", "/data/era5", ["sst"])
     >>> fm.set_method("nearest", radius=50, time_gap=np.timedelta64(3, "h"))
-    >>> result = fm.match()
+    >>> fm.match()
+    >>> fm.result
     """
-    
-    
-    
-    
+
     def __init__(self, 
                  points: PointSet | None = None, 
                  product: Product | None = None,
@@ -65,11 +60,36 @@ class FloatMatcher:
 
 
 
-    def set_points_from_arrays(self, 
-                               lon: NDArray[np.float64],   
-                               lat: NDArray[np.float64],
-                               time: NDArray[np.datetime64] | None = None) -> None:
-        self.points = PointSet(lon, lat, time)
+    def set_points(self, *data: Any, **names: str) -> None:
+        """Set the points to match. The loader is chosen from the type of the input.
+
+        Parameters
+        ----------
+        *data
+            ``lon, lat[, time]`` arrays, a :class:`pandas.DataFrame`, a
+            :class:`xarray.Dataset` or a :class:`PointSet`.
+        **names : str
+            ``lon``, ``lat``, ``time``: names of the columns or variables holding them.
+            Only for a DataFrame or a Dataset.
+
+        Raises
+        ------
+        TypeError
+            Unsupported input, or names given with arrays or a PointSet.
+        """
+        if len(data) == 1 and not names and isinstance(data[0], PointSet):
+            self.points = data[0]
+        elif len(data) == 1 and isinstance(data[0], xr.Dataset):
+            self.points = PointSet.from_xrdataset(data[0], **names)
+        elif len(data) == 1 and isinstance(data[0], (pd.DataFrame, pd.Series)):
+            self.points = PointSet.from_dataframe(data[0], **names)
+        elif len(data) in (2, 3) and not names:
+            self.points = PointSet.from_arrays(*data)
+        else:
+            raise TypeError(
+                "set_points() expects lon, lat[, time] arrays, a DataFrame, a Dataset or a PointSet "
+                "(lon=, lat=, time= are column or variable names, only for a DataFrame or a Dataset)"
+            )
 
 
 
@@ -80,7 +100,29 @@ class FloatMatcher:
                     selected_variables: list[str] | None,
                     **src_params: Any
                     ) -> None:
+        """Set the product to match with.
 
+        Parameters
+        ----------
+        type : str
+            ``"era5"`` or ``"lut"``.
+        source : str
+            Where the files come from. Only ``"local"`` for now.
+        path : str or list of str
+            Directory or files of the product. With a ``pattern``, the root of the tree.
+        selected_variables : list of str or None
+            Variables to keep. None keeps all.
+        **src_params
+            Parameters of the source. ``"local"``: ``pattern``, a path template like
+            ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``.
+
+        Raises
+        ------
+        ValueError
+            Unknown product, or source not available for it.
+        TypeError
+            Unknown source parameter.
+        """
         if type not in available_products:
             raise ValueError(f"unknown product {type!r}, available: {list(available_products)}")
         
@@ -93,6 +135,23 @@ class FloatMatcher:
 
         
     def set_method(self, type: str, **params: Any) -> None:
+        """Set the matching method.
+
+        Parameters
+        ----------
+        type : str
+            ``"nearest"``.
+        **params
+            Parameters of the method. ``"nearest"``: ``radius`` (km),
+            ``time_gap`` (``numpy.timedelta64``), ``k_nearest``.
+
+        Raises
+        ------
+        ValueError
+            Unknown method.
+        TypeError
+            Unknown method parameter.
+        """
         if type not in available_methods:
             raise ValueError(f"unknown method {type!r}, available: {list(available_methods)}")
         self.method = available_methods[type](**params)
@@ -100,14 +159,28 @@ class FloatMatcher:
 
     @property
     def result(self) -> MatchupResult:
+        """Result of the last ``match()``.
+
+        Raises
+        ------
+        AttributeError
+            No result yet.
+        """
         if self._result is None :
             raise AttributeError("no result yet, call match()")
         return self._result
 
 
     def match(self) -> None:
+        """Run the matchup. Read the result with ``result``.
+
+        Raises
+        ------
+        ValueError
+            Points, product or method not set.
+        """
         if self.points is None:
-            raise ValueError("match(): no points set, call set_points_from_arrays(...)")
+            raise ValueError("match(): no points set, call set_points(...)")
         if self.product is None:
             raise ValueError("match(): no product set, call set_product(...)")
         if self.method is None:
@@ -161,3 +234,30 @@ class FloatMatcher:
             raise ValueError("no result yet or points are None, try call match()")
             
         return self._result._to_dataframe(self.points)
+
+    def reinject(self) -> xr.Dataset | pd.DataFrame:
+        """Add the matched values to the object the points come from.
+
+        Same type as the input of ``set_points``: a Dataset gives a Dataset, a DataFrame
+        gives a DataFrame. Values are added as ``<name>_coloc``. The source is not modified.
+
+        Returns
+        -------
+        xarray.Dataset or pandas.DataFrame
+
+        Raises
+        ------
+        ValueError
+            No result yet, or points not loaded from a Dataset or a DataFrame.
+        """
+        if self._result is None or self.points is None:
+            raise ValueError("no result yet or points are None, try call match()")
+        origin = self.points.original_data
+        if isinstance(origin, xr.Dataset):
+            return self.to_dataset()
+        if isinstance(origin, pd.DataFrame):
+            return self.to_dataframe()
+        raise ValueError(
+            "Cannot reinject: these points come from arrays, there is no Dataset or DataFrame "
+            "to add the values to. Use result."
+        )
