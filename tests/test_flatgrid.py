@@ -5,8 +5,11 @@
 
 import numpy as np
 import numpy.testing as npt
+import pytest
 
 from floatmatcher.flatgrid import FlatGrid
+from floatmatcher.pointset import PointSet
+from helpers import make_grid
 
 # Reminder 
 # 3D (grid_3d_ds): 
@@ -70,3 +73,69 @@ def test_xyz_is_cached(grid_2d_ds):
     test if @property works well"""
     flat_grid = FlatGrid.from_grid(grid_2d_ds)
     assert flat_grid.xyz is flat_grid.xyz
+
+
+
+# ---------- nearest lookups ----------
+# 2x2 grid, nodes (lat, lon): 0 = (0, 0), 1 = (0, 10), 2 = (10, 0), 3 = (10, 10)
+
+GRID_TIMES = np.array(["2015-01-01", "2015-01-02", "2015-01-03",
+                       "2015-01-04", "2015-01-05"], dtype="datetime64[ns]")
+
+
+@pytest.fixture
+def flat_2d():
+    return FlatGrid.from_grid(make_grid(lat=[0.0, 10.0], lon=[0.0, 10.0]))
+
+
+@pytest.fixture
+def flat_3d():
+    return FlatGrid.from_grid(make_grid(lat=[0.0, 10.0], lon=[0.0, 10.0], time=GRID_TIMES))
+
+
+@pytest.fixture
+def points_on_nodes():
+    """Three points sitting exactly on grid nodes 2, 0 and 3."""
+    return PointSet(
+        lon=[0.0, 0.0, 10.0],
+        lat=[10.0, 0.0, 10.0],
+        time=np.array(["2015-01-03T03:00", "2015-01-01T00:00", "2015-01-04T23:00"],
+                      dtype="datetime64[ns]"),
+    )
+
+
+def test_spatial_nearest_finds_the_node_under_each_point(flat_2d, points_on_nodes):
+    dist, idx = flat_2d.spatial_nearest(points_on_nodes)
+    npt.assert_array_equal(idx, [2, 0, 3])
+    npt.assert_allclose(dist, 0.0, atol=1e-9)
+
+
+def test_spatial_nearest_distance_is_in_kilometres(flat_2d):
+    points = PointSet(lon=[1.0], lat=[0.0],
+                      time=np.array(["2015-01-01"], dtype="datetime64[ns]"))
+    dist, idx = flat_2d.spatial_nearest(points)
+    expected = np.linalg.norm(points.xyz[0] - flat_2d.xyz[0])
+    npt.assert_array_equal(idx, [0])
+    npt.assert_allclose(dist, [expected])
+
+
+def test_spatial_nearest_k_returns_sorted_neighbours(flat_2d, points_on_nodes):
+    dist, idx = flat_2d.spatial_nearest(points_on_nodes, k=3)
+    assert dist.shape == (3, 3)
+    assert idx.shape == (3, 3)
+    npt.assert_array_equal(idx[:, 0], [2, 0, 3])
+    assert (np.diff(dist, axis=1) >= 0).all()
+
+
+def test_temporal_nearest_delta_is_in_seconds(flat_3d, points_on_nodes):
+    time_delta, idx = flat_3d.temporal_nearest(points_on_nodes)
+    npt.assert_array_equal(idx, [2, 0, 4])
+    npt.assert_allclose(time_delta, [10800.0, 0.0, 3600.0])
+
+
+def test_temporal_nearest_k_returns_sorted_neighbours(flat_3d, points_on_nodes):
+    time_delta, idx = flat_3d.temporal_nearest(points_on_nodes, k=2)
+    assert idx.shape == (3, 2)
+    npt.assert_array_equal(idx[:, 0], [2, 0, 4])
+    npt.assert_allclose(time_delta[:, 0], [10800.0, 0.0, 3600.0])
+    assert (np.diff(time_delta, axis=1) >= 0).all()

@@ -12,7 +12,6 @@ import xarray as xr
 
 from .flatgrid import FlatGrid
 from .matchup_results import MatchupResult
-from .neighbors import spatial_nearest, temporal_nearest
 from .pointset import PointSet
 from .utils import indented_repr
 
@@ -48,19 +47,14 @@ class NearestNeighbor(Method):
         # starting by lonlat2xy on spatial grid
         # return FlatGrid object, flatten grid
         flat_grid = FlatGrid.from_grid(dataset)
-        # convert into carthesian coordinates
-        grid_stacked = flat_grid.xyz
 
         # starting Nearest method : apply kdtree on spatial
-        dist_km, spatial_idx = spatial_nearest(grid_stacked, points, k=self.k_nearest)
+        dist_km, spatial_idx = flat_grid.spatial_nearest(points, k=self.k_nearest)
         valid_spatial = dist_km <= self.radius
 
         idx_count = len(points.lon)
         if flat_grid.time is not None:
-            time_delta, temporal_idx = temporal_nearest(flat_grid.time,
-                                                        points,
-                                                        k=self.k_nearest
-                                                        )
+            time_delta, temporal_idx = flat_grid.temporal_nearest(points, k=self.k_nearest)
             valid = valid_spatial & (time_delta <= self.time_gap_seconds)
         else:
             time_delta = np.full(idx_count, np.nan)

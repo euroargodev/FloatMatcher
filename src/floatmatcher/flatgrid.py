@@ -1,12 +1,16 @@
-# flatgrid.py: the reference point cloud (flattened grid), internal to nearest
+# flatgrid.py: the reference point cloud (flattened grid), internal to nearest,
+# with the spatial and temporal nearest lookups (KDTree) on it
 
 from dataclasses import dataclass, field
 
 import numpy as np
 import xarray as xr
 from numpy.typing import ArrayLike, NDArray
+from scipy.spatial import cKDTree
 
+from .constants import REF_TIME, TIME_UNIT
 from .geo import lonlat_to_xyz
+from .pointset import PointSet
 
 
 @dataclass
@@ -47,3 +51,64 @@ class FlatGrid:
                 sel = da_var.isel(node=node, time=xr.DataArray(np.asarray(tsel_idx), dims="pts"))
             out[str(var)] = sel.values
         return out
+
+    def spatial_nearest(self, points: PointSet,
+                        k: int = 1) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Nearest nodes of the points in space
+
+        Parameters
+        ----------
+        points: :class:`PointSet`
+        k: int, default=1
+            Number of neighbours.
+
+        Returns
+        -------
+        tuple of arrays
+            Distances (km) and indices of the nodes.
+        """
+        dist: NDArray[np.float64]
+        idx: NDArray[np.int64]
+        dist, idx = cKDTree(self.xyz).query(points.xyz, k=k)
+        return dist, idx
+
+    def temporal_nearest(self, points: PointSet,
+                         k: int = 1) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Nearest time steps of the points
+
+        Parameters
+        ----------
+        points: :class:`PointSet`
+        k: int, default=1
+            Number of neighbours.
+
+        Returns
+        -------
+        tuple of arrays
+            Time gaps (seconds) and indices of the time steps.
+
+        Raises
+        ------
+        ValueError
+            If the grid or the points have no time.
+        """
+        time_delta: NDArray[np.float64]
+        idx: NDArray[np.int64]
+        if self.time is None:
+            raise ValueError("the grid has no time axis")
+        if points.time is None:
+            raise ValueError("points have no time: they cannot be matched on a grid with a time axis")
+        grid_tree = cKDTree(_to_seconds(self.time)[:, None])
+        time_delta, idx = grid_tree.query(_to_seconds(points.time)[:, None], k=k)
+        return time_delta, idx
+
+
+def _to_seconds(times: NDArray[np.datetime64]) -> NDArray[np.float64]:
+    """Convert datetime64 to floating-point seconds since a fixed epoch.
+
+    Working in a common float unit lets the 1D KDTree measure time distance,
+    and returning *seconds* makes the time_gap_seconds constraint directly comparable.
+    """
+    delta = np.asarray(times, dtype=f"datetime64[{TIME_UNIT}]") - REF_TIME
+    seconds: NDArray[np.float64] = delta / np.timedelta64(1, "s")
+    return seconds
