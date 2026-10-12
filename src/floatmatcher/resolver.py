@@ -20,7 +20,7 @@ from .pointset import PointSet
 #  Path resolution (pure helper, no disk access)
 # ─────────────────────────────────────────────────────────────
 
-def resolve_path(root: str | Path, pattern: str, date: Any) -> str:
+def _resolve_path(root: str | Path, pattern: str, date: Any) -> str:
     """Substitute the components of a date into a path template, under a root
 
     Pure helper, no disk access. The fields are ``{year}``, ``{month}``, ``{day}``, ``{hour}``
@@ -125,7 +125,8 @@ class PathTemplate(FileResolver):
     root: str or pathlib.Path
         Root of the tree.
     pattern: str
-        Path template under ``root``, see :func:`resolve_path`.
+        Path template under ``root``, with the fields ``{year}``, ``{month}``, ``{day}``,
+        ``{hour}`` and ``{minute}``.
     granularity: {'Y', 'M', 'D', 'h', 'm', 's'}, default='D'
         Time step of the files, one file per step.
     pad: int, default=1
@@ -184,14 +185,14 @@ class PathTemplate(FileResolver):
 
         resolved = []
         for d in wanted:
-            resolved.append(resolve_path(self.root, self.pattern, d))
+            resolved.append(_resolve_path(self.root, self.pattern, d))
 
         # Only the dates of the requested points are worth warning about:
         # padded neighbors are absent at the edges of any archive and does
         # not raise warnings.
         asked_for = set()
         for d in dates:
-            asked_for.add(resolve_path(self.root, self.pattern, d))
+            asked_for.add(_resolve_path(self.root, self.pattern, d))
 
         existing = []
         missing = []

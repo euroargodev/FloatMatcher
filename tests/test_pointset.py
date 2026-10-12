@@ -9,7 +9,7 @@ import xarray as xr
 
 from floatmatcher.exceptions import ProfileFormatError
 from floatmatcher.pointset import PointSet
-from floatmatcher.utils import extract, find_key, get
+from floatmatcher.utils import _extract, _find_key, _get
 
 from helpers import daily_timestamps
 
@@ -127,23 +127,23 @@ def df_datetime_index():
     )
 
 
-# ---------- Helpers: find_key / get / extract ----------
+# ---------- Helpers: _find_key / _get / _extract ----------
 def test_find_key_matches_variable_or_coord(argopy_like_ds):
     # variable match
-    assert find_key(argopy_like_ds, "LONGITUDE") == "LONGITUDE"
+    assert _find_key(argopy_like_ds, "LONGITUDE") == "LONGITUDE"
     # coordinate match (N_PROF is a coord here)
-    assert find_key(argopy_like_ds, "N_PROF") == "N_PROF"
+    assert _find_key(argopy_like_ds, "N_PROF") == "N_PROF"
 
 
 def test_find_key_raises_when_no_candidate_matches(argopy_like_ds):
     with pytest.raises(ProfileFormatError):
-        find_key(argopy_like_ds, "DUMMY")
+        _find_key(argopy_like_ds, "DUMMY")
 
 
 def test_get_returns_dataarray_extract_returns_ndarray(argopy_like_ds):
-    da = get(argopy_like_ds, "LONGITUDE")
+    da = _get(argopy_like_ds, "LONGITUDE")
     assert isinstance(da, xr.DataArray)      # object, has .dims
-    arr = extract(argopy_like_ds, "LONGITUDE")
+    arr = _extract(argopy_like_ds, "LONGITUDE")
     assert isinstance(arr, np.ndarray)       # raw values
 
 

@@ -12,7 +12,7 @@ import xarray as xr
 from .flatgrid import FlatGrid
 from .matchup_results import MatchupResult
 from .pointset import PointSet
-from .utils import indented_repr
+from .utils import _indented_repr
 
 
 class Method(ABC):
@@ -24,7 +24,7 @@ class Method(ABC):
     """
 
     def __repr__(self) -> str:
-        return indented_repr(self)
+        return _indented_repr(self)
 
     @abstractmethod
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:

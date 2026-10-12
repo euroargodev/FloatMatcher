@@ -42,7 +42,7 @@ def _select_variables(ds: xr.Dataset, variables: str | list[str] | None = None) 
     return ds[wanted]
 
 
-def find_key(ds: xr.Dataset, name: str) -> str:
+def _find_key(ds: xr.Dataset, name: str) -> str:
     """Name of a coordinate or variable, checked to exist in the dataset
 
     Parameters
@@ -65,7 +65,7 @@ def find_key(ds: xr.Dataset, name: str) -> str:
     raise ProfileFormatError(f"No dataset name matches: {name}")
 
 
-def get(ds: xr.Dataset, name: str) -> xr.DataArray:
+def _get(ds: xr.Dataset, name: str) -> xr.DataArray:
     """DataArray of a coordinate or variable
 
     Parameters
@@ -82,10 +82,10 @@ def get(ds: xr.Dataset, name: str) -> xr.DataArray:
     ProfileFormatError
         If no coordinate or variable has this name.
     """
-    return ds[find_key(ds, name)]
+    return ds[_find_key(ds, name)]
 
 
-def extract(ds: xr.Dataset, name: str) -> NDArray[Any]:
+def _extract(ds: xr.Dataset, name: str) -> NDArray[Any]:
     """Values of a coordinate or variable, as a NumPy array
 
     Parameters
@@ -102,10 +102,10 @@ def extract(ds: xr.Dataset, name: str) -> NDArray[Any]:
     ProfileFormatError
         If no coordinate or variable has this name.
     """
-    return get(ds, name).values
+    return _get(ds, name).values
 
 
-def indented_repr(obj: object, indent: int = 4) -> str:
+def _indented_repr(obj: object, indent: int = 4) -> str:
     """Indented listing of the attributes of an object
 
     Attributes that are floatmatcher objects are listed one level deeper. Used by the
@@ -125,7 +125,7 @@ def indented_repr(obj: object, indent: int = 4) -> str:
     text = f"\n{pad}type: {type(obj).__name__}"
     for name, value in obj.__dict__.items():
         if type(value).__module__.startswith("floatmatcher"):
-            text += f"\n{pad}{name}:{indented_repr(value, indent + 4)}"
+            text += f"\n{pad}{name}:{_indented_repr(value, indent + 4)}"
         else:
             text += f"\n{pad}{name}: {value}"
     return text

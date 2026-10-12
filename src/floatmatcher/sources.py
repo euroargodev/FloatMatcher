@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
-from .utils import indented_repr
+from .utils import _indented_repr
 
 
 class Source(ABC):
@@ -27,7 +27,7 @@ class Source(ABC):
 
 
     def __repr__(self) -> str:
-        return indented_repr(self)
+        return _indented_repr(self)
 
     @abstractmethod
     def resolve(self, points: PointSet) -> list[str]:

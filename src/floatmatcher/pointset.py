@@ -11,7 +11,7 @@ from numpy.typing import ArrayLike, NDArray
 from .exceptions import ProfileFormatError
 from .geo import lonlat_to_xyz
 from .constants import TIME_UNIT
-from .utils import extract, get
+from .utils import _extract, _get
 
 
 @dataclass(repr=False)
@@ -59,9 +59,9 @@ class PointSet:
         self.lat = np.asarray(self.lat, dtype=float)
         if self.time is not None:
             self.time = np.asarray(self.time, dtype=f"datetime64[{TIME_UNIT}]")
-        self.check_lengths()
+        self._check_lengths()
 
-    def check_lengths(self) -> None:
+    def _check_lengths(self) -> None:
         """Raise ValueError if lon, lat and time (when set) differ in length"""
         if self.time is not None:
             lengths = [len(self.lon), len(self.lat), len(self.time)]
@@ -196,17 +196,17 @@ class PointSet:
             If neither the time variable nor ``"JULD"`` exists.
         """
         # The point-dimension name is DISCOVERED (da_lon.dims[0]), never assumed.
-        da_lon = get(ds, lon)
+        da_lon = _get(ds, lon)
         point_dim = da_lon.dims[0]          # DISCOVERED, never assumed
 
         # 2. extract the three arrays as ndarrays
         lon_arr  = da_lon.values
-        lat_arr  = extract(ds, lat)
+        lat_arr  = _extract(ds, lat)
         time_arr = None
         if time is not None:
             for name in [time, "JULD"]:
                 if name in ds.coords or name in ds.variables:
-                    time_arr = extract(ds, name)
+                    time_arr = _extract(ds, name)
                     break
             if time_arr is None:
                 warnings.warn(f"No variable named {time!r} or 'JULD': the points have no time. "

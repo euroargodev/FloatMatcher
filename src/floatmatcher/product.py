@@ -7,7 +7,7 @@ from dask.utils import SerializableLock
 from pathlib import Path
 from .sources import available_sources
 
-from .utils import indented_repr, _select_variables
+from .utils import _indented_repr, _select_variables
 from .pointset  import PointSet
 
 
@@ -263,7 +263,7 @@ class Product(ABC):
 
     
     def __repr__(self) -> str:
-        return indented_repr(self)
+        return _indented_repr(self)
 
     @abstractmethod
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
