@@ -48,7 +48,7 @@ class MatchupResult:
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
 
         Returns
         -------
@@ -87,7 +87,7 @@ class MatchupResult:
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
 
         Returns
         -------

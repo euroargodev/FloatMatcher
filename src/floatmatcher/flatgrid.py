@@ -55,7 +55,7 @@ class FlatGrid:
 
         Returns
         -------
-        :class:`FlatGrid`
+        :class:`.FlatGrid`
         """
         stacked = ds.stack(node=("lat", "lon"))
         time = ds["time"].values if "time" in ds.coords else None
@@ -96,7 +96,7 @@ class FlatGrid:
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
         k: int, default=1
             Number of neighbors.
 
@@ -117,7 +117,7 @@ class FlatGrid:
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
         k: int, default=1
             Number of neighbors.
 

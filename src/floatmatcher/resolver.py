@@ -58,7 +58,7 @@ class FileResolver(ABC):
 
         Parameters
         ----------
-        points: :class:`PointSet`, optional
+        points: :class:`.PointSet`, optional
             Positions to match. Some resolvers do not need them.
 
         Returns
@@ -146,7 +146,7 @@ class PathTemplate(FileResolver):
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
             Required: its times give the dates.
 
         Returns

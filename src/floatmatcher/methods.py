@@ -19,7 +19,7 @@ class Method(ABC):
     """Prototype of the matchup methods
 
     A method holds its parameters and matches points with a grid in ``apply``. It knows
-    nothing of the product or of :class:`FloatMatcher`: it receives the opened grid and the
+    nothing of the product or of :class:`.FloatMatcher`: it receives the opened grid and the
     points. Subclasses implement ``apply`` and are registered in ``available_methods``.
     """
 
@@ -34,11 +34,11 @@ class Method(ABC):
         ----------
         dataset: xarray.Dataset
             Grid with the ``lon`` and ``lat`` coordinates, and ``time`` if it has a time axis.
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
 
         Returns
         -------
-        :class:`MatchupResult`
+        :class:`.MatchupResult`
         """
         ...
 
@@ -82,11 +82,11 @@ class NearestNeighbor(Method):
         ----------
         dataset: xarray.Dataset
             Grid with the ``lon`` and ``lat`` coordinates, and ``time`` if it has a time axis.
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
 
         Returns
         -------
-        :class:`MatchupResult`
+        :class:`.MatchupResult`
 
         Raises
         ------
@@ -143,4 +143,4 @@ class NearestNeighbor(Method):
 available_methods: dict[str, type[Method]] = {
     "nearest": NearestNeighbor,
 }
-"""dict: Method classes by name, used by :meth:`FloatMatcher.set_method`"""
+"""dict: Method classes by name, used by :meth:`.FloatMatcher.set_method`"""

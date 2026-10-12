@@ -244,7 +244,7 @@ class Product(ABC):
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
             Positions to match, they decide which files are needed.
 
         Raises
@@ -318,4 +318,4 @@ available_products: dict[str, type[Product]] = {
     "era5": ERA5Product,
     "lut" : LUTProduct
 }
-"""dict: Product classes by name, used by :meth:`FloatMatcher.set_product`"""
+"""dict: Product classes by name, used by :meth:`.FloatMatcher.set_product`"""

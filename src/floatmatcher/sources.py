@@ -35,7 +35,7 @@ class Source(ABC):
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
 
         Returns
         -------
@@ -49,7 +49,7 @@ class Source(ABC):
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
         """
 
 
@@ -106,7 +106,7 @@ class LocalSource(Source):
 
         Parameters
         ----------
-        points: :class:`PointSet`
+        points: :class:`.PointSet`
 
         Returns
         -------
@@ -131,4 +131,4 @@ class LocalSource(Source):
 available_sources: dict[str, type[Source]] = {
     "local": LocalSource
     }
-"""dict: Source classes by name, used by :class:`Product`"""
+"""dict: Source classes by name, used by :class:`.Product`"""

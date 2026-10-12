@@ -76,7 +76,7 @@ class FloatMatcher:
         ----------
         *data
             ``lon, lat[, time]`` arrays, a :class:`pandas.DataFrame`, a :class:`xarray.Dataset` or a
-            :class:`PointSet`.
+            :class:`.PointSet`.
         **names: str
             ``lon``, ``lat``, ``time``: names of the columns or variables holding them. Only for a
             DataFrame or a Dataset.

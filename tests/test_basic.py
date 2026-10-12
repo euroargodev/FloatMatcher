@@ -1,5 +1,9 @@
+import tomllib
+from pathlib import Path
+
 from floatmatcher import __version__
 
 
-def test_version() -> None:
-    assert __version__ == "0.1.0"
+def test_version_comes_from_pyproject() -> None:
+    pyproject = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())
+    assert __version__ == pyproject["project"]["version"]

@@ -103,7 +103,7 @@ class PointSet:
 
         Returns
         -------
-        :class:`PointSet`
+        :class:`.PointSet`
         """
         # Nothing to extract, no origin_* (bare arrays). Converted in __post_init__.
         return cls(lon, lat, time)  # type: ignore[arg-type]
@@ -129,7 +129,7 @@ class PointSet:
 
         Returns
         -------
-        :class:`PointSet`
+        :class:`.PointSet`
 
         Raises
         ------
@@ -183,7 +183,7 @@ class PointSet:
 
         Returns
         -------
-        :class:`PointSet`
+        :class:`.PointSet`
 
         Raises
         ------
