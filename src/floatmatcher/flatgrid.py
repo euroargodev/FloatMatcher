@@ -15,7 +15,19 @@ from .pointset import PointSet
 
 @dataclass
 class FlatGrid:
-    """Flattened grid as a point cloud, for KDTree lookup."""
+    """Flattened grid as a point cloud
+
+    The nodes (lat, lon) of a 2D or 3D grid are stacked in one dimension, so that each node is
+    a point to look up with a KDTree. The values stay lazy and are read only at the retained
+    nodes. Prefer :meth:`from_grid`.
+
+    Parameters
+    ----------
+    lon, lat: numpy.ndarray
+        Coordinates of the nodes, in degrees.
+    time: numpy.ndarray of datetime64 or None
+        Time steps of the grid. None for a grid without time axis.
+    """
 
     lon: NDArray[np.float64]
     lat: NDArray[np.float64]
@@ -25,14 +37,26 @@ class FlatGrid:
 
     @property
     def xyz(self) -> NDArray[np.float64]:
-        """Cartesian 3D coordinates of the nodes, computed once and cached."""
+        """Cartesian coordinates (km) of the nodes on the sphere, shape (n, 3), computed once and cached"""
         if self._xyz is None:
             self._xyz = lonlat_to_xyz(self.lon, self.lat)
         return self._xyz
 
     @classmethod
     def from_grid(cls, ds: xr.Dataset) -> "FlatGrid":
-        """Flatten a grid (2D or 3D) into a node cloud. Values stay lazy."""
+        """Flatten a grid, 2D or 3D, into a node cloud
+
+        The values stay lazy.
+
+        Parameters
+        ----------
+        ds: xarray.Dataset
+            Grid with the ``lat`` and ``lon`` coordinates, and ``time`` if it has a time axis.
+
+        Returns
+        -------
+        :class:`FlatGrid`
+        """
         stacked = ds.stack(node=("lat", "lon"))
         time = ds["time"].values if "time" in ds.coords else None
         return cls(lon=stacked["lon"].values, lat=stacked["lat"].values, # trigger memory import xr dataset 
@@ -40,7 +64,21 @@ class FlatGrid:
 
     def read_values(self, node_idx: ArrayLike,
                     tsel_idx: ArrayLike | None = None) -> dict[str, NDArray[np.float64]]:
-        """Read variable values ONLY at the retained (node[, time]) indices"""
+        """Read the values of the variables only at the retained indices
+
+        Parameters
+        ----------
+        node_idx: array-like of int
+            Indices of the nodes.
+        tsel_idx: array-like of int, optional
+            Indices of the time steps, paired element by element with ``node_idx``. None for a
+            grid without time axis.
+
+        Returns
+        -------
+        dict
+            One array of values per variable.
+        """
         node = xr.DataArray(np.asarray(node_idx), dims="pts")
         out = {}
         for var in self._stacked.data_vars: # _stacked is lazy ds with only lon/lat/time in memory
@@ -60,7 +98,7 @@ class FlatGrid:
         ----------
         points: :class:`PointSet`
         k: int, default=1
-            Number of neighbours.
+            Number of neighbors.
 
         Returns
         -------
@@ -80,7 +118,7 @@ class FlatGrid:
         ----------
         points: :class:`PointSet`
         k: int, default=1
-            Number of neighbours.
+            Number of neighbors.
 
         Returns
         -------

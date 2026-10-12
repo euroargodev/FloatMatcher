@@ -1,9 +1,8 @@
-# methods.py: matchup methods.
-
-# The spatial half is prepared ONCE (prepare) and reused on every temporal
-# packet (match_packet), because the grid geometry is identical across packets.
-# The packet loop itself lives in the FloatMatcher; this module provides the
-# two halves and a single-pass `match` for the non-batched case.
+# methods.py: matchup methods (contract and registry).
+#
+# The grid is opened ONCE by the product and handed to apply(): the spatial and temporal
+# lookups run on the whole grid in a single pass (no temporal packets), and the values are
+# read lazily, only at the valid points.
 
 from abc import ABC, abstractmethod
 
@@ -17,19 +16,49 @@ from .utils import indented_repr
 
 
 class Method(ABC):
-    """Contract shared by every matchup method."""
+    """Prototype of the matchup methods
+
+    A method holds its parameters and matches points with a grid in ``apply``. It knows
+    nothing of the product or of :class:`FloatMatcher`: it receives the opened grid and the
+    points. Subclasses implement ``apply`` and are registered in ``available_methods``.
+    """
 
     def __repr__(self) -> str:
         return indented_repr(self)
 
     @abstractmethod
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
+        """Match the points with a grid
+
+        Parameters
+        ----------
+        dataset: xarray.Dataset
+            Grid with the ``lon`` and ``lat`` coordinates, and ``time`` if it has a time axis.
+        points: :class:`PointSet`
+
+        Returns
+        -------
+        :class:`MatchupResult`
+        """
         ...
 
 
 
 class NearestNeighbor(Method):
-    """Nearest-neighbor matchup method"""
+    """Nearest-neighbor matchup method
+
+    Each point takes the values of the nearest node of the grid, and of the nearest time step
+    if the grid has a time axis. Points beyond ``radius`` or ``time_gap`` are invalid.
+
+    Parameters
+    ----------
+    radius: int, default=25
+        Maximum distance to the node, in km.
+    time_gap: numpy.timedelta64, default=1 day
+        Maximum gap to the time step. Ignored for a grid without time axis.
+    k_nearest: int, default=1
+        Number of neighbors looked up. Only 1 works for now.
+    """
 
     def __init__(self, radius: int = 25,
                  time_gap: np.timedelta64 = np.timedelta64(1, "D"),
@@ -40,10 +69,30 @@ class NearestNeighbor(Method):
 
     @property
     def time_gap_seconds(self) -> float:
+        """``time_gap`` in seconds"""
         return float(self.time_gap / np.timedelta64(1, "s"))
 
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
-        
+        """Match the points with the nearest node of the grid
+
+        Invalid points have NaN values, distance and time gap in the result. Values are read
+        only for the valid points.
+
+        Parameters
+        ----------
+        dataset: xarray.Dataset
+            Grid with the ``lon`` and ``lat`` coordinates, and ``time`` if it has a time axis.
+        points: :class:`PointSet`
+
+        Returns
+        -------
+        :class:`MatchupResult`
+
+        Raises
+        ------
+        ValueError
+            If the grid has a time axis and the points have no time.
+        """
         # starting by lonlat2xy on spatial grid
         # return FlatGrid object, flatten grid
         flat_grid = FlatGrid.from_grid(dataset)
@@ -94,3 +143,4 @@ class NearestNeighbor(Method):
 available_methods: dict[str, type[Method]] = {
     "nearest": NearestNeighbor,
 }
+"""dict: Method classes by name, used by :meth:`FloatMatcher.set_method`"""

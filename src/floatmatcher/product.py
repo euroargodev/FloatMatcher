@@ -177,13 +177,10 @@ class Product(ABC):
 
     def _src_dataset_checker(self, dataset: xr.Dataset) -> None:
         if "lon" not in dataset.coords or "lat" not in dataset.coords:
-            raise ValueError(
-                "The dataset given to GridSet object doesn't have lon or lat "
-                "coordinates"
-            )
+            raise ValueError("The dataset has no lon or lat coordinates")
 
         if len(dataset.data_vars)<1:
-            raise ValueError("There is no variable in the dataset given to GridSet")
+            raise ValueError("The dataset has no variable")
 
         # test of lat/lon unicity
         lon = dataset["lon"].values

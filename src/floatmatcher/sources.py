@@ -9,6 +9,16 @@ from .utils import indented_repr
 
 
 class Source(ABC):
+    """Where the files of a product come from
+
+    A source gives the files a product needs for some points (``resolve``) and makes them
+    available locally (``fetch``). Subclasses implement both.
+
+    Parameters
+    ----------
+    path: str or list of str
+        Directory or files.
+    """
 
     def __init__(self, 
                  path: str | Path | list[str]
@@ -21,14 +31,48 @@ class Source(ABC):
 
     @abstractmethod
     def resolve(self, points: PointSet) -> list[str]:
-        """Which files are needed for these points."""
+        """Files needed for these points
+
+        Parameters
+        ----------
+        points: :class:`PointSet`
+
+        Returns
+        -------
+        list of str
+            Paths of the files.
+        """
 
     @abstractmethod
     def fetch(self, points: PointSet) -> None:
-        """Make the needed files available locally (download if remote)."""
+        """Make the needed files available locally, downloading them if remote
+
+        Parameters
+        ----------
+        points: :class:`PointSet`
+        """
 
 
 class LocalSource(Source):
+    """Files already on disk
+
+    Given as a directory, a list of files, or a root and a path template. Nothing is downloaded.
+
+    Parameters
+    ----------
+    path: str or list of str
+        Directory or files. With a ``pattern``, the root of the tree.
+    pattern: str, optional
+        Path template under ``path``, built from the dates of the points with the fields
+        ``{year}``, ``{month}``, ``{day}``, ``{hour}`` and ``{minute}``, for example
+        ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``. The neighboring days
+        are taken too.
+
+    Raises
+    ------
+    ValueError
+        If ``path`` is empty, or if a ``pattern`` is given without a path or with a list of paths.
+    """
     def __init__(self,
                  path: str | list[str] | Path,
                  pattern: str | None =None) -> None:
@@ -53,9 +97,23 @@ class LocalSource(Source):
 
 
     def resolve(self, points: PointSet) -> list[str]:
+        """Files needed for these points
+
+        A directory gives all its ``.nc`` files, a list its own files. With a ``pattern``,
+        one file per date of the points and of the neighboring days, the missing ones being
+        skipped with a warning.
+
+        Raises
+        ------
+        FileNotFoundError
+            If none of the files of a ``pattern`` exists.
+        ValueError
+            If the points have no time, with a ``pattern``.
+        """
         return self._resolver.files_for(points)
 
     def fetch(self, points: PointSet)-> None:
+        """Nothing to do, the files are already on disk"""
         pass
         
 
@@ -63,3 +121,4 @@ class LocalSource(Source):
 available_sources: dict[str, type[Source]] = {
     "local": LocalSource
     }
+"""dict: Source classes by name, used by :class:`Product`"""
