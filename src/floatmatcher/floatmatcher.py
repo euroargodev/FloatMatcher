@@ -85,6 +85,8 @@ class FloatMatcher:
         ------
         TypeError
             If the input is not supported, or if names are given with arrays or a PointSet.
+        ValueError
+            If lon, lat and time do not have the same length.
         ProfileFormatError
             If the lon or lat column or variable is missing (DataFrame or Dataset).
 
@@ -135,7 +137,8 @@ class FloatMatcher:
         Raises
         ------
         ValueError
-            If the product is unknown, or the source is not available for it.
+            If the product is unknown, the source is not available for it, or
+            ``selected_variables`` is neither None nor a non-empty list.
         TypeError
             If a source parameter is unknown.
         """
@@ -190,12 +193,16 @@ class FloatMatcher:
     def match(self) -> None:
         """Run the matchup
 
-        Read the result with ``result``.
+        Opens the product on the files needed by the points, then applies the method. Read the
+        result with ``result``.
 
         Raises
         ------
         ValueError
-            If the points, the product or the method are not set.
+            If the points, the product or the method are not set, if the product dataset fails
+            a check, or if the points have no time and the grid has a time axis.
+        FileNotFoundError
+            If no file of the product is found for the points.
         """
         if self.points is None:
             raise ValueError("match(): no points set, call set_points(...)")

@@ -99,9 +99,19 @@ class LocalSource(Source):
     def resolve(self, points: PointSet) -> list[str]:
         """Files needed for these points
 
-        A directory gives all its ``.nc`` files, a list its own files. With a ``pattern``,
-        one file per date of the points and of the neighboring days, the missing ones being
-        skipped with a warning.
+        A directory gives all its ``.nc`` files, recursively; a list gives its own files. With a
+        ``pattern``, one file per date of the points and of the neighboring days. Missing files
+        are skipped, with a warning for the dates of the points only (neighboring days are
+        often absent at the edges of an archive).
+
+        Parameters
+        ----------
+        points: :class:`PointSet`
+
+        Returns
+        -------
+        list of str
+            Paths of the files.
 
         Raises
         ------

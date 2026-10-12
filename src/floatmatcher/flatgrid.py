@@ -103,7 +103,8 @@ class FlatGrid:
         Returns
         -------
         tuple of arrays
-            Distances (km) and indices of the nodes.
+            Distances (km) and indices of the nodes. Distances are straight lines between
+            the points on the sphere, close to the great-circle ones at short range.
         """
         dist: NDArray[np.float64]
         idx: NDArray[np.int64]
@@ -142,10 +143,19 @@ class FlatGrid:
 
 
 def _to_seconds(times: NDArray[np.datetime64]) -> NDArray[np.float64]:
-    """Convert datetime64 to floating-point seconds since a fixed epoch.
+    """Convert datetime64 to floating-point seconds since a fixed epoch
 
     Working in a common float unit lets the 1D KDTree measure time distance,
     and returning *seconds* makes the time_gap_seconds constraint directly comparable.
+
+    Parameters
+    ----------
+    times: numpy.ndarray of datetime64
+
+    Returns
+    -------
+    numpy.ndarray of float
+        Seconds since ``REF_TIME``.
     """
     delta = np.asarray(times, dtype=f"datetime64[{TIME_UNIT}]") - REF_TIME
     seconds: NDArray[np.float64] = delta / np.timedelta64(1, "s")

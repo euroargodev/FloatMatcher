@@ -53,7 +53,7 @@ class NearestNeighbor(Method):
     Parameters
     ----------
     radius: int, default=25
-        Maximum distance to the node, in km.
+        Maximum distance to the node, in km (straight line on the sphere).
     time_gap: numpy.timedelta64, default=1 day
         Maximum gap to the time step. Ignored for a grid without time axis.
     k_nearest: int, default=1

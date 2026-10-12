@@ -157,12 +157,26 @@ class Product(ABC):
 
 
     def _open_paths(self, paths: Sequence[str]) -> xr.Dataset:
-        """ open several files as a xr mf_dataset with options
-        // lock option fix made by AI to avoid segfault : open_mfdataset 
+        """Open several files as one lazy dataset
+
+       // lock option fix made by AI to avoid segfault : open_mfdataset 
         returns dask arrays read by multiple threads, but netCDF4/HDF5 
         isn't thread-safe here: concurrent access to xarray's file cache 
         corrupted memory and killed the process. A single shared lock serialises
         those reads //
+
+        Parameters
+        ----------
+        paths: list of str
+
+        Returns
+        -------
+        :class:`xarray.Dataset`
+
+        Raises
+        ------
+        ValueError
+            If ``paths`` is empty.
         """
         if not paths:
             raise ValueError("empty file list")
@@ -176,6 +190,20 @@ class Product(ABC):
         )
 
     def _src_dataset_checker(self, dataset: xr.Dataset) -> None:
+        """Check that a normalized dataset can be matched as a grid
+
+        It needs the lon and lat coordinates, at least one variable, and no duplicated
+        longitude or latitude 
+
+        Parameters
+        ----------
+        dataset: xarray.Dataset
+
+        Raises
+        ------
+        ValueError
+            If a check fails.
+        """
         if "lon" not in dataset.coords or "lat" not in dataset.coords:
             raise ValueError("The dataset has no lon or lat coordinates")
 
@@ -191,6 +219,17 @@ class Product(ABC):
             raise ValueError("grid: duplicated latitudes in array")
 
     def _check_time_unicity(self, dataset: xr.Dataset) -> None:
+        """Check that the time steps are unique
+
+        Parameters
+        ----------
+        dataset: xarray.Dataset
+
+        Raises
+        ------
+        ValueError
+            If a timestamp is duplicated.
+        """
         # a grid without time axis (2D) has nothing to check
         if "time" in dataset.coords:
             times = dataset["time"].values
@@ -212,6 +251,8 @@ class Product(ABC):
         ------
         ValueError
             If there is no file, or if the dataset fails a check.
+        FileNotFoundError
+            If none of the files of a ``pattern`` exists.
         """
         files = self._source.resolve(points)
         ds = self._open_paths(files)
@@ -250,6 +291,7 @@ class ERA5Product(Product):
     src_available = ["local"]
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
+        """Set lon and lat as coordinates, harmonize names"""
         ds = to_standard(ds_raw, self.coord_map)
         return ds
     
@@ -263,6 +305,7 @@ class LUTProduct(Product):
     src_available = ["local"]
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
+        """Set lon and lat as coordinates, harmonize names"""
         ds = to_standard(ds_raw, self.coord_map)
         return ds
 
@@ -275,3 +318,4 @@ available_products: dict[str, type[Product]] = {
     "era5": ERA5Product,
     "lut" : LUTProduct
 }
+"""dict: Product classes by name, used by :meth:`FloatMatcher.set_product`"""

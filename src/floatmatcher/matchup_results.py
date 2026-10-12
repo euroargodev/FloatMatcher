@@ -21,7 +21,8 @@ class MatchupResult:
     values: dict
         Matched values, one array per variable.
     distance_km: numpy.ndarray
-        Distance to the matched node, in km.
+        Distance to the matched node, in km (straight line on the sphere, close to the
+        great-circle distance at short range).
     time_delta: numpy.ndarray
         Gap to the matched time step, in seconds. NaN for a grid without time axis.
     valid: numpy.ndarray of bool
