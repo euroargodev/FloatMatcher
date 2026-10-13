@@ -1,4 +1,4 @@
-# results.py: output object of matchup
+# matchup_results.py: output object of matchup
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,23 @@ from .pointset import PointSet
 
 @dataclass
 class MatchupResult:
+    """Result of a matchup
+
+    One value per point, in the order of the points. A point that is not matched (too far in
+    space or in time) has NaN values, distance and time gap.
+
+    Parameters
+    ----------
+    values: dict
+        Matched values, one array per variable.
+    distance_km: numpy.ndarray
+        Distance to the matched node, in km (straight line on the sphere, close to the
+        great-circle distance at short range).
+    time_delta: numpy.ndarray
+        Gap to the matched time step, in seconds. NaN for a grid without time axis.
+    valid: numpy.ndarray of bool
+        True for the matched points.
+    """
     values:      dict[str, NDArray[np.float64]]
     distance_km: NDArray[np.float64]
     time_delta:  NDArray[np.float64]
@@ -24,9 +41,25 @@ class MatchupResult:
 
     
     def _to_dataset(self, points: PointSet) -> xr.Dataset:
-        """
-        Reinject the colocalized values into the dataset
-        The source Dataset travels inside the PointSet
+        """Reinject the matched values into the Dataset the points come from
+
+        Values are added as ``<name>_coloc``, on the dimension of the points. The source is
+        not modified.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+
+        Returns
+        -------
+        :class:`xarray.Dataset`
+
+        Raises
+        ------
+        ValueError
+            If the points have no origin.
+        TypeError
+            If the origin is not a Dataset.
         """
         ds = points.original_data
         dim = points.points_dim
@@ -38,7 +71,7 @@ class MatchupResult:
         if not isinstance(ds, xr.Dataset):
             raise TypeError(
                 f"Cannot reinject into a Dataset: the origin is a {type(ds).__name__}. "
-                "Use to_dataframe()."
+                "Use FloatMatcher.to_dataframe()."
             )
 
         out = ds.copy()
@@ -48,9 +81,24 @@ class MatchupResult:
         return out
 
     def _to_dataframe(self, points: PointSet) -> pd.DataFrame:
-        """
-        Reinject the colocalized values into the dataframe
-        The source DataFrame travels inside the PointSet
+        """Reinject the matched values into the DataFrame the points come from
+
+        Values are added as ``<name>_coloc`` columns. The source is not modified.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+
+        Returns
+        -------
+        :class:`pandas.DataFrame`
+
+        Raises
+        ------
+        ValueError
+            If the points have no origin.
+        TypeError
+            If the origin is not a DataFrame.
         """
         df = points.original_data
         if df is None:
@@ -61,7 +109,7 @@ class MatchupResult:
         if not isinstance(df, pd.DataFrame):
             raise TypeError(
                 f"Cannot reinject into a DataFrame: the origin is a {type(df).__name__}. "
-                "Use to_dataset()."
+                "Use FloatMatcher.to_dataset()."
             )
 
         out = df.copy()

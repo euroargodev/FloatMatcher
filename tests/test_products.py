@@ -53,7 +53,7 @@ def test_rename_bare_dimension():
 
 def test_data_variable_is_promoted_to_coord():
     """lon/lat carried as data variables (anonymous dims) become coordinates:
-    GridSet reads them from ds.coords, never from ds.data_vars."""
+    the product reads them from ds.coords, never from ds.data_vars."""
     ds = xr.Dataset(
         {
             "sst": (("y", "x"), np.zeros((2, 2))),
