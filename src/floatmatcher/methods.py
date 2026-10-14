@@ -139,8 +139,36 @@ class NearestNeighbor(Method):
                                 time_delta=time_delta_out, valid=valid)
 
 
+
+
+class Interpolator(Method):
+    """Interpolation based on Nearest-neighbor fit method
+
+    Each point takes the values of the combination of closest nodes of the grid, and of the nearest time step
+    if the grid has a time axis. Points beyond ``radius`` or ``time_gap`` are invalid.
+
+    Parameters
+    ----------
+    radius: int, default=25
+        Maximum distance to the node, in km (straight line on the sphere).
+    time_gap: numpy.timedelta64, default=1 day
+        Maximum gap to the time step. Ignored for a grid without time axis.
+    k_nearest: int, default=1
+        Number of neighbors looked up. Only 1 works for now.
+    """
+
+    def __init__(self, radius: int = 25,
+                 time_gap: np.timedelta64 = np.timedelta64(1, "D"),
+                 k_nearest : int = 1) -> None :
+        self.radius = radius
+        self.time_gap = time_gap
+        self.k_nearest = k_nearest
+
+
+
+
 # key given to FloatMatcher.set_method(type=...) -> method class
 available_methods: dict[str, type[Method]] = {
-    "nearest": NearestNeighbor,
+    "nearest": NearestNeighbor, "interp": Interpolator
 }
 """dict: Method classes by name, used by :meth:`.FloatMatcher.set_method`"""

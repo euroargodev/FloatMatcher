@@ -108,7 +108,7 @@ class FlatGrid:
         """
         dist: NDArray[np.float64]
         idx: NDArray[np.int64]
-        dist, idx = cKDTree(self.xyz).query(points.xyz, k=k)
+        dist, idx = cKDTree(self.xyz).query(points.xyz, k=k, workers=-1)
         return dist, idx
 
     def temporal_nearest(self, points: PointSet,
@@ -138,7 +138,7 @@ class FlatGrid:
         if points.time is None:
             raise ValueError("points have no time: they cannot be matched on a grid with a time axis")
         grid_tree = cKDTree(_to_seconds(self.time)[:, None])
-        time_delta, idx = grid_tree.query(_to_seconds(points.time)[:, None], k=k)
+        time_delta, idx = grid_tree.query(_to_seconds(points.time)[:, None], k=k, workers=-1)
         return time_delta, idx
 
 
