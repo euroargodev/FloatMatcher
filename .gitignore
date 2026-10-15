@@ -145,3 +145,6 @@ uv.lock
 xxx/
 /old*
 .mongo-data
+*.nc
+era5_float_6900166/
+*.zip
