@@ -30,6 +30,7 @@ dev = [
     "argopy>=1.5.0",
     "cdsapi>=0.7.7",
     "ipykernel>=7.4.0",
+    "matplotlib>=3.11.2",
 ]
 docs = [
     "numpydoc>=1.11.0",
