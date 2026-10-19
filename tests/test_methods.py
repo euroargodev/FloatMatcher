@@ -4,8 +4,9 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from floatmatcher.methods import Method, NearestNeighbor, available_methods
+from floatmatcher.methods import Interpolator, Method, NearestNeighbor, available_methods
 from floatmatcher.pointset import PointSet
+from helpers import make_grid
 
 
 def test_method_is_abstract():
@@ -91,3 +92,55 @@ def test_apply_on_2d_grid_ignores_time(grid_2d_ds):
     assert res.valid.tolist() == [True]
     npt.assert_allclose(res.values["v"], [230.0])
     assert np.isnan(res.time_delta[0])
+
+
+# ---------- Interpolator : IDW ----------
+#
+#            lon=0   lon=10
+#   lat=10     30      40
+#   lat=0      10      20
+
+radius_wide = 5000  # km: wide enough that nothing is rejected
+
+
+@pytest.fixture
+def grid_square_ds():
+    ds = make_grid([0.0, 10.0], [0.0, 10.0])
+    ds["v"] = 2.0 * ds["lat"] + ds["lon"] + 10.0
+    return ds
+
+
+def _interp(grid, lon, lat, k=4, power=1.0):
+    points = PointSet.from_arrays(lon=[lon], lat=[lat])
+    return Interpolator(radius=radius_wide, k_nearest=k, power=power).apply(grid, points)
+
+
+def test_interp_stays_in_the_range_of_the_four_nodes(grid_square_ds):
+    res = _interp(grid_square_ds, lon=3.0, lat=4.0, k=4)
+    assert 10.0 <= res.values["v"][0] <= 40.0
+
+
+def test_interp_power_one_is_linear_halfway_between_two_nodes(grid_square_ds):
+    # lon=5, lat=0 sits at equal distance from the nodes 10 and 20
+    # -> with k=2 and power=1 the weights are equal, which is linear interpolation
+    res = _interp(grid_square_ds, lon=5.0, lat=0.0, k=2)
+    npt.assert_allclose(res.values["v"], [(10.0 + 20.0) / 2], rtol=1e-4)
+
+
+def test_interp_k_limits_the_neighbours_even_inside_the_radius(grid_square_ds):
+    two = _interp(grid_square_ds, lon=5.0, lat=0.0, k=2)
+
+    # the 4 nodes are all inside radius, yet k=2 reads only the two closest
+    npt.assert_allclose(two.values["v"], [(10.0 + 20.0) / 2], rtol=1e-4)
+
+
+
+def test_interp_radius_limits_the_neighbours_below_the_requested_k(grid_square_ds):
+    points = PointSet.from_arrays(lon=[5.0], lat=[0.0])
+    # 800km
+    res = Interpolator(radius=800, k_nearest=4, power=1.0).apply(
+        grid_square_ds, points)
+
+    # 4 asked, 2 are reachable
+    npt.assert_allclose(res.values["v"], [(10.0 + 20.0) / 2], rtol=1e-4)
+    assert res.valid[0]

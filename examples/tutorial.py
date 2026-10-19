@@ -34,7 +34,6 @@ print(type(lon))
 #   1.3) dataset xr + mapping dictionnary
 # #   1.4) argopy (no mapping needed) K
 
-# TODO : set_points_from dataframe/dataset
 
 # 1.1 example
 my_fm.set_points(lon, lat, time)
@@ -63,9 +62,10 @@ my_fm.set_product(type="era5",
     #   radius (km)
     #   time
     
-my_fm.set_method(type="nearest", radius=12, 
+my_fm.set_method(type="interp", radius=12, 
               time_gap=np.timedelta64(3, "h"),
-              k_nearest=1
+              k_nearest=4, n_frames=2, kernel="idw",
+              power=2
               )
 
 
