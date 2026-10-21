@@ -42,6 +42,11 @@ class FlatGrid:
             self._xyz = lonlat_to_xyz(self.lon, self.lat)
         return self._xyz
 
+    @property
+    def variables(self) -> list[str]:
+        """Names of the variables of the grid : avoid hashable type asked by mypy"""
+        return [str(v) for v in self._stacked.data_vars]
+    
     @classmethod
     def from_grid(cls, ds: xr.Dataset) -> "FlatGrid":
         """Flatten a grid, 2D or 3D, into a node cloud
@@ -90,6 +95,18 @@ class FlatGrid:
             out[str(var)] = sel.values
         return out
 
+
+    def read_variable(self, var: str, node_idx: NDArray, time_idx: NDArray|None) -> NDArray:
+        """ return variable only on nodes and times selected """
+        node = xr.DataArray(np.asarray(node_idx), dims=("pts", "K"))
+        da_var = self._stacked[var]
+        if time_idx is None:
+            return da_var.isel(node=node).transpose("pts", "K").values
+        tsel = xr.DataArray(np.asarray(time_idx), dims=("pts", "N"))
+        return da_var.isel(node=node, time=tsel).transpose("pts", "K", "N").values
+
+
+
     def spatial_nearest(self, points: PointSet,
                         k: int = 1) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Nearest nodes of the points in space
@@ -108,7 +125,7 @@ class FlatGrid:
         """
         dist: NDArray[np.float64]
         idx: NDArray[np.int64]
-        dist, idx = cKDTree(self.xyz).query(points.xyz, k=k)
+        dist, idx = cKDTree(self.xyz).query(points.xyz, k=k, workers=-1)
         return dist, idx
 
     def temporal_nearest(self, points: PointSet,
@@ -138,7 +155,7 @@ class FlatGrid:
         if points.time is None:
             raise ValueError("points have no time: they cannot be matched on a grid with a time axis")
         grid_tree = cKDTree(_to_seconds(self.time)[:, None])
-        time_delta, idx = grid_tree.query(_to_seconds(points.time)[:, None], k=k)
+        time_delta, idx = grid_tree.query(_to_seconds(points.time)[:, None], k=k, workers=-1)
         return time_delta, idx
 
 
