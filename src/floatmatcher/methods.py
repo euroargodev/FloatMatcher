@@ -146,8 +146,9 @@ class NearestNeighbor(Method):
 class Interpolator(Method):
     """Interpolation based on Nearest-neighbor fit method
 
-    Each point takes the values of the combination of closest nodes of the grid, and of the nearests times step
-    if the grid has a time axis. Points beyond ``radius`` or ``time_gap`` are invalid.
+    Each point takes the values of the combination of closest nodes of the grid,
+    and of the nearests times step if the grid has a time axis.
+    Points beyond ``radius`` or ``time_gap`` are invalid.
 
     Parameters
     ----------
@@ -208,8 +209,9 @@ class Interpolator(Method):
         # load kernel 
         kernel = available_kernels[self.kernel]
 
-        # compute spatial weights 
-        spatial_weights = kernel(dist_km, power=self.power, limit=self.radius) * valid_spatial # return (n, K) matrix
+        # compute spatial weights
+        # return (n, K) matrix
+        spatial_weights = kernel(dist_km, power=self.power, limit=self.radius) * valid_spatial
 
         # compute temporal weights 
         if flat_grid.time is None:
@@ -228,8 +230,10 @@ class Interpolator(Method):
                 var_picked = var_picked[:, :, None] # return (n, K, None) matrix
                 
             # apply weights for each time step
-            var_weighted_sum = np.nansum(var_picked * spatial_weights[:, :, None], axis=1) # (n, N), 1 value wighted per time frame
-            weights_sum = np.nansum(spatial_weights[:,:,None] * ~np.isnan(var_picked), axis=1) # don't take nan into account # (n, N), 1 weight per time frame
+            # (n, N), 1 value wighted per time frame
+            var_weighted_sum = np.nansum(var_picked * spatial_weights[:, :, None], axis=1)
+            # don't take nan into account # (n, N), 1 weight per time frame
+            weights_sum = np.nansum(spatial_weights[:,:,None] * ~np.isnan(var_picked), axis=1)
 
             var_weighted_frames = np.full(var_weighted_sum.shape, np.nan, dtype=var_picked.dtype) # (n, N)
             np.divide(var_weighted_sum, weights_sum, 
