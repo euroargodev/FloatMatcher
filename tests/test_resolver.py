@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from floatmatcher.resolver import resolve_path, ExplicitFiles, PathTemplate
+from floatmatcher.resolver import _resolve_path, ExplicitFiles, PathTemplate
 from floatmatcher.pointset import PointSet
 
 
@@ -40,10 +40,10 @@ def _pts(*timestamps):
                     time=np.array(timestamps, dtype="datetime64[ns]"))
 
 
-# ---------- resolve_path (pure, no disk) ----------
+# ---------- _resolve_path (pure, no disk) ----------
 
 def test_resolve_path():
-    p = resolve_path("/data", PATTERN, np.datetime64("2015-01-01"))
+    p = _resolve_path("/data", PATTERN, np.datetime64("2015-01-01"))
     assert Path(p) == Path("/data/2015/01/era5_20150101.nc")
 
 

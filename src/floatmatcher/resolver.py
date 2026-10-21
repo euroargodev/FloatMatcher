@@ -20,10 +20,23 @@ from .pointset import PointSet
 #  Path resolution (pure helper, no disk access)
 # ─────────────────────────────────────────────────────────────
 
-def resolve_path(root: str | Path, pattern: str, date: Any) -> str:
-    """Substitute a date's components into `pattern` (under `root`). available fields are
-    year, month, day, hour, minute (pick what the tree needs, with padding ex:
-            "{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc").
+def _resolve_path(root: str | Path, pattern: str, date: Any) -> str:
+    """Substitute the components of a date into a path template, under a root
+
+    Pure helper, no disk access. The fields are ``{year}``, ``{month}``, ``{day}``, ``{hour}``
+    and ``{minute}``: pick what the tree needs, with padding if wanted.
+
+    Parameters
+    ----------
+    root: str or pathlib.Path
+    pattern: str
+        Path template, e.g. ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``.
+    date: datetime-like
+        Anything :class:`pandas.Timestamp` accepts.
+
+    Returns
+    -------
+    str
     """
     ts = pd.Timestamp(date)
     rel = pattern.format(
@@ -37,16 +50,33 @@ def resolve_path(root: str | Path, pattern: str, date: Any) -> str:
 # ─────────────────────────────────────────────────────────────
 
 class FileResolver(ABC):
-    """Answers: which files must be opened for these points?"""
+    """Prototype of the resolvers: which files to open for these points"""
 
     @abstractmethod
     def files_for(self, points: PointSet | None = None) -> list[str]:
+        """Files to open for these points
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`, optional
+            Positions to match. Some resolvers do not need them.
+
+        Returns
+        -------
+        list of str
+        """
         ...
 
 
 class ExplicitFiles(FileResolver):
-    """Simplest resolver: the user lists the files explicitly 
-    or a parent directory containing all files to process.
+    """Files listed by the user, or found in a directory
+
+    Parameters
+    ----------
+    paths: str, pathlib.Path or iterable of them
+        Files, or directories scanned recursively.
+    pattern: str, default="*.nc"
+        Name pattern of the files looked for in a directory.
     """
 
     def __init__(self, paths: str | Path | Iterable[str | Path],
@@ -58,6 +88,14 @@ class ExplicitFiles(FileResolver):
         self.pattern = pattern
 
     def files_for(self, points: PointSet | None = None) -> list[str]:
+        """Files listed, or the sorted files found in the directories
+
+        The points are not used.
+
+        Returns
+        -------
+        list of str
+        """
         resolved: list[str] = []
         for entry in self._paths:
             path = Path(entry)
@@ -73,17 +111,26 @@ class ExplicitFiles(FileResolver):
 
 
 class PathTemplate(FileResolver):
-    """Resolve files from a declared directory pattern (ex: Datarmor).
+    """Files built from a path template (e.g. on Datarmor)
 
-    The user declares the shape of their tree once; for each date PRESENT in the
-    points, one path is built by substituting the date into the pattern. Only
-    the dates actually needed are resolved (no directory scan). The field type
-    (single-levels_inst, pressure-levels, ...) is a literal part of the pattern
-    chosen by the user.
+    One path is built for each date of the points, by substituting the date into ``pattern``.
+    Only the dates needed are resolved, with no directory scan. Neighboring dates are requested
+    too, as a point can find its nearest time step in the next or previous file.
 
-    Missing files are filtered out (with a warning): the user's time tolerance
-    in the matchup, not the resolver, decides what gap is acceptable. But if
-    NOTHING resolves to an existing file, that is a configuration error -> raise.
+    Missing files are skipped with a warning: the time gap of the matchup decides what is
+    acceptable. If no file exists at all, it is a configuration error.
+
+    Parameters
+    ----------
+    root: str or pathlib.Path
+        Root of the tree.
+    pattern: str
+        Path template under ``root``, with the fields ``{year}``, ``{month}``, ``{day}``,
+        ``{hour}`` and ``{minute}``.
+    granularity: {'Y', 'M', 'D', 'h', 'm', 's'}, default='D'
+        Time step of the files, one file per step.
+    pad: int, default=1
+        Number of neighboring steps requested on each side of every date.
     """
 
     def __init__(self, root: str | Path, pattern: str,
@@ -95,6 +142,29 @@ class PathTemplate(FileResolver):
         self.pad = pad
 
     def files_for(self, points: PointSet | None = None) -> list[str]:
+        """Existing files for the dates of the points
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+            Required: its times give the dates.
+
+        Returns
+        -------
+        list of str
+
+        Raises
+        ------
+        ValueError
+            If ``points`` is None or has no time.
+        FileNotFoundError
+            If none of the files exists.
+
+        Warns
+        -----
+        UserWarning
+            If the file of a date of the points is missing.
+        """
         if points is None:
             raise ValueError(
                 "PathTemplate resolves one file per date present in the points; "
@@ -105,8 +175,8 @@ class PathTemplate(FileResolver):
             np.asarray(points.time).astype(f"datetime64[{self.granularity}]")
         )
         
-        # A point at 23h or 1h AM may well find its nearest step in the NEXT or PREVISOU file, so
-        # the neighbours of every date are requested too.
+        # A point at 23h or 1h AM may well find its nearest step in the NEXT or PREVIOUS file, so
+        # the neighbors of every date are requested too.
         step = np.timedelta64(1, self.granularity)
         wanted = dates
         for shift in range(1, self.pad + 1):
@@ -115,14 +185,14 @@ class PathTemplate(FileResolver):
 
         resolved = []
         for d in wanted:
-            resolved.append(resolve_path(self.root, self.pattern, d))
+            resolved.append(_resolve_path(self.root, self.pattern, d))
 
         # Only the dates of the requested points are worth warning about:
-        # padded neighbours are absent at the edges of any archive and does
+        # padded neighbors are absent at the edges of any archive and does
         # not raise warnings.
         asked_for = set()
         for d in dates:
-            asked_for.add(resolve_path(self.root, self.pattern, d))
+            asked_for.add(_resolve_path(self.root, self.pattern, d))
 
         existing = []
         missing = []

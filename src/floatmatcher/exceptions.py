@@ -4,10 +4,15 @@
  
  
 class FloatMatcherError(Exception):
-    """Base class for all FloatMatcher errors."""
+    """Base class for all FloatMatcher errors
+
+    Catch it to handle every error raised by the library.
+    """
  
  
 class ProfileFormatError(FloatMatcherError):
-    """Raised when point data cannot be extracted from the given source
-    (missing coordinate, unrecognized structure)."""
+    """Raise when the points cannot be extracted from the given data
+
+    A coordinate or variable is missing, or the structure is not recognized.
+    """
  

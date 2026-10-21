@@ -9,7 +9,18 @@ from .constants import EARTH_RADIUS_KM
 #_______
 
 def lonlat_to_xyz(lon: ArrayLike, lat: ArrayLike) -> NDArray[np.float64]:
-    """Convert lon/lat to xyz on the shpere"""
+    """Convert longitudes and latitudes to Cartesian coordinates on the sphere
+
+    Parameters
+    ----------
+    lon, lat: array-like of float
+        Degrees.
+
+    Returns
+    -------
+    numpy.ndarray
+        Coordinates in km, shape (n, 3), for the radius of the Earth.
+    """
     lon_rad = np.radians(lon)
     lat_rad = np.radians(lat)
     x = EARTH_RADIUS_KM * np.cos(lat_rad) * np.cos(lon_rad)

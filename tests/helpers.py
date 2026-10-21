@@ -15,7 +15,7 @@ def daily_timestamps(n):
     return set_timestamps(*range(1, n + 1))
 
 def make_grid(lat, lon, time=None, variables=("v",)):
-    """Build a GridSet-ready Dataset filled with zeros.
+    """Build a grid Dataset (lat, lon[, time]) filled with zeros.
     """
     lat = np.asarray(lat, dtype=float)
     lon = np.asarray(lon, dtype=float)
