@@ -32,3 +32,25 @@ jobs:
 
       - name: Test (pytest)
         run: uv run pytest
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (docs group)
+        run: uv sync --group docs
+
+      - name: Build docs (warnings are errors)
+        run: uv run sphinx-build -W --keep-going -b html docs docs/_build/html
+
+      - name: Upload built docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: docs/_build/html
