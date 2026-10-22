@@ -46,15 +46,22 @@ my_fm.set_points(lon, lat, time)
 #   2.2) product source (local / remote)
 #   2.3) Subset variables: all or list of output product variables (add enum available)
 
+# my_fm.set_product(type="era5", 
+#                   source="local", # remote-zarr , remote-s3 , download-API
+#                   selected_variables=["sst"], 
+#                   path="/runtime/data/era5_daily",
+#                 #   pattern="{year}/{month:02d}/era5_single-levels_{year}{month:02d}{day:02d}.nc"
+#                   )
+
+
 my_fm.set_product(type="era5", 
-                  source="local", # remote-zarr , remote-s3 , download-API
-                  selected_variables=["sst"], 
-                  path="/runtime/data/era5_daily",
-                #   pattern="{year}/{month:02d}/era5_single-levels_{year}{month:02d}{day:02d}.nc"
+                  source="remote-cds", # remote-zarr , remote-s3 , download-API
+                  selected_variables=["sea_surface_temperature"], 
+                  path="/runtime/data/cache",
                   )
 
-
-
+print(my_fm)
+exit()
 # -------------------------------------------
 # 3) matching method
     # 3.1) method selection (Nearest / interpolation)

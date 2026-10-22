@@ -2,7 +2,8 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-
+import os
+import numpy as np
 from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
 from .utils import _indented_repr
@@ -44,7 +45,7 @@ class Source(ABC):
         """
 
     @abstractmethod
-    def fetch(self, points: PointSet) -> None:
+    def fetch(self, points: PointSet, variables) -> None:
         """Make the needed files available locally, downloading them if remote
 
         Parameters
@@ -122,13 +123,64 @@ class LocalSource(Source):
         """
         return self._resolver.files_for(points)
 
-    def fetch(self, points: PointSet)-> None:
+    def fetch(self, points: PointSet, variables: list[str] | None = None)-> None:
         """Nothing to do, the files are already on disk"""
         pass
         
 
+# base_request = {
+#     "product_type": ["reanalysis"],
+#     "variable": variables,
+#     "area": [north, west, south, east],      # CDS expects this order
+#     "data_format": "netcdf",
+#     "download_format": "unarchived",
+# }
+
+class CDSSource(Source):
+    """
+    TODO : ...
+    """
+    def __init__(self,
+                 path: str | list[str] | Path,
+
+                 
+
+                 ) -> None:
+        
+        self.path = path
+
+        # in remote case, resolver is always cache dir given in path
+        self._resolver: FileResolver = ExplicitFiles(self.path)
+        
+
+
+    def resolve(self, points: PointSet) -> list[str]:
+        """ Files needed for these points """
+        return self._resolver.files_for(points)
+
+    def fetch(self, points: PointSet, variables:list[str], base_request)-> None:
+        """ Get files with CDS API """
+        # check cache path          
+        if not Path(self.path).exists():
+            try:
+                os.mkdir(self.path, 0o755)
+            except:
+                raise ValueError("Impossible to create cache dir")
+
+        # Area covered by the float plus a margin and rounded outward on the ERA5 grid
+        margin = base_request.grid_step *2        # degrees, at least the matchup radius (0.5° is about 55 km)
+        base_request.grid_step = 0.25    # degrees, resolution of ERA5
+
+        if points.lon.max() - points.lon.min() > 180:
+            raise ValueError("cross antemeridian : TODO : need to divide box in two")
+
+        west = np.floor((points.lon.min() - margin) / grid_step) * grid_step
+        east = np.ceil((points.lon.max() + margin) / grid_step) * grid_step
+        south = max(np.floor((points.lat.min() - margin) / grid_step) * grid_step, -90)
+        north = min(np.ceil((points.lat.max() + margin) / grid_step) * grid_step, 90)
 
 available_sources: dict[str, type[Source]] = {
-    "local": LocalSource
+    "local": LocalSource, 
+    "remote-cds": CDSSource
     }
 """dict: Source classes by name, used by :class:`.Product`"""

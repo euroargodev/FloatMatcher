@@ -254,6 +254,8 @@ class Product(ABC):
         FileNotFoundError
             If none of the files of a ``pattern`` exists.
         """
+        # fetch data if necessary
+        self._source.fetch(points, self.selected_variables)
         files = self._source.resolve(points)
         ds = self._open_paths(files)
         ds = self.normalize(ds)
@@ -288,7 +290,7 @@ class ERA5Product(Product):
     """
     name = "era5"
     coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
-    src_available = ["local"]
+    src_available = ["local", "remote-cds"]
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         """Set lon and lat as coordinates, harmonize names"""

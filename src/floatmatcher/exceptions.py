@@ -16,3 +16,8 @@ class ProfileFormatError(FloatMatcherError):
     A coordinate or variable is missing, or the structure is not recognized.
     """
  
+class CDSRequestTooLarge(FloatMatcherError):
+    """Raise when CDS refuses a request because it exceeds the cost limits
+
+    Attributes: n_days, n_hours, n_variables, so the message can suggest a split or fewer hours.
+    """
