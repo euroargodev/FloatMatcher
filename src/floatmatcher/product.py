@@ -93,11 +93,13 @@ class Product(ABC):
     name: str
     coord_map: dict[str, str] = {}
     src_available: list[str] = []
+    product_info : dict[str, Any]
+
 
     def __init__(self, 
                  source: str, 
                  path: str, 
-                 selected_variables: list[str] | None,
+                 selected_variables: list[str],
                  **source_params: Any
                 ) -> None:
         
@@ -109,13 +111,13 @@ class Product(ABC):
             )
         self.source = source    # local / api
         self.selected_variables = selected_variables
-
         self.src_dataset : xr.Dataset | None = None
 
         if self.source not in self.src_available:
             raise ValueError(f"{type(self).__name__} supports {self.src_available}, not {source!r}")
       
-        self._source = available_sources[source](path, **source_params)
+        self._source = available_sources[source](path, product_info=self.product_info,
+                                         **source_params)
 
     # TODO : get essential product metadata 
 
@@ -291,6 +293,15 @@ class ERA5Product(Product):
     name = "era5"
     coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
     src_available = ["local", "remote-cds"]
+    product_info = {
+        "grid_step": 0.25,
+        "cds_dataset": "reanalysis-era5-single-levels",
+        "cds_request": {
+            "product_type": ["reanalysis"],
+            "data_format": "netcdf",
+            "download_format": "unarchived",
+        },
+    }
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         """Set lon and lat as coordinates, harmonize names"""
@@ -305,6 +316,7 @@ class LUTProduct(Product):
     name = "lut"
     coord_map = {"lon": "lon", "lat": "lat"}
     src_available = ["local"]
+    product_info = {"grid_step": 1}
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         """Set lon and lat as coordinates, harmonize names"""

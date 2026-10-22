@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 import os
 import numpy as np
 from .pointset import PointSet
@@ -22,10 +23,11 @@ class Source(ABC):
     """
 
     def __init__(self, 
-                 path: str | Path | list[str]
+                 path: str | Path | list[str],
+                 product_info: dict[str, Any] | None = None
                  ) -> None:
             self.path = path
-
+            self.product_info = product_info
 
     def __repr__(self) -> str:
         return _indented_repr(self)
@@ -45,7 +47,7 @@ class Source(ABC):
         """
 
     @abstractmethod
-    def fetch(self, points: PointSet, variables) -> None:
+    def fetch(self, points: PointSet, variables: list[str]) -> None:
         """Make the needed files available locally, downloading them if remote
 
         Parameters
@@ -76,11 +78,12 @@ class LocalSource(Source):
     """
     def __init__(self,
                  path: str | list[str] | Path,
-                 pattern: str | None =None) -> None:
+                 pattern: str | None = None, 
+                 product_info: dict[str, Any]| None = None) -> None:
         
         self.path = path
         self.pattern = pattern
-
+        self.product_info = product_info
         self._resolver: FileResolver # declaration for mypy
 
         if self.pattern and not self.path:
@@ -123,7 +126,7 @@ class LocalSource(Source):
         """
         return self._resolver.files_for(points)
 
-    def fetch(self, points: PointSet, variables: list[str] | None = None)-> None:
+    def fetch(self, points: PointSet, variables: list[str] )-> None:
         """Nothing to do, the files are already on disk"""
         pass
         
@@ -142,34 +145,42 @@ class CDSSource(Source):
     """
     def __init__(self,
                  path: str | list[str] | Path,
-
-                 
-
+                 product_info: dict[str, Any]
                  ) -> None:
         
         self.path = path
+        self.product_info: dict[str, Any] = product_info
 
         # in remote case, resolver is always cache dir given in path
         self._resolver: FileResolver = ExplicitFiles(self.path)
         
-
+        self.base_request = {
+            "product_type": ["reanalysis"],
+            "variable": None,
+            "area": None, # [north, west, south, east],      # CDS expects this order
+            "data_format": "netcdf",
+            "download_format": "unarchived",
+        }
 
     def resolve(self, points: PointSet) -> list[str]:
         """ Files needed for these points """
         return self._resolver.files_for(points)
 
-    def fetch(self, points: PointSet, variables:list[str], base_request)-> None:
+    def fetch(self, points: PointSet, variables:list[str])-> None:
         """ Get files with CDS API """
-        # check cache path          
+        # check cache path                   : if not a single path raises an error
         if not Path(self.path).exists():
             try:
                 os.mkdir(self.path, 0o755)
             except:
                 raise ValueError("Impossible to create cache dir")
 
+        # init request dict
+        request = {}
+
         # Area covered by the float plus a margin and rounded outward on the ERA5 grid
-        margin = base_request.grid_step *2        # degrees, at least the matchup radius (0.5° is about 55 km)
-        base_request.grid_step = 0.25    # degrees, resolution of ERA5
+        margin = self.product_info["grid_step"] *2        # degrees, at least the matchup radius (0.5° is about 55 km)
+        grid_step = self.product_info["grid_step"]        # degrees, resolution of ERA5
 
         if points.lon.max() - points.lon.min() > 180:
             raise ValueError("cross antemeridian : TODO : need to divide box in two")
@@ -178,6 +189,10 @@ class CDSSource(Source):
         east = np.ceil((points.lon.max() + margin) / grid_step) * grid_step
         south = max(np.floor((points.lat.min() - margin) / grid_step) * grid_step, -90)
         north = min(np.ceil((points.lat.max() + margin) / grid_step) * grid_step, 90)
+
+        area = [north, west, south, east]
+
+        request["area"] = area
 
 available_sources: dict[str, type[Source]] = {
     "local": LocalSource, 
