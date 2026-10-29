@@ -265,7 +265,10 @@ class Product(ABC):
         self._check_time_unicity(ds)
         self.src_dataset = ds
 
-    
+    def build_request(self, points):
+        res = self._source.build_request(points, self.selected_variables)
+        return res
+            
     def __repr__(self) -> str:
         return _indented_repr(self)
 
@@ -301,12 +304,25 @@ class ERA5Product(Product):
             "data_format": "netcdf",
             "download_format": "unarchived",
         },
+        # names in the files -> names in the CDS requests
+        "cds_variables": {
+            "sst": "sea_surface_temperature",
+            "t2m": "2m_temperature",
+            "u10": "10m_u_component_of_wind",
+            "v10": "10m_v_component_of_wind",
+            "avg_slhtf": "mean_surface_latent_heat_flux",
+            "avg_ishf": "mean_surface_sensible_heat_flux",
+            "avg_snswrf": "mean_surface_net_short_wave_radiation_flux",
+            "avg_snlwrf": "mean_surface_net_long_wave_radiation_flux",
+        },
     }
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         """Set lon and lat as coordinates, harmonize names"""
         ds = to_standard(ds_raw, self.coord_map)
         return ds
+
+    
     
 class LUTProduct(Product):
     """Look-up table (LUT) gridded product

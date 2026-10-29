@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+import copy
 import os
 import numpy as np
 from .pointset import PointSet
@@ -21,7 +22,7 @@ class Source(ABC):
     path: str or list of str
         Directory or files.
     """
-
+    name: str
     def __init__(self, 
                  path: str | Path | list[str],
                  product_info: dict[str, Any] | None = None
@@ -31,6 +32,12 @@ class Source(ABC):
 
     def __repr__(self) -> str:
         return _indented_repr(self)
+
+    def build_request(self, points: PointSet,
+                      variables: list[str] | None) -> dict[str, Any]:
+        raise ValueError("request can be build only if source == remote-cds")
+
+
 
     @abstractmethod
     def resolve(self, points: PointSet) -> list[str]:
@@ -76,6 +83,7 @@ class LocalSource(Source):
     ValueError
         If ``path`` is empty, or if a ``pattern`` is given without a path or with a list of paths.
     """
+
     def __init__(self,
                  path: str | list[str] | Path,
                  pattern: str | None = None, 
@@ -131,14 +139,6 @@ class LocalSource(Source):
         pass
         
 
-# base_request = {
-#     "product_type": ["reanalysis"],
-#     "variable": variables,
-#     "area": [north, west, south, east],      # CDS expects this order
-#     "data_format": "netcdf",
-#     "download_format": "unarchived",
-# }
-
 class CDSSource(Source):
     """
     TODO : ...
@@ -154,13 +154,11 @@ class CDSSource(Source):
         # in remote case, resolver is always cache dir given in path
         self._resolver: FileResolver = ExplicitFiles(self.path)
         
-        self.base_request = {
-            "product_type": ["reanalysis"],
-            "variable": None,
-            "area": None, # [north, west, south, east],      # CDS expects this order
-            "data_format": "netcdf",
-            "download_format": "unarchived",
-        }
+        # request template of the product, completed from the points by build_request
+        self.base_request: dict[str, Any] = copy.deepcopy(product_info["cds_request"])
+        self.request: dict[str, Any] | None = None    # last request built
+
+    
 
     def resolve(self, points: PointSet) -> list[str]:
         """ Files needed for these points """
@@ -175,14 +173,20 @@ class CDSSource(Source):
             except:
                 raise ValueError("Impossible to create cache dir")
 
-        # init request dict
-        request = {}
+
+        
+
+
+    def build_request(self, points: PointSet,
+                      variables: list[str] | None) -> dict[str, Any]:
+        request = copy.deepcopy(self.base_request)
 
         # Area covered by the float plus a margin and rounded outward on the ERA5 grid
         margin = self.product_info["grid_step"] *2        # degrees, at least the matchup radius (0.5° is about 55 km)
         grid_step = self.product_info["grid_step"]        # degrees, resolution of ERA5
 
         if points.lon.max() - points.lon.min() > 180:
+            print(points.lon.max(), points.lon.min())
             raise ValueError("cross antemeridian : TODO : need to divide box in two")
 
         west = np.floor((points.lon.min() - margin) / grid_step) * grid_step
@@ -192,7 +196,20 @@ class CDSSource(Source):
 
         area = [north, west, south, east]
 
-        request["area"] = area
+        request["area"] = area      # CDS expects this order
+
+        # Variables: names in the files, translated to the names CDS expects
+        cds_names = self.product_info["cds_variables"]
+        if variables is None:
+            raise ValueError(f"CDS needs a list of variables, available: {list(cds_names)}")
+        unknown = [v for v in variables if v not in cds_names]
+        if unknown:
+            raise ValueError(f"unknown variables {unknown}, available: {list(cds_names)}")
+        request["variable"] = [cds_names[v] for v in variables]
+
+        self.request = request    # kept for download()
+        return request
+         
 
 available_sources: dict[str, type[Source]] = {
     "local": LocalSource, 

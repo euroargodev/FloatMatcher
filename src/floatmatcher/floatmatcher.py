@@ -286,3 +286,10 @@ class FloatMatcher:
             "Cannot reinject: these points come from arrays, there is no Dataset or DataFrame "
             "to add the values to. Use result."
         )
+
+    def build_request(self,):
+        print('***building request !')
+        
+        res = self.product.build_request(self.points)
+        print("*** floatmatcher build end")
+        return res
