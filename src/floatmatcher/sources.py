@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 import copy
 import os
+import json
+from pprint import pprint
 import numpy as np
 from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
@@ -35,7 +37,7 @@ class Source(ABC):
 
     def build_request(self, points: PointSet,
                       variables: list[str] | None,
-                      **options: list[str]) -> dict[str, Any]:
+                      **options: list[str]) -> list[dict[str, Any]]:
         raise ValueError("request can be build only if source == remote-cds")
 
 
@@ -147,12 +149,12 @@ class CDSSource(Source):
     def __init__(self,
                  path: str | list[str] | Path,
                  product_info: dict[str, Any],
-                 client: Any = None
+                 client: Any
                  ) -> None:
         
         self.path = path
         self.product_info: dict[str, Any] = product_info
-        self._client = client     # cdsapi.Client, created on first use if not given
+        self.client = client      # cdsapi.Client, or mocking.FakeCDSClient to develop without network
 
         # in remote case, resolver is always cache dir given in path
         self._resolver: FileResolver = ExplicitFiles(self.path)
@@ -161,14 +163,6 @@ class CDSSource(Source):
         self.base_request: dict[str, Any] = copy.deepcopy(product_info["cds_request"])
         self.request: dict[str, Any] | None = None    # last request built
 
-    @property
-    def client(self) -> Any:
-        """Client of the CDS API, ``cdsapi.Client()`` unless one was given"""
-        if self._client is None:
-            import cdsapi
-            self._client = cdsapi.Client()
-        return self._client
-    
 
     def resolve(self, points: PointSet) -> list[str]:
         """ Files needed for these points """
@@ -220,7 +214,7 @@ class CDSSource(Source):
             values[option] = list(asked)
         return values
 
-    def build_request(self, points: PointSet,
+    def _build_request(self, points: PointSet,
                       variables: list[str] | None,
                       **options: list[str]) -> dict[str, Any]:
         """ 
@@ -258,8 +252,6 @@ class CDSSource(Source):
         # Options of the product (ERA5: time), all values if not given
         request.update(self._options_request(options))
 
-
-
         # time creation : 
         # par default, le time resolution = resolution de la grille min (pour ERA5= 1h)
         dates = np.unique(
@@ -285,16 +277,72 @@ class CDSSource(Source):
         request["month"] = sorted([f"{d:02d}" for d in dates_padded.month.unique()])
         request["day"] = sorted([f"{d:02d}" for d in dates_padded.day.unique()])
 
-
-
-
-
         # test if request fit in 
         self.request = request    # kept for download()
         return request
 
-    def eval_request(self, request):
-        pass
+    def eval_request(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Cost of a request, as estimated by CDS, without sending it
+
+        Parameters
+        ----------
+        request: dict   
+
+        Returns
+        -------
+        dict
+            ``cost`` and ``limit`` of the request.
+        """
+        dataset_name = self.product_info["cds_dataset"]
+        costs = self.client.client.estimate_costs(dataset_name, request)
+
+        return costs
+
+    def build_request(self, points: PointSet,
+                      variables: list[str] | None,
+                      **options: list[str]) -> list[dict[str, Any]]:
+        """ 
+        TODO 
+        """
+        # commence par build la premiere request,
+        original_request = self._build_request(points, variables, **options)
+
+        
+        # eval cost of original request
+        req_costs = self.eval_request(original_request)
+        # print(req_costs)
+        
+        # print(req_costs[0]["cost"], req_costs[0]["limit"])
+
+        # print(any(req["cost"] > req["limit"] for req in req_costs))
+
+        # for req in req_costs:
+        #     print(req["cost"], req["limit"]) 
+
+        if req_costs["cost"] >= req_costs["limit"]:
+            requests = []
+            for y in original_request["year"]:
+                y_req = copy.deepcopy(original_request)
+                y_req["year"] = [y]
+                costs = self.eval_request(y_req)
+                if costs["cost"] < costs["limit"]:
+                    requests.append(y_req)
+                    continue
+                # trop gros : un mois à la fois
+                for m in y_req["month"]:
+                    m_req = copy.deepcopy(y_req)
+                    m_req["month"] = [m]
+                    costs = self.eval_request(m_req)
+                    if not costs["cost"] < costs["limit"]:
+                        raise ValueError("a single month exceeds limit, consider reduce area or variables or hours" )        # même un mois ne passe pas
+                    requests.append(m_req)
+            return requests
+        else:
+            return [original_request]
+
+
+
+
 available_sources: dict[str, type[Source]] = {
     "local": LocalSource, 
     "remote-cds": CDSSource

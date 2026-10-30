@@ -5,7 +5,8 @@ import xarray as xr
 
 import floatmatcher.floatmatcher as fm
 from floatmatcher.product import ERA5Product
-import mocking
+from floatmatcher.mocking import FakeCDSClient
+import cdsapi
 
 
 # instance floatmatcher : 
@@ -69,6 +70,8 @@ my_fm.set_product(type="era5",
                   source="remote-cds", # remote-zarr , remote-s3 , download-API
                   selected_variables=["sst"], 
                   path="/runtime/data/cache",
+                  client=FakeCDSClient(limit=1000),   # no network; toy cost, see mocking.py
+                #   client=cdsapi.Client(),              # real CDS, key in ~/.cdsapirc
                   )
 
 

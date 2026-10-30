@@ -69,7 +69,8 @@ class Product(ABC):
     selected_variables: list of str or None
         Variables to keep. None keeps all.
     **source_params
-        Parameters of the source. ``"local"``: ``pattern``.
+        Parameters of the source. ``"local"``: ``pattern``. ``"remote-cds"``: ``client``
+        (``cdsapi.Client()``), required.
 
     Attributes
     ----------
