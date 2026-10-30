@@ -287,9 +287,9 @@ class FloatMatcher:
             "to add the values to. Use result."
         )
 
-    def build_request(self,):
+    def build_request(self, **options: list[str]) -> Any:
         print('***building request !')
         
-        res = self.product.build_request(self.points)
+        res = self.product.build_request(self.points, **options)
         print("*** floatmatcher build end")
         return res

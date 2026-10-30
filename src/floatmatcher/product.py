@@ -265,8 +265,8 @@ class Product(ABC):
         self._check_time_unicity(ds)
         self.src_dataset = ds
 
-    def build_request(self, points):
-        res = self._source.build_request(points, self.selected_variables)
+    def build_request(self, points: PointSet, **options: list[str]) -> Any:
+        res = self._source.build_request(points, self.selected_variables, **options)
         return res
             
     def __repr__(self) -> str:
@@ -298,12 +298,16 @@ class ERA5Product(Product):
     src_available = ["local", "remote-cds"]
     product_info = {
         "grid_step": 0.25,
+        "time_resolution": "h",
+        "time_margin": np.timedelta64(3, "h"),
         "cds_dataset": "reanalysis-era5-single-levels",
         "cds_request": {
             "product_type": ["reanalysis"],
             "data_format": "netcdf",
             "download_format": "unarchived",
         },
+        # options of build_request -> values available, all of them by default
+        "cds_options": {"time": [f"{h:02d}:00" for h in range(24)]},
         # names in the files -> names in the CDS requests
         "cds_variables": {
             "sst": "sea_surface_temperature",

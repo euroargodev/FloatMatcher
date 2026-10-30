@@ -9,7 +9,7 @@ import numpy as np
 from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
 from .utils import _indented_repr
-
+import pandas as pd
 
 class Source(ABC):
     """Where the files of a product come from
@@ -34,7 +34,8 @@ class Source(ABC):
         return _indented_repr(self)
 
     def build_request(self, points: PointSet,
-                      variables: list[str] | None) -> dict[str, Any]:
+                      variables: list[str] | None,
+                      **options: list[str]) -> dict[str, Any]:
         raise ValueError("request can be build only if source == remote-cds")
 
 
@@ -145,11 +146,13 @@ class CDSSource(Source):
     """
     def __init__(self,
                  path: str | list[str] | Path,
-                 product_info: dict[str, Any]
+                 product_info: dict[str, Any],
+                 client: Any = None
                  ) -> None:
         
         self.path = path
         self.product_info: dict[str, Any] = product_info
+        self._client = client     # cdsapi.Client, created on first use if not given
 
         # in remote case, resolver is always cache dir given in path
         self._resolver: FileResolver = ExplicitFiles(self.path)
@@ -158,6 +161,13 @@ class CDSSource(Source):
         self.base_request: dict[str, Any] = copy.deepcopy(product_info["cds_request"])
         self.request: dict[str, Any] | None = None    # last request built
 
+    @property
+    def client(self) -> Any:
+        """Client of the CDS API, ``cdsapi.Client()`` unless one was given"""
+        if self._client is None:
+            import cdsapi
+            self._client = cdsapi.Client()
+        return self._client
     
 
     def resolve(self, points: PointSet) -> list[str]:
@@ -174,11 +184,49 @@ class CDSSource(Source):
                 raise ValueError("Impossible to create cache dir")
 
 
-        
 
+    def _options_request(self, options: dict[str, list[str]]) -> dict[str, list[str]]:
+        """Values of the product options for the request
+
+        Parameters
+        ----------
+        options: dict
+            Option -> values asked, a subset of ``product_info["cds_options"]``. An option not
+            given takes all its values.
+
+        Returns
+        -------
+        dict
+            Option -> values, for every option of the product.
+
+        Raises
+        ------
+        ValueError
+            If an option is unknown, or its values are empty or not available.
+        """
+        available = self.product_info.get("cds_options", {})
+        unknown = [o for o in options if o not in available]
+        if unknown:
+            raise ValueError(f"unknown options {unknown}, available: {list(available)}")
+
+        values = {}
+        for option, all_values in available.items():
+            asked = options.get(option, all_values)
+            if not asked:
+                raise ValueError(f"{option}: empty list, available: {all_values}")
+            wrong = [v for v in asked if v not in all_values]
+            if wrong:
+                raise ValueError(f"{option}: {wrong} not available, available: {all_values}")
+            values[option] = list(asked)
+        return values
 
     def build_request(self, points: PointSet,
-                      variables: list[str] | None) -> dict[str, Any]:
+                      variables: list[str] | None,
+                      **options: list[str]) -> dict[str, Any]:
+        """ 
+        TODO 
+        """
+        # copy initial request
         request = copy.deepcopy(self.base_request)
 
         # Area covered by the float plus a margin and rounded outward on the ERA5 grid
@@ -207,10 +255,46 @@ class CDSSource(Source):
             raise ValueError(f"unknown variables {unknown}, available: {list(cds_names)}")
         request["variable"] = [cds_names[v] for v in variables]
 
+        # Options of the product (ERA5: time), all values if not given
+        request.update(self._options_request(options))
+
+
+
+        # time creation : 
+        # par default, le time resolution = resolution de la grille min (pour ERA5= 1h)
+        dates = np.unique(
+                    np.asarray(points.time).astype(f"datetime64[{self.product_info["time_resolution"]}]")
+                )
+        print(dates)
+        print("---")
+        # ensuite il faut construire le pad autour pour avoir toutes les dates encadrantes.
+        # TODO : Attention, granularité jour imposée par les champs year/month/day de la requête CDS 
+        # TODO : il faut peut etre caler le time_margin sur time_gap ? 
+        pad = self.product_info["time_margin"]
+        if pad >= np.timedelta64(24, "h"):
+            raise ValueError("time_margin must be less than 24 h")
+        dates_padded = pd.to_datetime(np.unique(
+            np.concatenate([dates - pad, dates, dates + pad]).astype("datetime64[D]"))
+            )
+        print(dates_padded)
+        print(dates_padded.day.unique())
+
+
+        # ensuite on extrait les différentes heures, jours et mois dont on a besoin 
+        request["year"] = sorted([f"{d:04d}" for d in dates_padded.year.unique()])
+        request["month"] = sorted([f"{d:02d}" for d in dates_padded.month.unique()])
+        request["day"] = sorted([f"{d:02d}" for d in dates_padded.day.unique()])
+
+
+
+
+
+        # test if request fit in 
         self.request = request    # kept for download()
         return request
-         
 
+    def eval_request(self, request):
+        pass
 available_sources: dict[str, type[Source]] = {
     "local": LocalSource, 
     "remote-cds": CDSSource
