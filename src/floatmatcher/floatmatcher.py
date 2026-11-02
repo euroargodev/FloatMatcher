@@ -6,7 +6,7 @@ import pandas as pd
 import xarray as xr
 
 from .methods import Method, available_methods
-# from .interpolation import Interpolation
+
 from .pointset import PointSet
 from .matchup_results import MatchupResult
 from .product import Product, available_products
@@ -293,3 +293,10 @@ class FloatMatcher:
         res = self.product.build_request(self.points, **options)
         print("*** floatmatcher build end")
         return res
+
+    def download(self,) -> Any:
+        print('***download requests !')
+        
+        self.product.download()
+        print("*** end of dowloading requests")
+        

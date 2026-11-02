@@ -20,12 +20,15 @@ my_fm = fm.FloatMatcher()
 # print(type(lon))
 
 # 10 points in the North Atlantic, between 2002 and 2004
-lon = np.array([-28.15, -46.51, -57.95, -59.17, -19.34, -14.36, -29.67, -23.53, -32.82, -13.25])
-lat = np.array([54.48, 30.08, 55.72, 31.01, 51.89, 35.27, 55.90, 46.24, 38.99, 42.68])
+lon = np.array([-28.15, -46.51])
+lat = np.array([54.48, 30.08])
+# time = np.array([
+#     "2003-03-18T22:47", "2002-02-01T00:55", "2002-01-06T20:47", "2002-05-17T05:08",
+#     "2002-01-10T01:54", "2004-01-06T00:06", "2003-07-31T01:50", "2003-12-11T07:40",
+#     "2002-10-10T00:00", "2003-11-06T11:05",
+# ], dtype="datetime64[ns]")
 time = np.array([
-    "2003-03-18T22:47", "2002-02-01T00:55", "2002-01-06T20:47", "2002-05-17T05:08",
-    "2002-01-10T01:54", "2004-01-06T00:06", "2003-07-31T01:50", "2003-12-11T07:40",
-    "2002-10-10T00:00", "2003-11-06T11:05",
+    "2013-03-18T22:47", "2013-03-18T12:22"
 ], dtype="datetime64[ns]")
 
 
@@ -69,17 +72,18 @@ my_fm.set_points(lon, lat, time)
 my_fm.set_product(type="era5", 
                   source="remote-cds", # remote-zarr , remote-s3 , download-API
                   selected_variables=["sst"], 
-                  path="/runtime/data/cache",
-                  client=FakeCDSClient(limit=1000),   # no network; toy cost, see mocking.py
-                #   client=cdsapi.Client(),              # real CDS, key in ~/.cdsapirc
+                  path="/runtime/data-in/cache",
+                #   client=FakeCDSClient(limit=121000),   # no network; toy cost, see mocking.py
+                  client=cdsapi.Client(),              # real CDS, key in ~/.cdsapirc
                   )
 
 
-my_fm.build_request()
-print(my_fm)
-# my_fm.download()
+# my_fm.build_request()
 
-exit()
+# my_fm.download()
+# # print(my_fm)
+
+# exit()
 # -------------------------------------------
 # 3) matching method
     # 3.1) method selection (Nearest / interpolation)

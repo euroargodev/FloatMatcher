@@ -260,15 +260,20 @@ class Product(ABC):
         # fetch data if necessary
         self._source.fetch(points, self.selected_variables)
         files = self._source.resolve(points)
+        print(files)
         ds = self._open_paths(files)
         ds = self.normalize(ds)
         self._src_dataset_checker(ds)
         self._check_time_unicity(ds)
         self.src_dataset = ds
 
+
     def build_request(self, points: PointSet, **options: list[str]) -> Any:
         res = self._source.build_request(points, self.selected_variables, **options)
         return res
+
+    def download(self,):
+        self._source.download()
             
     def __repr__(self) -> str:
         return _indented_repr(self)

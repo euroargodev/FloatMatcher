@@ -40,7 +40,8 @@ class Source(ABC):
                       **options: list[str]) -> list[dict[str, Any]]:
         raise ValueError("request can be build only if source == remote-cds")
 
-
+    def download(self, **options) :
+        raise ValueError("request can be build only if source == remote-cds")
 
     @abstractmethod
     def resolve(self, points: PointSet) -> list[str]:
@@ -161,7 +162,7 @@ class CDSSource(Source):
         
         # request template of the product, completed from the points by build_request
         self.base_request: dict[str, Any] = copy.deepcopy(product_info["cds_request"])
-        self.request: dict[str, Any] | None = None    # last request built
+        self.request: list[dict[str, Any]] | None = None    # last request built
 
 
     def resolve(self, points: PointSet) -> list[str]:
@@ -169,13 +170,20 @@ class CDSSource(Source):
         return self._resolver.files_for(points)
 
     def fetch(self, points: PointSet, variables:list[str])-> None:
-        """ Get files with CDS API """
-        # check cache path                   : if not a single path raises an error
-        if not Path(self.path).exists():
-            try:
-                os.mkdir(self.path, 0o755)
-            except:
-                raise ValueError("Impossible to create cache dir")
+        """ fetch is buid request + download in order to 
+        Get files with CDS API 
+        """
+        # verify path
+        Path(self.path).mkdir(parents=True, exist_ok=True)
+
+        # build requests
+        self.build_request(points, variables)
+
+        # download
+        self.download()
+
+
+        # update state ? 
 
 
 
@@ -278,7 +286,6 @@ class CDSSource(Source):
         request["day"] = sorted([f"{d:02d}" for d in dates_padded.day.unique()])
 
         # test if request fit in 
-        self.request = request    # kept for download()
         return request
 
     def eval_request(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -310,15 +317,8 @@ class CDSSource(Source):
         
         # eval cost of original request
         req_costs = self.eval_request(original_request)
-        # print(req_costs)
-        
-        # print(req_costs[0]["cost"], req_costs[0]["limit"])
 
-        # print(any(req["cost"] > req["limit"] for req in req_costs))
-
-        # for req in req_costs:
-        #     print(req["cost"], req["limit"]) 
-
+        # subdivide request if necessary,
         if req_costs["cost"] >= req_costs["limit"]:
             requests = []
             for y in original_request["year"]:
@@ -336,10 +336,42 @@ class CDSSource(Source):
                     if not costs["cost"] < costs["limit"]:
                         raise ValueError("a single month exceeds limit, consider reduce area or variables or hours" )        # même un mois ne passe pas
                     requests.append(m_req)
-            return requests
+            self.request = requests
+            return self.request
         else:
-            return [original_request]
+            self.request = [original_request]
+            return self.request
 
+
+    def download(self, client=None, **kwargs):
+
+        cli = self.client 
+        if client:
+            cli = client # client overides self.client
+        
+        if not cli : 
+            raise ValueError("Client is not set. configure CDS client before download request")
+
+        # verify path
+        Path(self.path).mkdir(parents=True, exist_ok=True)
+
+        if self.request:
+            c=0
+            for req in self.request:
+                # forge name of downloaded file
+                forged_name = f"file_n{c}.nc"
+                destination = f"{self.path}/{forged_name}"
+                # remove if necessary
+                # if os.path.exists(self.path):
+                #     os.remove(self.path)
+                cli.retrieve(self.product_info["cds_dataset"], req, destination)
+                c+=1
+                
+        else:
+            raise ValueError("No request set yet, fill resquest form before download")
+
+            
+            
 
 
 
