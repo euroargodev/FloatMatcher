@@ -164,7 +164,8 @@ class CDSSource(Source):
         self.clear_cache = clear_cache
 
 
-        # in remote case, resolver is always cache dir given in path
+        # in remote case, resolver is the cache dir given in path, until download()
+        # points it to the folder of the request
         self._resolver: FileResolver = ExplicitFiles(self.path)
         
         # request template of the product, completed from the points by build_request
@@ -324,7 +325,7 @@ class CDSSource(Source):
         # subdivide request if necessary,
         # if req_costs["cost"] >= req_costs["limit"]:
         
-        if req_costs["cost"] >= 2000:
+        if req_costs["cost"] >= 200:
             requests = []
             for y in self.original_request["year"]:
                 y_req = copy.deepcopy(self.original_request)
@@ -428,9 +429,11 @@ class CDSSource(Source):
 
         # check if request correspond exactly or is include
         # in one of the ones set up in register. if it is, skip downloading
-        for registered in register.values():
+        for uuid_hex, registered in register.items():
             if registered["state"] == "available" and self._is_included(request_info, registered):
-                return
+                # files already downloaded: the resolver reads them in their folder
+                self._resolver = ExplicitFiles(cache_dir / uuid_hex)
+                return Path(f"{cache_dir}/{uuid_hex}")
 
         # setup dedicated folder in cache dir based on
         cache = Path(f"{cache_dir}/{uuid.uuid4().hex}")
@@ -489,6 +492,10 @@ class CDSSource(Source):
         # every sub-request downloaded: the original request is available
         request_info["state"] = "available"
         register_update()
+
+        # the resolver reads the files of this request only, not the whole cache dir
+        self._resolver = ExplicitFiles(cache)
+        return cache
 
             
             
