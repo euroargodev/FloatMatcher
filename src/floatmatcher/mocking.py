@@ -25,7 +25,16 @@ class _FakeDatastores:
 
 
 class FakeResult:
-    """Stands in for the result of ``cdsapi.Client().retrieve``"""
+    """Stands in for the result of ``cdsapi.Client().retrieve``
+
+    Parameters
+    ----------
+    location: str
+        URL of the result file on CDS, its name is used for the downloaded file.
+    """
+
+    def __init__(self, location: str) -> None:
+        self.location = location
 
     def download(self, target: str | Path) -> str:
         """Write an empty file at ``target`` and return its path"""
@@ -74,4 +83,5 @@ class FakeCDSClient:
                 "Your request is too large, please reduce your selection.",
                 response=response,
             )
-        return FakeResult()
+        # one file name per request, as CDS does
+        return FakeResult(f"https://fake-cds/results/request_{len(self.sent)}.nc")

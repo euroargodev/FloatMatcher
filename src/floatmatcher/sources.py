@@ -12,6 +12,9 @@ from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
 from .utils import _indented_repr
 import pandas as pd
+import zipfile
+import shutil
+import uuid
 
 class Source(ABC):
     """Where the files of a product come from
@@ -31,6 +34,7 @@ class Source(ABC):
                  ) -> None:
             self.path = path
             self.product_info = product_info
+            self.original_request = None
 
     def __repr__(self) -> str:
         return _indented_repr(self)
@@ -150,12 +154,15 @@ class CDSSource(Source):
     def __init__(self,
                  path: str | list[str] | Path,
                  product_info: dict[str, Any],
-                 client: Any
+                 client: Any,
+                 clear_cache: bool
                  ) -> None:
         
         self.path = path
-        self.product_info: dict[str, Any] = product_info
+        self.product_info = product_info
         self.client = client      # cdsapi.Client, or mocking.FakeCDSClient to develop without network
+        self.clear_cache = clear_cache
+
 
         # in remote case, resolver is always cache dir given in path
         self._resolver: FileResolver = ExplicitFiles(self.path)
@@ -265,8 +272,6 @@ class CDSSource(Source):
         dates = np.unique(
                     np.asarray(points.time).astype(f"datetime64[{self.product_info["time_resolution"]}]")
                 )
-        print(dates)
-        print("---")
         # ensuite il faut construire le pad autour pour avoir toutes les dates encadrantes.
         # TODO : Attention, granularité jour imposée par les champs year/month/day de la requête CDS 
         # TODO : il faut peut etre caler le time_margin sur time_gap ? 
@@ -276,8 +281,6 @@ class CDSSource(Source):
         dates_padded = pd.to_datetime(np.unique(
             np.concatenate([dates - pad, dates, dates + pad]).astype("datetime64[D]"))
             )
-        print(dates_padded)
-        print(dates_padded.day.unique())
 
 
         # ensuite on extrait les différentes heures, jours et mois dont on a besoin 
@@ -312,17 +315,19 @@ class CDSSource(Source):
         TODO 
         """
         # commence par build la premiere request,
-        original_request = self._build_request(points, variables, **options)
+        self.original_request = self._build_request(points, variables, **options)
 
         
         # eval cost of original request
-        req_costs = self.eval_request(original_request)
+        req_costs = self.eval_request(self.original_request)
 
         # subdivide request if necessary,
-        if req_costs["cost"] >= req_costs["limit"]:
+        # if req_costs["cost"] >= req_costs["limit"]:
+        
+        if req_costs["cost"] >= 2000:
             requests = []
-            for y in original_request["year"]:
-                y_req = copy.deepcopy(original_request)
+            for y in self.original_request["year"]:
+                y_req = copy.deepcopy(self.original_request)
                 y_req["year"] = [y]
                 costs = self.eval_request(y_req)
                 if costs["cost"] < costs["limit"]:
@@ -339,9 +344,43 @@ class CDSSource(Source):
             self.request = requests
             return self.request
         else:
-            self.request = [original_request]
+            self.request = [self.original_request]
             return self.request
 
+
+    @staticmethod
+    def _is_included(request_info: dict[str, Any], registered: dict[str, Any]) -> bool:
+        """Whether a request is covered by a request of the register
+
+        Parameters
+        ----------
+        request_info: dict
+            Request to download, as written in the register.
+        registered: dict
+            Request of the register.
+
+        Returns
+        -------
+        bool
+            True if same dataset, area inside the registered one, and every variable, date,
+            hour and pressure level among the registered ones.
+        """
+        if request_info["dataset"] != registered["dataset"]:
+            return False
+
+        # area: [north, west, south, east]
+        north, west, south, east = request_info["area"]
+        r_north, r_west, r_south, r_east = registered["area"]
+        if not (north <= r_north and west >= r_west and south >= r_south and east <= r_east):
+            return False
+
+        # CDS takes every combination of these lists, so each list included is enough
+        for key in ["variables", "year", "month", "day", "time", "pressure_level"]:
+            if (key in request_info) != (key in registered):
+                return False
+            if key in request_info and not set(request_info[key]) <= set(registered[key]):
+                return False
+        return True
 
     def download(self, client=None, **kwargs):
 
@@ -353,22 +392,103 @@ class CDSSource(Source):
             raise ValueError("Client is not set. configure CDS client before download request")
 
         # verify path
-        Path(self.path).mkdir(parents=True, exist_ok=True)
+        cache_dir = Path(self.path)
+        cache_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.request:
+        # manage cache
+        if self.clear_cache:
+            print(cache_dir)
+            # empty folder
+            for element in cache_dir.iterdir():
+                if element.is_dir():
+                    shutil.rmtree(element)
+                else:
+                    element.unlink()
+
+        # create a json with request fields
+        # request on cds is defined by a product, + area + time
+        if not self.request or self.original_request is None:
+            raise ValueError("No request set yet, fill resquest form before download")
+
+        request_info = {
+            "dataset": self.product_info["cds_dataset"],
+            "variables": self.original_request["variable"],
+            "area": [float(a) for a in self.original_request["area"]],
+            "state": "pending",     # pending / available / error
+        }
+
+        # time and pressure fields depend on the CDS dataset, not all of them have it
+        for key in ["year", "month", "day", "time", "pressure_level"]:
+            if key in self.original_request:
+                request_info[key] = self.original_request[key]
+
+        # register of uuid + associated parameters in cache dir, created if it does not exist
+        register_file = cache_dir / "register.json"
+        register = json.loads(register_file.read_text()) if register_file.exists() else {}
+
+        # check if request correspond exactly or is include
+        # in one of the ones set up in register. if it is, skip downloading
+        for registered in register.values():
+            if registered["state"] == "available" and self._is_included(request_info, registered):
+                return
+
+        # setup dedicated folder in cache dir based on
+        cache = Path(f"{cache_dir}/{uuid.uuid4().hex}")
+        cache.mkdir(parents=True, exist_ok=True)
+        request_file = cache / "request.json"
+
+        def register_update() -> None:
+            """Write the request in its folder and in the register"""
+            request_file.write_text(json.dumps(request_info, indent=4))
+            register[cache.name] = request_info
+            register_file.write_text(json.dumps(register, indent=4))
+
+        register_update()
+
+        # resolve request before download, divide it if necesary
+        try:
             c=0
             for req in self.request:
-                # forge name of downloaded file
-                forged_name = f"file_n{c}.nc"
-                destination = f"{self.path}/{forged_name}"
+
                 # remove if necessary
                 # if os.path.exists(self.path):
                 #     os.remove(self.path)
-                cli.retrieve(self.product_info["cds_dataset"], req, destination)
+                retreive = cli.retrieve(self.product_info["cds_dataset"], req)
+
+                # forge name of downloaded file
+                forged_name = Path(retreive.location).name
+                destination = Path(f"{cache}/{forged_name}")
+
+                # actually download query
+                retreive.download(destination)
+
+                # if it is zip, unzip
+                if Path(destination).suffix == ".zip":        
+                    with zipfile.ZipFile(destination, "r") as zip_ref:
+                        extracted_filenames = zip_ref.namelist()
+                        zip_ref.extractall(destination.parent)
+
+                    # rename files extracted from zip file
+                    for file in extracted_filenames:
+                        new_file = Path(f"{self.path}/{Path(retreive.location).stem}_{file}")
+                        print("**  ", new_file)
+                        Path(f"{self.path}/{file}").rename(new_file)
+
+                    # remove zip file  
+                    destination.unlink(missing_ok=True)
+
+
                 c+=1
-                
-        else:
-            raise ValueError("No request set yet, fill resquest form before download")
+
+        except Exception:
+            # refused by CDS or failed download: the original request is not available
+            request_info["state"] = "error"
+            register_update()
+            raise
+
+        # every sub-request downloaded: the original request is available
+        request_info["state"] = "available"
+        register_update()
 
             
             

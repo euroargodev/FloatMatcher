@@ -261,6 +261,7 @@ class Product(ABC):
         self._source.fetch(points, self.selected_variables)
         files = self._source.resolve(points)
         print(files)
+        exit()
         ds = self._open_paths(files)
         ds = self.normalize(ds)
         self._src_dataset_checker(ds)
