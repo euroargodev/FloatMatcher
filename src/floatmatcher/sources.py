@@ -155,7 +155,7 @@ class CDSSource(Source):
                  path: str | list[str] | Path,
                  product_info: dict[str, Any],
                  client: Any,
-                 clear_cache: bool
+                 clear_cache: bool = False
                  ) -> None:
         
         self.path = path
@@ -289,7 +289,8 @@ class CDSSource(Source):
         request["month"] = sorted([f"{d:02d}" for d in dates_padded.month.unique()])
         request["day"] = sorted([f"{d:02d}" for d in dates_padded.day.unique()])
 
-        # test if request fit in 
+        # test if it is necessary to split the request because of crossing -180 longitude
+        #  
         return request
 
     def eval_request(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -312,19 +313,19 @@ class CDSSource(Source):
     def build_request(self, points: PointSet,
                       variables: list[str] | None,
                       **options: list[str]) -> list[dict[str, Any]]:
-        """ 
-        TODO 
+        """
+        TODO
         """
         # commence par build la premiere request,
         self.original_request = self._build_request(points, variables, **options)
 
-        
+
         # eval cost of original request
         req_costs = self.eval_request(self.original_request)
 
         # subdivide request if necessary,
         # if req_costs["cost"] >= req_costs["limit"]:
-        
+
         if req_costs["cost"] >= 200:
             requests = []
             for y in self.original_request["year"]:
@@ -427,6 +428,14 @@ class CDSSource(Source):
         register_file = cache_dir / "register.json"
         register = json.loads(register_file.read_text()) if register_file.exists() else {}
 
+        # same request already failed: remove its folder and entry, then download it fresh
+        for uuid_hex, registered in list(register.items()):
+            if (registered["state"] == "error" and self._is_included(request_info, registered)
+                    and self._is_included(registered, request_info)):
+                shutil.rmtree(cache_dir / uuid_hex, ignore_errors=True)
+                del register[uuid_hex]
+        register_file.write_text(json.dumps(register, indent=4))
+
         # check if request correspond exactly or is include
         # in one of the ones set up in register. if it is, skip downloading
         for uuid_hex, registered in register.items():
@@ -466,25 +475,24 @@ class CDSSource(Source):
                 retreive.download(destination)
 
                 # if it is zip, unzip
-                if Path(destination).suffix == ".zip":        
+                if destination.suffix == ".zip":
                     with zipfile.ZipFile(destination, "r") as zip_ref:
                         extracted_filenames = zip_ref.namelist()
-                        zip_ref.extractall(destination.parent)
+                        zip_ref.extractall(cache)
 
-                    # rename files extracted from zip file
+                    # rename files extracted from zip file, prefixed by the zip name: the zips of
+                    # the sub-requests hold files with the same names
                     for file in extracted_filenames:
-                        new_file = Path(f"{self.path}/{Path(retreive.location).stem}_{file}")
-                        print("**  ", new_file)
-                        Path(f"{self.path}/{file}").rename(new_file)
+                        Path(f"{cache}/{file}").rename(Path(f"{cache}/{destination.stem}_{file}"))
 
-                    # remove zip file  
+                    # remove zip file
                     destination.unlink(missing_ok=True)
-
 
                 c+=1
 
-        except Exception:
-            # refused by CDS or failed download: the original request is not available
+        except BaseException:
+            # refused by CDS, failed download or interrupted (Ctrl+C): the original request
+            # is not available
             request_info["state"] = "error"
             register_update()
             raise

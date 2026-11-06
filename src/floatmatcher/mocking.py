@@ -1,5 +1,6 @@
 # mocking.py: stand-ins for external services, to test and develop without them
 
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -37,8 +38,16 @@ class FakeResult:
         self.location = location
 
     def download(self, target: str | Path) -> str:
-        """Write an empty file at ``target`` and return its path"""
-        Path(target).touch()
+        """Write an empty file at ``target`` and return its path
+
+        A zip, holding empty files named as in CDS zips, if ``location`` ends with ``.zip``.
+        """
+        if str(target).endswith(".zip"):
+            with zipfile.ZipFile(target, "w") as zip_ref:
+                for zip_file in ["data_stream-oper_stepType-instant.nc", "data_stream-oper_stepType-accum.nc"]:
+                    zip_ref.writestr(zip_file, "")
+        else:
+            Path(target).touch()
         return str(target)
 
 
@@ -53,6 +62,8 @@ class FakeCDSClient:
     ----------
     limit: float, default 1000
         Cost limit.
+    file_format: {"nc", "zip"}, default "nc"
+        Format of the files downloaded, CDS sends a zip for some requests.
 
     Attributes
     ----------
@@ -60,8 +71,9 @@ class FakeCDSClient:
         Requests received by ``retrieve``, refused ones included.
     """
 
-    def __init__(self, limit: float = 1000.0) -> None:
+    def __init__(self, limit: float = 1000.0, file_format: str = "nc") -> None:
         self.client = _FakeDatastores(limit)
+        self.file_format = file_format
         self.sent: list[dict[str, Any]] = []
 
     def retrieve(self, name: str, request: dict[str, Any]) -> FakeResult:
@@ -84,4 +96,4 @@ class FakeCDSClient:
                 response=response,
             )
         # one file name per request, as CDS does
-        return FakeResult(f"https://fake-cds/results/request_{len(self.sent)}.nc")
+        return FakeResult(f"https://fake-cds/results/request_{len(self.sent)}.{self.file_format}")
