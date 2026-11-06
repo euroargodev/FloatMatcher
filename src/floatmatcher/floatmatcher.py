@@ -6,7 +6,7 @@ import pandas as pd
 import xarray as xr
 
 from .methods import Method, available_methods
-# from .interpolation import Interpolation
+
 from .pointset import PointSet
 from .matchup_results import MatchupResult
 from .product import Product, available_products
@@ -124,7 +124,7 @@ class FloatMatcher:
         ----------
         type: {'era5', 'lut'}
             Product to use.
-        source: {'local'}
+        source: {'local', 'remote-cds'}
             Where the files come from.
         path: str or list of str
             Directory or files of the product. With a ``pattern``, the root of the tree.
@@ -132,7 +132,9 @@ class FloatMatcher:
             Variables to keep. None keeps all.
         **src_params
             Parameters of the source. ``"local"``: ``pattern``, a path template like
-            ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``.
+            ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``. ``"remote-cds"``:
+            ``client``, ``clear_cache`` and the options of the product (ERA5: ``time``, e.g.
+            ``["00:00", "12:00"]``), see :class:`.CDSSource`.
 
         Raises
         ------
@@ -286,3 +288,61 @@ class FloatMatcher:
             "Cannot reinject: these points come from arrays, there is no Dataset or DataFrame "
             "to add the values to. Use result."
         )
+
+    def build_request(self) -> list[dict[str, Any]]:
+        """Build the download request of the product for the points
+
+        Only for a product from ``"remote-cds"``: the request covers the area and the dates of
+        the points, for the selected variables, split under the cost limit of CDS. Then call
+        :meth:`download`. Optional: ``match()`` builds and downloads the request itself. The
+        options of the product (ERA5: ``time``) are given to :meth:`set_product`.
+
+        Returns
+        -------
+        list of dict
+            Sub-requests to download.
+
+        Raises
+        ------
+        ValueError
+            If the points or the product are not set, if the source of the product has no
+            request, or if the request can not be built.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            fm.set_points(lon, lat, time)
+            fm.set_product("era5", "remote-cds", "/cache", ["sst"], client=cdsapi.Client(),
+                           time=["00:00", "12:00"])
+            fm.build_request()
+            fm.download()
+        """
+        if self.points is None:
+            raise ValueError("build_request(): no points set, call set_points(...)")
+        if self.product is None:
+            raise ValueError("build_request(): no product set, call set_product(...)")
+
+        res = self.product.build_request(self.points)
+
+        return res
+
+    def download(self,) -> None:
+        """Download the request built by :meth:`build_request`
+
+        Only for a product from ``"remote-cds"``. The files go to a folder of the cache
+        directory, the product reads them from there. Nothing is downloaded if the request is
+        already in the cache. Optional: ``match()`` builds and downloads the request itself.
+
+        Raises
+        ------
+        ValueError
+            If the product is not set, if its source has nothing to download, or if no request
+            was built.
+        requests.HTTPError
+            If CDS refuses a sub-request.
+        """
+        if self.product is None:
+            raise ValueError("download(): no product set, call set_product(...)")
+
+        self.product.download()
