@@ -156,6 +156,7 @@ def test_set_method_unknown_type_raises():
 @pytest.mark.parametrize("method, params, message", [
     ("nearest", {"dummy_param": 50}, r"does not take \['dummy_param'\]"),
     ("nearest", {"n_frames": 2}, r"does not take \['n_frames'\]"),
+    ("nearest", {"k_nearest": 2}, r"does not take \['k_nearest'\]"),
     ("interp", {"dummy_param": 50}, r"does not take \['dummy_param'\]"),
 ])
 def test_set_method_wrong_params_raise(method, params, message):

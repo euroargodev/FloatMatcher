@@ -165,7 +165,8 @@ class FloatMatcher:
             Method to use.
         **params
             Parameters of the method. ``"nearest"``: ``radius`` (km), ``time_gap``
-            (numpy.timedelta64), ``k_nearest``.
+            (numpy.timedelta64). ``"interp"``: the same, plus ``k_nearest``, ``n_frames``,
+            ``kernel`` and ``power``.
 
         Raises
         ------

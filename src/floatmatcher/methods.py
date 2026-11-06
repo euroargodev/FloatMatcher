@@ -80,17 +80,13 @@ class NearestNeighbor(Method):
         Maximum distance to the node, in km (straight line on the sphere).
     time_gap: numpy.timedelta64, default=1 day
         Maximum gap to the time step. Ignored for a grid without time axis.
-    k_nearest: int, default=1
-        Number of neighbors looked up. Only 1 works for now.
     """
-    optional_params = {"radius", "time_gap", "k_nearest"}
+    optional_params = {"radius", "time_gap"}
 
     def __init__(self, radius: int = 25,
-                 time_gap: np.timedelta64 = np.timedelta64(1, "D"),
-                 k_nearest : int = 1) -> None :
+                 time_gap: np.timedelta64 = np.timedelta64(1, "D")) -> None :
         self.radius = radius
         self.time_gap = time_gap
-        self.k_nearest = k_nearest
 
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
         """Match the points with the nearest node of the grid
@@ -118,12 +114,12 @@ class NearestNeighbor(Method):
         flat_grid = FlatGrid.from_grid(dataset)
 
         # starting Nearest method : apply kdtree on spatial
-        dist_km, spatial_idx = flat_grid.spatial_nearest(points, k=self.k_nearest)
+        dist_km, spatial_idx = flat_grid.spatial_nearest(points)
         valid_spatial = dist_km <= self.radius
 
         idx_count = len(points.lon)
         if flat_grid.time is not None:
-            time_delta, temporal_idx = flat_grid.temporal_nearest(points, k=self.k_nearest)
+            time_delta, temporal_idx = flat_grid.temporal_nearest(points)
             valid = valid_spatial & (time_delta <= self.time_gap_seconds)
         else:
             time_delta = np.full(idx_count, np.nan)

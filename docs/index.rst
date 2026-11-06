@@ -12,7 +12,7 @@ distance and a time gap.
 
     fm = FloatMatcher()
     fm.set_points(lon, lat, time)                      # or a DataFrame, or an xarray Dataset
-    fm.set_product("era5", "local", "/data/era5", ["sst"],
+    fm.set_product("era5-hourly", "local", "/data/era5", ["sst"],
                    pattern="{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc")
     fm.set_method("nearest", radius=50, time_gap=np.timedelta64(3, "h"))
     fm.match()
