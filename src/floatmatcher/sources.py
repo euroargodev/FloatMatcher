@@ -146,8 +146,32 @@ class LocalSource(Source):
         
 
 class CDSSource(Source):
-    """
-    TODO : ...
+    """Files downloaded from the Copernicus Climate Data Store (CDS)
+
+    The request is built from the points (area, dates, variables), split under the cost limit
+    of CDS, then downloaded in a folder of the cache directory. A register of the requests
+    already downloaded, ``register.json`` in the cache directory, avoids downloading again a
+    request included in a previous one.
+
+    Parameters
+    ----------
+    path: str or pathlib.Path
+        Cache directory. Each request gets its own folder in it, named by a uuid.
+    product_info: dict
+        Information of the product: ``cds_dataset``, ``cds_request``, ``cds_variables``,
+        ``cds_options``, ``grid_step``, ``lon_convention``, ``time_resolution`` and
+        ``time_margin``.
+    client: cdsapi.Client or mocking.FakeCDSClient
+        Client of the CDS API. :class:`.FakeCDSClient` to develop without network.
+    clear_cache: bool, default False
+        Empty the cache directory before downloading.
+
+    Attributes
+    ----------
+    original_request: dict or None
+        Last request built from the points, before the split.
+    request: list of dict or None
+        Sub-requests of ``original_request``, each one under the cost limit.
     """
     def __init__(self,
                  path: str | Path,
@@ -280,8 +304,30 @@ class CDSSource(Source):
     def _build_request(self, points: PointSet,
                       variables: list[str] | None,
                       **options: list[str]) -> dict[str, Any]:
-        """ 
-        TODO 
+        """Request for the points, from the request template of the product
+
+        Area of the points plus a margin (the whole band of latitude if it crosses the edge of
+        the longitudes, see ``_area``), variables translated to the CDS names, options of the
+        product, and the days of the points with ``time_margin`` around them.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+        variables: list of str
+            Names in the files, keys of ``product_info["cds_variables"]``.
+        **options: list of str
+            Values of the options of the product (ERA5: ``time``), all values if not given.
+
+        Returns
+        -------
+        dict
+            Request in the form CDS expects.
+
+        Raises
+        ------
+        ValueError
+            If ``variables`` is None or has unknown names, if an option is unknown or has
+            values not available, or if ``time_margin`` is 24 h or more.
         """
         # copy initial request
         request = copy.deepcopy(self.base_request)
@@ -344,10 +390,31 @@ class CDSSource(Source):
     def build_request(self, points: PointSet,
                       variables: list[str] | None,
                       **options: list[str]) -> list[dict[str, Any]]:
+        """Request of the points, split under the cost limit of CDS
+
+        The request is split by year, then by month for the years still too large. The
+        request and its sub-requests are kept in ``original_request`` and ``request``.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+        variables: list of str
+            Names in the files, keys of ``product_info["cds_variables"]``.
+        **options: list of str
+            Values of the options of the product (ERA5: ``time``), all values if not given.
+
+        Returns
+        -------
+        list of dict
+            Sub-requests to download, the request alone if it fits in the limit.
+
+        Raises
+        ------
+        ValueError
+            If the request can not be built (see ``_build_request``), or if a single month
+            exceeds the limit.
         """
-        TODO
-        """
-        # commence par build la premiere request,
+        # build first request
         self.original_request = self._build_request(points, variables, **options)
 
         # eval cost of original request
@@ -415,7 +482,31 @@ class CDSSource(Source):
         return True
 
     def download(self, client: Any = None, **kwargs: Any) -> Path:
+        """Download the sub-requests of the last request built, in a folder of the cache
 
+        The request is written in the register (``register.json`` in the cache directory) and
+        in ``request.json`` in its folder, with a state: ``pending`` while downloading, then
+        ``available``, or ``error`` if CDS refuses it, the download fails or is interrupted.
+        Not downloaded if the request is included in an ``available`` request of the register.
+        A same request in ``error`` is removed, folder included, and downloaded again. Zip files
+        are extracted. The resolver then reads the files of this folder only.
+
+        Parameters
+        ----------
+        client: cdsapi.Client 
+
+        Returns
+        -------
+        pathlib.Path
+            Folder of the files of the request.
+
+        Raises
+        ------
+        ValueError
+            If there is no client, or no request built yet.
+        requests.HTTPError
+            If CDS refuses a sub-request.
+        """
         cli = self.client 
         if client:
             cli = client # client overides self.client
