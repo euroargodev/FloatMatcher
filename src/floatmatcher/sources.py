@@ -170,7 +170,9 @@ class CDSSource(Source):
         
         # request template of the product, completed from the points by build_request
         self.base_request: dict[str, Any] = copy.deepcopy(product_info["cds_request"])
-        self.request: list[dict[str, Any]] | None = None    # last request built
+        # last request built, and its sub-requests under the cost limit of CDS
+        self.original_request: dict[str, Any] | None = None
+        self.request: list[dict[str, Any]] | None = None
 
 
     def resolve(self, points: PointSet) -> list[str]:
@@ -230,6 +232,52 @@ class CDSSource(Source):
             values[option] = list(asked)
         return values
 
+    def _area(self, points: PointSet) -> list[float]:
+        """Area covering the points plus a margin, rounded outward on the grid of the product
+
+        Longitudes follow ``product_info["lon_convention"]``, ``"-180/180"`` or ``"0/360"``. If
+        the box crosses the edge of the convention (the antimeridian in -180/180, Greenwich in
+        0/360), the whole band of latitude is asked: one area, no split.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+
+        Returns
+        -------
+        list of float
+            ``[north, west, south, east]``, the order CDS expects.
+        """
+        margin = self.product_info["grid_step"] *2        # degrees, at least the matchup radius (0.5° is about 55 km)
+        grid_step = self.product_info["grid_step"]        # degrees, resolution of ERA5
+
+        # longitude convention of the product
+        lon_min = {"-180/180": -180.0, "0/360": 0.0}[self.product_info["lon_convention"]]
+        lon_max = lon_min + 360
+
+        south = max(np.floor((points.lat.min() - margin) / grid_step) * grid_step, -90)
+        north = min(np.ceil((points.lat.max() + margin) / grid_step) * grid_step, 90)
+
+        # smallest arc covering the points, whatever the convention of their longitudes: the
+        # globe minus the largest gap between two successive points
+        lon = np.sort((np.asarray(points.lon) - lon_min) % 360 + lon_min)
+        gaps = np.diff(np.append(lon, lon[0] + 360))
+        i = int(np.argmax(gaps))
+        if i == lon.size - 1:
+            # largest gap across the edge: the arc does not cross it
+            west, east = lon[0], lon[-1]
+        else:
+            west, east = lon[i + 1], lon[i] + 360
+
+        west = np.floor((west - margin) / grid_step) * grid_step
+        east = np.ceil((east + margin) / grid_step) * grid_step
+
+        # the box (margin included) crosses the edge, or goes round the globe: whole band of
+        # latitude. The east edge one step before lon_max, the same meridian as lon_min
+        if west < lon_min or east > lon_max:
+            return [float(north), lon_min, float(south), lon_max - grid_step]
+        return [float(north), float(west), float(south), float(east)]
+
     def _build_request(self, points: PointSet,
                       variables: list[str] | None,
                       **options: list[str]) -> dict[str, Any]:
@@ -238,23 +286,6 @@ class CDSSource(Source):
         """
         # copy initial request
         request = copy.deepcopy(self.base_request)
-
-        # Area covered by the float plus a margin and rounded outward on the ERA5 grid
-        margin = self.product_info["grid_step"] *2        # degrees, at least the matchup radius (0.5° is about 55 km)
-        grid_step = self.product_info["grid_step"]        # degrees, resolution of ERA5
-
-        if points.lon.max() - points.lon.min() > 180:
-            print(points.lon.max(), points.lon.min())
-            raise ValueError("cross antemeridian : TODO : need to divide box in two")
-
-        west = np.floor((points.lon.min() - margin) / grid_step) * grid_step
-        east = np.ceil((points.lon.max() + margin) / grid_step) * grid_step
-        south = max(np.floor((points.lat.min() - margin) / grid_step) * grid_step, -90)
-        north = min(np.ceil((points.lat.max() + margin) / grid_step) * grid_step, 90)
-
-        area = [north, west, south, east]
-
-        request["area"] = area      # CDS expects this order
 
         # Variables: names in the files, translated to the names CDS expects
         cds_names = self.product_info["cds_variables"]
@@ -289,8 +320,9 @@ class CDSSource(Source):
         request["month"] = sorted([f"{d:02d}" for d in dates_padded.month.unique()])
         request["day"] = sorted([f"{d:02d}" for d in dates_padded.day.unique()])
 
-        # test if it is necessary to split the request because of crossing -180 longitude
-        #  
+        # area of the points, the whole band of latitude if it crosses the edge of the longitudes
+        request["area"] = self._area(points)      # CDS expects this order
+
         return request
 
     def eval_request(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -318,7 +350,6 @@ class CDSSource(Source):
         """
         # commence par build la premiere request,
         self.original_request = self._build_request(points, variables, **options)
-
 
         # eval cost of original request
         req_costs = self.eval_request(self.original_request)
@@ -407,11 +438,15 @@ class CDSSource(Source):
                 else:
                     element.unlink()
 
-        # create a json with request fields
-        # request on cds is defined by a product, + area + time
         if not self.request or self.original_request is None:
             raise ValueError("No request set yet, fill resquest form before download")
 
+        # register of uuid + associated parameters in cache dir, created if it does not exist
+        register_file = Path(f"{cache_dir}/register.json")
+        register = json.loads(register_file.read_text()) if register_file.exists() else {}
+
+        # create a json with request fields
+        # request on cds is defined by a product, + area + time
         request_info = {
             "dataset": self.product_info["cds_dataset"],
             "variables": self.original_request["variable"],
@@ -424,15 +459,11 @@ class CDSSource(Source):
             if key in self.original_request:
                 request_info[key] = self.original_request[key]
 
-        # register of uuid + associated parameters in cache dir, created if it does not exist
-        register_file = cache_dir / "register.json"
-        register = json.loads(register_file.read_text()) if register_file.exists() else {}
-
         # same request already failed: remove its folder and entry, then download it fresh
         for uuid_hex, registered in list(register.items()):
             if (registered["state"] == "error" and self._is_included(request_info, registered)
                     and self._is_included(registered, request_info)):
-                shutil.rmtree(cache_dir / uuid_hex, ignore_errors=True)
+                shutil.rmtree(Path(f"{cache_dir}/{uuid_hex}"), ignore_errors=True)
                 del register[uuid_hex]
         register_file.write_text(json.dumps(register, indent=4))
 
@@ -441,13 +472,13 @@ class CDSSource(Source):
         for uuid_hex, registered in register.items():
             if registered["state"] == "available" and self._is_included(request_info, registered):
                 # files already downloaded: the resolver reads them in their folder
-                self._resolver = ExplicitFiles(cache_dir / uuid_hex)
+                self._resolver = ExplicitFiles(Path(f"{cache_dir}/{uuid_hex}"))
                 return Path(f"{cache_dir}/{uuid_hex}")
 
         # setup dedicated folder in cache dir based on
         cache = Path(f"{cache_dir}/{uuid.uuid4().hex}")
         cache.mkdir(parents=True, exist_ok=True)
-        request_file = cache / "request.json"
+        request_file = Path(f"{cache}/request.json")
 
         def register_update() -> None:
             """Write the request in its folder and in the register"""
@@ -457,11 +488,9 @@ class CDSSource(Source):
 
         register_update()
 
-        # resolve request before download, divide it if necesary
+        # download the sub-requests
         try:
-            c=0
             for req in self.request:
-
                 # remove if necessary
                 # if os.path.exists(self.path):
                 #     os.remove(self.path)
@@ -487,8 +516,6 @@ class CDSSource(Source):
 
                     # remove zip file
                     destination.unlink(missing_ok=True)
-
-                c+=1
 
         except BaseException:
             # refused by CDS, failed download or interrupted (Ctrl+C): the original request

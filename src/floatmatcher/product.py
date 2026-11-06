@@ -305,6 +305,8 @@ class ERA5Product(Product):
     src_available = ["local", "remote-cds"]
     product_info = {
         "grid_step": 0.25,
+        # longitudes of the areas asked to CDS, "-180/180" or "0/360": the areas are cut at its edge
+        "lon_convention": "-180/180",
         "time_resolution": "h",
         "time_margin": np.timedelta64(3, "h"),
         "cds_dataset": "reanalysis-era5-single-levels",

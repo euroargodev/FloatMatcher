@@ -94,6 +94,32 @@ def test_cds_options_unavailable_value_raise_error(fake_cds):
         source._options_request({"time": []})
 
 
+# ---------- CDSSource: area and antimeridian ----------
+
+def area_of(lon, lat=None, lon_convention="-180/180"):
+    lat = lat or [50.0] * len(lon)
+    product_info = dict(ERA5Product.product_info, lon_convention=lon_convention)
+    source = CDSSource(path="/cache", product_info=product_info, client=None)
+    return source._area(make_points(lon, lat, ["2013-03-18T12"] * len(lon)))
+
+
+@pytest.mark.parametrize("lon, lon_convention, area", [
+    # crossing the antimeridian: whole band, east edge one step before 180 (same meridian as -180)
+    ([179.0, -179.0], "-180/180", [50.5, -180.0, 49.5, 179.75]),
+    # largest gap across the antimeridian: no crossing
+    ([-100.0, 0.0, 100.0], "-180/180", [50.5, -100.5, 49.5, 100.5]),
+    # 200° is -160°: the shortest box, not the one going round the globe
+    ([10.0, 200.0], "-180/180", [50.5, -160.5, 49.5, 10.5]),
+    # Greenwich is not an edge in -180/180
+    ([-1.0, 1.0], "-180/180", [50.5, -1.5, 49.5, 1.5]),
+    # in 0/360, crossing Greenwich gives the band, crossing the antimeridian does not
+    ([-1.0, 1.0], "0/360", [50.5, 0.0, 49.5, 359.75]),
+    ([179.0, -179.0], "0/360", [50.5, 178.5, 49.5, 181.5]),
+])
+def test_area(lon, lon_convention, area):
+    assert area_of(lon, lon_convention=lon_convention) == area
+
+
 # ---------- CDSSource.download: cache, register and states ----------
 
 def make_points(lon, lat, time):
@@ -228,6 +254,29 @@ def test_download_spread_over_several_downloaded_again(tmp_path, p2013, p2014, f
     cds_download(tmp_path, both, fake_cds, by_year=True)
 
     assert len(fake_cds.sent) == 4
+
+
+@pytest.fixture
+def p_antimeridian():
+    return make_points([179.0, -179.0], [50.0, 50.0], ["2013-03-18T12", "2013-03-18T18"])
+
+
+def test_download_antimeridian_band(tmp_path, p_antimeridian, fake_cds):
+    source, folder = cds_download(tmp_path, p_antimeridian, fake_cds)
+
+    assert len(fake_cds.sent) == 1
+    assert fake_cds.sent[0]["area"] == [50.5, -180.0, 49.5, 179.75]
+    assert read_register(tmp_path)[folder.name]["area"] == [50.5, -180.0, 49.5, 179.75]
+    assert source.resolve(p_antimeridian) == [str(folder / "request_1.nc")]
+
+
+def test_download_band_reused_by_a_float_inside(tmp_path, p_antimeridian, fake_cds):
+    """The band covers every longitude: a float anywhere in its latitudes and dates reuses it"""
+    _, band = cds_download(tmp_path, p_antimeridian, fake_cds)
+    _, folder = cds_download(tmp_path, make_points([-30.0], [50.0], ["2013-03-18T12"]), fake_cds)
+
+    assert len(fake_cds.sent) == 1
+    assert folder == band
 
 
 def test_download_refused_sets_error(tmp_path, p2013):
