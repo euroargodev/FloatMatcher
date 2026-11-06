@@ -38,12 +38,31 @@ class Source(ABC):
         return _indented_repr(self)
 
     def build_request(self, points: PointSet,
-                      variables: list[str] | None,
-                      **options: list[str]) -> list[dict[str, Any]]:
+                      variables: list[str] | None) -> list[dict[str, Any]]:
+        """Request of the points for a remote source, only ``"remote-cds"`` has one
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+        variables: list of str or None
+
+        Raises
+        ------
+        ValueError
+            Always, the source has no request. See :meth:`.CDSSource.build_request`.
+        """
         raise ValueError("request can be build only if source == remote-cds")
 
-    def download(self, **options: Any) -> Path:
-        raise ValueError("request can be build only if source == remote-cds")
+
+    def download(self, **kwargs: Any) -> Path:
+        """Download the last request built, only ``"remote-cds"`` has one
+
+        Raises
+        ------
+        ValueError
+            Always, the source has nothing to download. See :meth:`.CDSSource.download`.
+        """
+        raise ValueError("download is available only if source == remote-cds")
 
     @abstractmethod
     def resolve(self, points: PointSet) -> list[str]:
@@ -66,6 +85,9 @@ class Source(ABC):
         Parameters
         ----------
         points: :class:`.PointSet`
+        variables: list of str or None
+            Names in the files of the variables needed. None keeps all, a remote source
+            needs a list.
         """
 
 
@@ -165,9 +187,19 @@ class CDSSource(Source):
         Client of the CDS API. :class:`.FakeCDSClient` to develop without network.
     clear_cache: bool, default False
         Empty the cache directory before downloading.
+    **kwargs: list of str
+        Values of the options of the product (ERA5: ``time``, e.g. ``["00:00", "12:00"]``),
+        all values if not given. Kept for every request built.
+
+    Raises
+    ------
+    ValueError
+        If an option is unknown, or its values are empty or not available.
 
     Attributes
     ----------
+    options: dict
+        Option -> values asked, given at creation.
     original_request: dict or None
         Last request built from the points, before the split.
     request: list of dict or None
@@ -177,13 +209,18 @@ class CDSSource(Source):
                  path: str | Path,
                  product_info: dict[str, Any],
                  client: Any,
-                 clear_cache: bool = False
+                 clear_cache: bool = False,
+                 **kwargs: list[str]
                  ) -> None:
         
         self.path: str | Path = path      # cache dir, a single directory
         self.product_info: dict[str, Any] = product_info
         self.client = client      # cdsapi.Client, or mocking.FakeCDSClient to develop without network
         self.clear_cache = clear_cache
+
+        # options of the requests, checked now so that a wrong one fails at set_product
+        self._options_request(kwargs)
+        self.options: dict[str, list[str]] = kwargs
 
 
         # in remote case, resolver is the cache dir given in path, until download()
@@ -202,8 +239,23 @@ class CDSSource(Source):
         return self._resolver.files_for(points)
 
     def fetch(self, points: PointSet, variables: list[str] | None)-> None:
-        """ fetch is buid request + download in order to 
-        Get files with CDS API 
+        """Download the files of the points from CDS, if they are not in the cache yet
+
+        Creates the cache directory, then calls :meth:`build_request` and :meth:`download`.
+        Called by ``Product.open``, so by ``match()``.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+        variables: list of str
+            Names in the files, keys of ``product_info["cds_variables"]``.
+
+        Raises
+        ------
+        ValueError
+            If the request can not be built (see :meth:`build_request`).
+        requests.HTTPError
+            If CDS refuses a sub-request.
         """
         # verify path
         Path(self.path).mkdir(parents=True, exist_ok=True)
@@ -252,6 +304,7 @@ class CDSSource(Source):
             if wrong:
                 raise ValueError(f"{option}: {wrong} not available, available: {all_values}")
             values[option] = list(asked)
+
         return values
 
     def _area(self, points: PointSet) -> list[float]:
@@ -302,8 +355,7 @@ class CDSSource(Source):
         return [float(north), float(west), float(south), float(east)]
 
     def _build_request(self, points: PointSet,
-                      variables: list[str] | None,
-                      **options: list[str]) -> dict[str, Any]:
+                      variables: list[str] | None) -> dict[str, Any]:
         """Request for the points, from the request template of the product
 
         Area of the points plus a margin (the whole band of latitude if it crosses the edge of
@@ -315,8 +367,6 @@ class CDSSource(Source):
         points: :class:`.PointSet`
         variables: list of str
             Names in the files, keys of ``product_info["cds_variables"]``.
-        **options: list of str
-            Values of the options of the product (ERA5: ``time``), all values if not given.
 
         Returns
         -------
@@ -341,8 +391,8 @@ class CDSSource(Source):
             raise ValueError(f"unknown variables {unknown}, available: {list(cds_names)}")
         request["variable"] = [cds_names[v] for v in variables]
 
-        # Options of the product (ERA5: time), all values if not given
-        request.update(self._options_request(options))
+        # Options of the source (ERA5: time), all values if not given
+        request.update(self._options_request(self.options))
 
         # time creation : 
         # par default, le time resolution = resolution de la grille min (pour ERA5= 1h)
@@ -388,20 +438,18 @@ class CDSSource(Source):
         return costs
 
     def build_request(self, points: PointSet,
-                      variables: list[str] | None,
-                      **options: list[str]) -> list[dict[str, Any]]:
+                      variables: list[str] | None) -> list[dict[str, Any]]:
         """Request of the points, split under the cost limit of CDS
 
         The request is split by year, then by month for the years still too large. The
         request and its sub-requests are kept in ``original_request`` and ``request``.
+        The options are the ones of the source, given at its creation.
 
         Parameters
         ----------
         points: :class:`.PointSet`
         variables: list of str
             Names in the files, keys of ``product_info["cds_variables"]``.
-        **options: list of str
-            Values of the options of the product (ERA5: ``time``), all values if not given.
 
         Returns
         -------
@@ -415,7 +463,7 @@ class CDSSource(Source):
             exceeds the limit.
         """
         # build first request
-        self.original_request = self._build_request(points, variables, **options)
+        self.original_request = self._build_request(points, variables)
 
         # eval cost of original request
         req_costs = self.eval_request(self.original_request)
@@ -520,7 +568,6 @@ class CDSSource(Source):
 
         # manage cache
         if self.clear_cache:
-            print(cache_dir)
             # empty folder
             for element in cache_dir.iterdir():
                 if element.is_dir():

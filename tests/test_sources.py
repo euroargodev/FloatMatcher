@@ -94,6 +94,21 @@ def test_cds_options_unavailable_value_raise_error(fake_cds):
         source._options_request({"time": []})
 
 
+def test_cds_options_given_to_the_source_used_in_the_request(fake_cds, points):
+    source = CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds,
+                       time=["00:00", "12:00"])
+    assert source.build_request(points, ["sst"])[0]["time"] == ["00:00", "12:00"]
+
+
+def test_cds_options_wrong_raise_error_at_creation(fake_cds):
+    with pytest.raises(ValueError, match="unknown options"):
+        CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds,
+                  hours=["00:00"])
+    with pytest.raises(ValueError, match="not available"):
+        CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds,
+                  time=["02:30"])
+
+
 # ---------- CDSSource: area and antimeridian ----------
 
 def area_of(lon, lat=None, lon_convention="-180/180"):
@@ -277,6 +292,18 @@ def test_download_band_reused_by_a_float_inside(tmp_path, p_antimeridian, fake_c
 
     assert len(fake_cds.sent) == 1
     assert folder == band
+
+
+def test_download_with_options_not_downloaded_again_by_fetch(tmp_path, p2013, fake_cds):
+    """Source with options, build_request and download, then fetch (as match does) builds it again"""
+    source = CDSSource(path=tmp_path, product_info=ERA5Product.product_info, client=fake_cds,
+                       time=["00:00", "12:00"])
+    source.build_request(p2013, ["sst"])
+    source.download()
+    source.fetch(p2013, ["sst"])
+
+    assert len(fake_cds.sent) == 1
+    assert fake_cds.sent[0]["time"] == ["00:00", "12:00"]
 
 
 def test_download_refused_sets_error(tmp_path, p2013):

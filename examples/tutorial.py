@@ -81,7 +81,8 @@ my_fm.set_product(type="era5",
                   path="/runtime/data-in/cache",
                 #   client=FakeCDSClient(limit=121000),   # no network; toy cost, see mocking.py
                   client=cdsapi.Client(),              # real CDS, key in ~/.cdsapirc
-                  clear_cache=False
+                  clear_cache=False,
+                  time=["00:00", "12:00"]
                   )
 
 

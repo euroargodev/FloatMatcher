@@ -70,7 +70,8 @@ class Product(ABC):
         Variables to keep. None keeps all.
     **source_params
         Parameters of the source. ``"local"``: ``pattern``. ``"remote-cds"``: ``client``
-        (``cdsapi.Client()``), required.
+        (``cdsapi.Client()``), required, ``clear_cache`` and the options of the product (ERA5:
+        ``time``).
 
     Attributes
     ----------
@@ -267,11 +268,40 @@ class Product(ABC):
         self.src_dataset = ds
 
 
-    def build_request(self, points: PointSet, **options: list[str]) -> Any:
-        res = self._source.build_request(points, self.selected_variables, **options)
+    def build_request(self, points: PointSet) -> list[dict[str, Any]]:
+        """Request of the points for the variables of the product, built by its source
+
+        Only the ``"remote-cds"`` source has a request, see :meth:`.CDSSource.build_request`.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+            Positions to match, they decide the area and the dates of the request.
+
+        Returns
+        -------
+        list of dict
+            Sub-requests to download, under the cost limit of CDS.
+
+        Raises
+        ------
+        ValueError
+            If the source has no request, or if the request can not be built.
+        """
+        res = self._source.build_request(points, self.selected_variables)
         return res
 
     def download(self,) -> None:
+        """Download the last request built, with the source of the product
+
+        Only the ``"remote-cds"`` source downloads, see :meth:`.CDSSource.download`. Call
+        :meth:`build_request` first.
+
+        Raises
+        ------
+        ValueError
+            If the source has nothing to download, or if no request was built.
+        """
         self._source.download()
             
     def __repr__(self) -> str:
