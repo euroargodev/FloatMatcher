@@ -10,6 +10,7 @@ from .methods import Method, available_methods
 from .pointset import PointSet
 from .matchup_results import MatchupResult
 from .product import Product, available_products
+from .utils import _check_params
 
 class FloatMatcher:
     """Positions matcher for gridded products
@@ -142,7 +143,7 @@ class FloatMatcher:
             If the product is unknown, the source is not available for it, or
             ``selected_variables`` is neither None nor a non-empty list.
         TypeError
-            If a source parameter is unknown.
+            If a source parameter is unknown, or a required one is missing.
         """
         if type not in available_products:
             raise ValueError(f"unknown product {type!r}, available: {list(available_products)}")
@@ -175,6 +176,8 @@ class FloatMatcher:
         """
         if type not in available_methods:
             raise ValueError(f"unknown method {type!r}, available: {list(available_methods)}")
+        _check_params("method", type, params, available_methods[type].required_params,
+                      available_methods[type]._optional_params())
         self.method = available_methods[type](**params)
 
 

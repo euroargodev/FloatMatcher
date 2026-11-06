@@ -126,10 +126,17 @@ def test_set_product_unknown_type_raises(era5_files):
         FloatMatcher().set_product("foo", "local", era5_files, None)
 
 
-def test_set_product_unknown_source_param_raises(era5_files):
-    """source parameters go to the source: an unknown one is refused"""
-    with pytest.raises(TypeError):
-        FloatMatcher().set_product("era5", "local", era5_files, None, foo=1)
+@pytest.mark.parametrize("source, params, message", [
+    ("local", {"foo": 1}, r"does not take \['foo'\]"),
+    ("local", {"client": "cds"}, r"does not take \['client'\]"),
+    ("local", {"time": ["00:00"]}, r"does not take \['time'\]"),
+    ("remote-cds", {"client": "cds", "pattern": "x"}, r"does not take \['pattern'\]"),
+    ("remote-cds", {}, r"needs \['client'\]"),
+])
+def test_set_product_wrong_source_params_raise(era5_files, source, params, message):
+    """source parameters are checked against the ones of the source, before creating it"""
+    with pytest.raises(TypeError, match=message):
+        FloatMatcher().set_product("era5", source, era5_files, ["sst"], **params)
 
 
 def test_set_method_builds_the_method_with_its_params():
@@ -146,9 +153,15 @@ def test_set_method_unknown_type_raises():
         FloatMatcher().set_method("dummy_method")
 
 
-def test_set_method_unknown_param_raises():
-    with pytest.raises(TypeError):
-        FloatMatcher().set_method("nearest", dummy_param=50)
+@pytest.mark.parametrize("method, params, message", [
+    ("nearest", {"dummy_param": 50}, r"does not take \['dummy_param'\]"),
+    ("nearest", {"n_frames": 2}, r"does not take \['n_frames'\]"),
+    ("interp", {"dummy_param": 50}, r"does not take \['dummy_param'\]"),
+])
+def test_set_method_wrong_params_raise(method, params, message):
+    """method parameters are checked against the ones of the method, before creating it"""
+    with pytest.raises(TypeError, match=message):
+        FloatMatcher().set_method(method, **params)
 
 
 # ---------- builder : set_points input types ----------

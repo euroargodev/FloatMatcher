@@ -5,6 +5,7 @@
 # read lazily, only at the valid points.
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import xarray as xr
@@ -12,7 +13,7 @@ import xarray as xr
 from .flatgrid import FlatGrid
 from .matchup_results import MatchupResult
 from .pointset import PointSet
-from .utils import _indented_repr
+from .utils import _indented_repr, _signature_defaults
 from .weights import available_kernels
 
 class Method(ABC):
@@ -21,12 +22,28 @@ class Method(ABC):
     A method holds its parameters and matches points with a grid in ``apply``. It knows
     nothing of the product or of :class:`.FloatMatcher`: it receives the opened grid and the
     points. Subclasses implement ``apply`` and are registered in ``available_methods``.
+
+    Attributes
+    ----------
+    required_params: set of str
+        Parameters of the method that must be given to ``set_method``.
+    optional_params: set of str
+        Parameters of the method that have a default value, given to ``set_method`` to
+        change it. The default values are read in the signature of ``__init__``.
     """
 
     time_gap: np.timedelta64
+    # parameters given to set_method
+    required_params: set[str] = set()
+    optional_params: set[str] = set()
 
     def __repr__(self) -> str:
         return _indented_repr(self)
+
+    @classmethod
+    def _optional_params(cls) -> dict[str, Any]:
+        """Optional parameters of the method -> their default value"""
+        return _signature_defaults(cls, cls.optional_params)
 
     @property
     def time_gap_seconds(self) -> float:
@@ -66,6 +83,7 @@ class NearestNeighbor(Method):
     k_nearest: int, default=1
         Number of neighbors looked up. Only 1 works for now.
     """
+    optional_params = {"radius", "time_gap", "k_nearest"}
 
     def __init__(self, radius: int = 25,
                  time_gap: np.timedelta64 = np.timedelta64(1, "D"),
@@ -159,6 +177,7 @@ class Interpolator(Method):
     k_nearest: int, default=1
         Number of neighbors looked up. Only 1 works for now.
     """
+    optional_params = {"radius", "time_gap", "k_nearest", "n_frames", "kernel", "power"}
 
     def __init__(self, 
                  radius: int = 25,

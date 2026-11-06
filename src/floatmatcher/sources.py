@@ -8,7 +8,7 @@ import json
 import numpy as np
 from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
-from .utils import _indented_repr
+from .utils import _indented_repr, _signature_defaults
 import pandas as pd
 import zipfile
 import shutil
@@ -24,9 +24,21 @@ class Source(ABC):
     ----------
     path: str or list of str
         Directory or files.
+
+    Attributes
+    ----------
+    required_params: set of str
+        Parameters of the source that must be given to ``set_product``.
+    optional_params: set of str
+        Parameters of the source that have a default value, given to ``set_product`` to
+        change it. The default values are read in the signature of ``__init__``.
     """
     name: str
-    def __init__(self, 
+    # parameters given to set_product, besides path and product_info
+    required_params: set[str] = set()
+    optional_params: set[str] = set()
+
+    def __init__(self,
                  path: str | Path | list[str],
                  product_info: dict[str, Any] | None = None
                  ) -> None:
@@ -36,6 +48,11 @@ class Source(ABC):
 
     def __repr__(self) -> str:
         return _indented_repr(self)
+
+    @classmethod
+    def _optional_params(cls, product_info: dict[str, Any] | None) -> dict[str, Any]:
+        """Optional parameters of the source for a product -> their default value"""
+        return _signature_defaults(cls, cls.optional_params)
 
     def build_request(self, points: PointSet,
                       variables: list[str] | None) -> list[dict[str, Any]]:
@@ -111,6 +128,7 @@ class LocalSource(Source):
     ValueError
         If ``path`` is empty, or if a ``pattern`` is given without a path or with a list of paths.
     """
+    optional_params = {"pattern"}
 
     def __init__(self,
                  path: str | list[str] | Path,
@@ -205,6 +223,17 @@ class CDSSource(Source):
     request: list of dict or None
         Sub-requests of ``original_request``, each one under the cost limit.
     """
+    required_params = {"client"}
+    optional_params = {"clear_cache"}
+
+    @classmethod
+    def _optional_params(cls, product_info: dict[str, Any] | None) -> dict[str, Any]:
+        """``optional_params`` and the options of the product (ERA5: ``time``), all their
+        values by default"""
+        options = (product_info or {}).get("cds_options", {})
+        return {**_signature_defaults(cls, cls.optional_params),
+                **options}
+
     def __init__(self,
                  path: str | Path,
                  product_info: dict[str, Any],

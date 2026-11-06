@@ -7,7 +7,7 @@ from dask.utils import SerializableLock
 from pathlib import Path
 from .sources import available_sources
 
-from .utils import _indented_repr, _select_variables
+from .utils import _check_params, _indented_repr, _select_variables
 from .pointset  import PointSet
 
 
@@ -90,7 +90,7 @@ class Product(ABC):
         If ``source`` is not in ``src_available``, or ``selected_variables`` is neither None
         nor a non-empty list.
     TypeError
-        If a source parameter is unknown.
+        If a source parameter is unknown, or a required one is missing.
     """
     name: str
     coord_map: dict[str, str] = {}
@@ -118,8 +118,10 @@ class Product(ABC):
         if self.source not in self.src_available:
             raise ValueError(f"{type(self).__name__} supports {self.src_available}, not {source!r}")
       
-        self._source = available_sources[source](path, product_info=self.product_info,
-                                         **source_params)
+        source_cls = available_sources[source]
+        _check_params("source", source, source_params, source_cls.required_params,
+                      source_cls._optional_params(self.product_info))
+        self._source = source_cls(path, product_info=self.product_info, **source_params)
 
     # TODO : get essential product metadata 
 
@@ -144,6 +146,7 @@ class Product(ABC):
         if self.src_dataset is None:
             raise ValueError("product not opened, call open(points) first")
         return _select_variables(self.src_dataset, self.selected_variables)
+
 
     # property of available variables in dataset 
     @property
