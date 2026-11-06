@@ -389,4 +389,10 @@ available_products: dict[str, type[Product]] = {
     "era5": ERA5Product,
     "lut" : LUTProduct
 }
-"""dict: Product classes by name, used by :meth:`.FloatMatcher.set_product`"""
+"""dict: Product classes by name, used by :meth:`.FloatMatcher.set_product`
+
+Available products currently are:
+
+- ``"era5"``: :class:`.ERA5Product`
+- ``"lut"``: :class:`.LUTProduct`
+"""

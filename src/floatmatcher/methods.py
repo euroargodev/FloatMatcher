@@ -261,4 +261,10 @@ class Interpolator(Method):
 available_methods: dict[str, type[Method]] = {
     "nearest": NearestNeighbor, "interp": Interpolator
 }
-"""dict: Method classes by name, used by :meth:`.FloatMatcher.set_method`"""
+"""dict: Method classes by name, used by :meth:`.FloatMatcher.set_method`
+
+Available methods currently are:
+
+- ``"nearest"``: :class:`.NearestNeighbor`
+- ``"interp"``: :class:`.Interpolator`
+"""

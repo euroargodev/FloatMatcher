@@ -75,4 +75,5 @@ Products, sources and methods are classes registered by name, so that ``set_prod
 
    Method
    NearestNeighbor
+   Interpolator
    available_methods

@@ -678,4 +678,10 @@ available_sources: dict[str, type[Source]] = {
     "local": LocalSource, 
     "remote-cds": CDSSource
     }
-"""dict: Source classes by name, used by :class:`.Product`"""
+"""dict: Source classes by name, used by :class:`.Product`
+
+Available sources currently are:
+
+- ``"local"``: :class:`.LocalSource`
+- ``"remote-cds"``: :class:`.CDSSource`
+"""
