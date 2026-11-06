@@ -65,6 +65,7 @@ Products, sources and methods are classes registered by name, so that ``set_prod
 
    Source
    LocalSource
+   CDSSource
    available_sources
 
 .. currentmodule:: floatmatcher.methods
@@ -74,4 +75,5 @@ Products, sources and methods are classes registered by name, so that ``set_prod
 
    Method
    NearestNeighbor
+   Interpolator
    available_methods

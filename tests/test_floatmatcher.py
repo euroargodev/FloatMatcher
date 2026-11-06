@@ -380,3 +380,12 @@ def test_result_is_read_only():
 
     with pytest.raises(AttributeError):
         fm.result = None
+
+
+def test_set_product_remote_cds_takes_the_options(tmp_path, fake_cds):
+    fm = FloatMatcher()
+    fm.set_points([-30.0], [50.0], np.array(["2013-03-18T12"], dtype="datetime64[ns]"))
+    fm.set_product("era5", "remote-cds", tmp_path, ["sst"], client=fake_cds, time=["00:00", "12:00"])
+
+    requests = fm.build_request()
+    assert requests[0]["time"] == ["00:00", "12:00"]

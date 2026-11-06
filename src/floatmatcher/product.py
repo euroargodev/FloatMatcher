@@ -69,7 +69,9 @@ class Product(ABC):
     selected_variables: list of str or None
         Variables to keep. None keeps all.
     **source_params
-        Parameters of the source. ``"local"``: ``pattern``.
+        Parameters of the source. ``"local"``: ``pattern``. ``"remote-cds"``: ``client``
+        (``cdsapi.Client()``), required, ``clear_cache`` and the options of the product (ERA5:
+        ``time``).
 
     Attributes
     ----------
@@ -93,6 +95,8 @@ class Product(ABC):
     name: str
     coord_map: dict[str, str] = {}
     src_available: list[str] = []
+    product_info : dict[str, Any]
+
 
     def __init__(self, 
                  source: str, 
@@ -109,13 +113,13 @@ class Product(ABC):
             )
         self.source = source    # local / api
         self.selected_variables = selected_variables
-
         self.src_dataset : xr.Dataset | None = None
 
         if self.source not in self.src_available:
             raise ValueError(f"{type(self).__name__} supports {self.src_available}, not {source!r}")
       
-        self._source = available_sources[source](path, **source_params)
+        self._source = available_sources[source](path, product_info=self.product_info,
+                                         **source_params)
 
     # TODO : get essential product metadata 
 
@@ -254,6 +258,8 @@ class Product(ABC):
         FileNotFoundError
             If none of the files of a ``pattern`` exists.
         """
+        # fetch data if necessary
+        self._source.fetch(points, self.selected_variables)
         files = self._source.resolve(points)
         ds = self._open_paths(files)
         ds = self.normalize(ds)
@@ -261,7 +267,43 @@ class Product(ABC):
         self._check_time_unicity(ds)
         self.src_dataset = ds
 
-    
+
+    def build_request(self, points: PointSet) -> list[dict[str, Any]]:
+        """Request of the points for the variables of the product, built by its source
+
+        Only the ``"remote-cds"`` source has a request, see :meth:`.CDSSource.build_request`.
+
+        Parameters
+        ----------
+        points: :class:`.PointSet`
+            Positions to match, they decide the area and the dates of the request.
+
+        Returns
+        -------
+        list of dict
+            Sub-requests to download, under the cost limit of CDS.
+
+        Raises
+        ------
+        ValueError
+            If the source has no request, or if the request can not be built.
+        """
+        res = self._source.build_request(points, self.selected_variables)
+        return res
+
+    def download(self,) -> None:
+        """Download the last request built, with the source of the product
+
+        Only the ``"remote-cds"`` source downloads, see :meth:`.CDSSource.download`. Call
+        :meth:`build_request` first.
+
+        Raises
+        ------
+        ValueError
+            If the source has nothing to download, or if no request was built.
+        """
+        self._source.download()
+            
     def __repr__(self) -> str:
         return _indented_repr(self)
 
@@ -288,12 +330,40 @@ class ERA5Product(Product):
     """
     name = "era5"
     coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
-    src_available = ["local"]
+    src_available = ["local", "remote-cds"]
+    product_info = {
+        "grid_step": 0.25,
+        # longitudes of the areas asked to CDS, "-180/180" or "0/360": the areas are cut at its edge
+        "lon_convention": "-180/180",
+        "time_resolution": "h",
+        "time_margin": np.timedelta64(3, "h"),
+        "cds_dataset": "reanalysis-era5-single-levels",
+        "cds_request": {
+            "product_type": ["reanalysis"],
+            "data_format": "netcdf",
+            "download_format": "unarchived",
+        },
+        # options of build_request -> values available, all of them by default
+        "cds_options": {"time": [f"{h:02d}:00" for h in range(24)]},
+        # names in the files -> names in the CDS requests
+        "cds_variables": {
+            "sst": "sea_surface_temperature",
+            "t2m": "2m_temperature",
+            "u10": "10m_u_component_of_wind",
+            "v10": "10m_v_component_of_wind",
+            "avg_slhtf": "mean_surface_latent_heat_flux",
+            "avg_ishf": "mean_surface_sensible_heat_flux",
+            "avg_snswrf": "mean_surface_net_short_wave_radiation_flux",
+            "avg_snlwrf": "mean_surface_net_long_wave_radiation_flux",
+        },
+    }
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         """Set lon and lat as coordinates, harmonize names"""
         ds = to_standard(ds_raw, self.coord_map)
         return ds
+
+    
     
 class LUTProduct(Product):
     """Look-up table (LUT) gridded product
@@ -303,6 +373,7 @@ class LUTProduct(Product):
     name = "lut"
     coord_map = {"lon": "lon", "lat": "lat"}
     src_available = ["local"]
+    product_info = {"grid_step": 1}
 
     def normalize(self, ds_raw: xr.Dataset) -> xr.Dataset:
         """Set lon and lat as coordinates, harmonize names"""
@@ -318,4 +389,10 @@ available_products: dict[str, type[Product]] = {
     "era5": ERA5Product,
     "lut" : LUTProduct
 }
-"""dict: Product classes by name, used by :meth:`.FloatMatcher.set_product`"""
+"""dict: Product classes by name, used by :meth:`.FloatMatcher.set_product`
+
+Available products currently are:
+
+- ``"era5"``: :class:`.ERA5Product`
+- ``"lut"``: :class:`.LUTProduct`
+"""

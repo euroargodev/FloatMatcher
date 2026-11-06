@@ -7,6 +7,7 @@ import xarray as xr
 
 from floatmatcher.pointset import PointSet
 from floatmatcher.product import ERA5Product
+from floatmatcher.mocking import FakeCDSClient
 from helpers import make_grid, daily_timestamps
 
 
@@ -106,3 +107,9 @@ def open_product(grid_file):
         product.open(PointSet.from_arrays([0.0], [0.0]))
         return product
     return _open
+
+
+@pytest.fixture
+def fake_cds():
+    """Stand-in for cdsapi.Client, without network"""
+    return FakeCDSClient()
