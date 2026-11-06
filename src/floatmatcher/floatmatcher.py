@@ -289,14 +289,20 @@ class FloatMatcher:
 
     def build_request(self, **options: list[str]) -> Any:
         print('***building request !')
-        
+        if self.points is None:
+            raise ValueError("build_request(): no points set, call set_points(...)")
+        if self.product is None:
+            raise ValueError("build_request(): no product set, call set_product(...)")
+
         res = self.product.build_request(self.points, **options)
         print("*** floatmatcher build end")
         return res
 
     def download(self,) -> Any:
         print('***download requests !')
-        
+        if self.product is None:
+            raise ValueError("download(): no product set, call set_product(...)")
+
         self.product.download()
         print("*** end of dowloading requests")
         

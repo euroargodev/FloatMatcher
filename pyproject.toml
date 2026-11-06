@@ -31,7 +31,6 @@ dev = [
     "cdsapi>=0.7.7",
     "ipykernel>=7.4.0",
     "matplotlib>=3.11.2",
-    "zarr",
     "gcsfs",
 ]
 docs = [

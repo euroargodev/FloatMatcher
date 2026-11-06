@@ -100,7 +100,7 @@ class Product(ABC):
     def __init__(self, 
                  source: str, 
                  path: str, 
-                 selected_variables: list[str],
+                 selected_variables: list[str] | None,
                  **source_params: Any
                 ) -> None:
         
@@ -260,8 +260,6 @@ class Product(ABC):
         # fetch data if necessary
         self._source.fetch(points, self.selected_variables)
         files = self._source.resolve(points)
-        print(files)
-        exit()
         ds = self._open_paths(files)
         ds = self.normalize(ds)
         self._src_dataset_checker(ds)
@@ -273,7 +271,7 @@ class Product(ABC):
         res = self._source.build_request(points, self.selected_variables, **options)
         return res
 
-    def download(self,):
+    def download(self,) -> None:
         self._source.download()
             
     def __repr__(self) -> str:

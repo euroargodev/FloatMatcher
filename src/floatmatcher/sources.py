@@ -4,9 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 import copy
-import os
 import json
-from pprint import pprint
 import numpy as np
 from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
@@ -34,7 +32,7 @@ class Source(ABC):
                  ) -> None:
             self.path = path
             self.product_info = product_info
-            self.original_request = None
+            self.original_request: dict[str, Any] | None = None
 
     def __repr__(self) -> str:
         return _indented_repr(self)
@@ -44,7 +42,7 @@ class Source(ABC):
                       **options: list[str]) -> list[dict[str, Any]]:
         raise ValueError("request can be build only if source == remote-cds")
 
-    def download(self, **options) :
+    def download(self, **options: Any) -> Path:
         raise ValueError("request can be build only if source == remote-cds")
 
     @abstractmethod
@@ -62,7 +60,7 @@ class Source(ABC):
         """
 
     @abstractmethod
-    def fetch(self, points: PointSet, variables: list[str]) -> None:
+    def fetch(self, points: PointSet, variables: list[str] | None) -> None:
         """Make the needed files available locally, downloading them if remote
 
         Parameters
@@ -142,7 +140,7 @@ class LocalSource(Source):
         """
         return self._resolver.files_for(points)
 
-    def fetch(self, points: PointSet, variables: list[str] )-> None:
+    def fetch(self, points: PointSet, variables: list[str] | None)-> None:
         """Nothing to do, the files are already on disk"""
         pass
         
@@ -152,14 +150,14 @@ class CDSSource(Source):
     TODO : ...
     """
     def __init__(self,
-                 path: str | list[str] | Path,
+                 path: str | Path,
                  product_info: dict[str, Any],
                  client: Any,
                  clear_cache: bool = False
                  ) -> None:
         
-        self.path = path
-        self.product_info = product_info
+        self.path: str | Path = path      # cache dir, a single directory
+        self.product_info: dict[str, Any] = product_info
         self.client = client      # cdsapi.Client, or mocking.FakeCDSClient to develop without network
         self.clear_cache = clear_cache
 
@@ -179,7 +177,7 @@ class CDSSource(Source):
         """ Files needed for these points """
         return self._resolver.files_for(points)
 
-    def fetch(self, points: PointSet, variables:list[str])-> None:
+    def fetch(self, points: PointSet, variables: list[str] | None)-> None:
         """ fetch is buid request + download in order to 
         Get files with CDS API 
         """
@@ -248,7 +246,8 @@ class CDSSource(Source):
         list of float
             ``[north, west, south, east]``, the order CDS expects.
         """
-        margin = self.product_info["grid_step"] *2        # degrees, at least the matchup radius (0.5° is about 55 km)
+        # degrees, at least the matchup radius (0.5° is about 55 km)
+        margin = self.product_info["grid_step"] *2
         grid_step = self.product_info["grid_step"]        # degrees, resolution of ERA5
 
         # longitude convention of the product
@@ -302,7 +301,7 @@ class CDSSource(Source):
         # time creation : 
         # par default, le time resolution = resolution de la grille min (pour ERA5= 1h)
         dates = np.unique(
-                    np.asarray(points.time).astype(f"datetime64[{self.product_info["time_resolution"]}]")
+                    np.asarray(points.time).astype(f"datetime64[{self.product_info['time_resolution']}]")
                 )
         # ensuite il faut construire le pad autour pour avoir toutes les dates encadrantes.
         # TODO : Attention, granularité jour imposée par les champs year/month/day de la requête CDS 
@@ -338,7 +337,7 @@ class CDSSource(Source):
             ``cost`` and ``limit`` of the request.
         """
         dataset_name = self.product_info["cds_dataset"]
-        costs = self.client.client.estimate_costs(dataset_name, request)
+        costs: dict[str, Any] = self.client.client.estimate_costs(dataset_name, request)
 
         return costs
 
@@ -355,9 +354,7 @@ class CDSSource(Source):
         req_costs = self.eval_request(self.original_request)
 
         # subdivide request if necessary,
-        # if req_costs["cost"] >= req_costs["limit"]:
-
-        if req_costs["cost"] >= 200:
+        if req_costs["cost"] >= req_costs["limit"]:
             requests = []
             for y in self.original_request["year"]:
                 y_req = copy.deepcopy(self.original_request)
@@ -372,7 +369,9 @@ class CDSSource(Source):
                     m_req["month"] = [m]
                     costs = self.eval_request(m_req)
                     if not costs["cost"] < costs["limit"]:
-                        raise ValueError("a single month exceeds limit, consider reduce area or variables or hours" )        # même un mois ne passe pas
+                        # even a single month is not downloadable
+                        raise ValueError("a single month exceeds limit, consider reduce area or variables "
+                                         "or hours")
                     requests.append(m_req)
             self.request = requests
             return self.request
@@ -415,7 +414,7 @@ class CDSSource(Source):
                 return False
         return True
 
-    def download(self, client=None, **kwargs):
+    def download(self, client: Any = None, **kwargs: Any) -> Path:
 
         cli = self.client 
         if client:

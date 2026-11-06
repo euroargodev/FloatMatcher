@@ -44,7 +44,8 @@ class FakeResult:
         """
         if str(target).endswith(".zip"):
             with zipfile.ZipFile(target, "w") as zip_ref:
-                for zip_file in ["data_stream-oper_stepType-instant.nc", "data_stream-oper_stepType-accum.nc"]:
+                for zip_file in ["data_stream-oper_stepType-instant.nc",
+                                 "data_stream-oper_stepType-accum.nc"]:
                     zip_ref.writestr(zip_file, "")
         else:
             Path(target).touch()
