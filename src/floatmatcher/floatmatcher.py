@@ -42,7 +42,7 @@ class FloatMatcher:
 
         fm = FloatMatcher()
         fm.set_points(lon, lat, time)
-        fm.set_product("era5", "local", "/data/era5", ["sst"])
+        fm.set_product("era5-hourly", "local", "/data/era5", ["sst"])
         fm.set_method("nearest", radius=50, time_gap=np.timedelta64(3, "h"))
         fm.match()
         fm.result
@@ -123,7 +123,7 @@ class FloatMatcher:
 
         Parameters
         ----------
-        type: {'era5', 'lut'}
+        type: {'era5-hourly', 'lut'}
             Product to use.
         source: {'local', 'remote-cds'}
             Where the files come from.
@@ -316,7 +316,7 @@ class FloatMatcher:
         .. code-block:: python
 
             fm.set_points(lon, lat, time)
-            fm.set_product("era5", "remote-cds", "/cache", ["sst"], client=cdsapi.Client(),
+            fm.set_product("era5-hourly", "remote-cds", "/cache", ["sst"], client=cdsapi.Client(),
                            time=["00:00", "12:00"])
             fm.build_request()
             fm.download()

@@ -331,7 +331,7 @@ class ERA5Product(Product):
 
     The names ``longitude``, ``latitude`` and ``valid_time`` are renamed lon, lat and time.
     """
-    name = "era5"
+    name = "era5-hourly"
     coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
     src_available = ["local", "remote-cds"]
     product_info = {
@@ -389,13 +389,13 @@ class LUTProduct(Product):
 
 # key given to FloatMatcher.set_product(type=...) -> Product class
 available_products: dict[str, type[Product]] = {
-    "era5": ERA5Product,
+    "era5-hourly": ERA5Product,
     "lut" : LUTProduct
 }
 """dict: Product classes by name, used by :meth:`.FloatMatcher.set_product`
 
 Available products currently are:
 
-- ``"era5"``: :class:`.ERA5Product`
+- ``"era5-hourly"``: :class:`.ERA5Product`
 - ``"lut"``: :class:`.LUTProduct`
 """

@@ -21,7 +21,7 @@ def _matched(grid_3d_ds, grid_file, *data, **names):
     """FloatMatcher with the given points, matched on the grid_3d_ds file."""
     fm = FloatMatcher()
     fm.set_points(*data, **names)
-    fm.set_product("era5", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_product("era5-hourly", "local", grid_file(grid_3d_ds), ["sst"])
     fm.set_method("nearest")
     fm.match()
     return fm
@@ -114,7 +114,7 @@ def test_set_points():
 def test_set_product_builds_the_product_of_the_given_type(era5_files):
     fm = FloatMatcher()
 
-    fm.set_product("era5", "local", era5_files, ["sst"])
+    fm.set_product("era5-hourly", "local", era5_files, ["sst"])
     assert isinstance(fm.product, ERA5Product)
 
     fm.set_product("lut", "local", era5_files, None)
@@ -136,7 +136,7 @@ def test_set_product_unknown_type_raises(era5_files):
 def test_set_product_wrong_source_params_raise(era5_files, source, params, message):
     """source parameters are checked against the ones of the source, before creating it"""
     with pytest.raises(TypeError, match=message):
-        FloatMatcher().set_product("era5", source, era5_files, ["sst"], **params)
+        FloatMatcher().set_product("era5-hourly", source, era5_files, ["sst"], **params)
 
 
 def test_set_method_builds_the_method_with_its_params():
@@ -239,7 +239,7 @@ def test_set_points_names_only_for_dataframe_or_dataset():
 def test_match_through_the_builder(era5_files):
     fm = FloatMatcher()
     fm.set_points([11.1], [30.05], np.array(["2015-06-01T02"], dtype="datetime64[ns]"))
-    fm.set_product("era5", "local", era5_files, ["sst"])
+    fm.set_product("era5-hourly", "local", era5_files, ["sst"])
     fm.set_method("nearest")
 
     fm.match()
@@ -259,7 +259,7 @@ def test_to_dataset_through_the_builder(grid_3d_ds, grid_file):
                     coords={"N_PROF": [10, 11]})
     fm = FloatMatcher()
     fm.set_points(ds)
-    fm.set_product("era5", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_product("era5-hourly", "local", grid_file(grid_3d_ds), ["sst"])
     fm.set_method("nearest")
     fm.match()
 
@@ -274,7 +274,7 @@ def test_to_dataframe_through_the_builder(grid_3d_ds, grid_file):
     df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
     fm = FloatMatcher()
     fm.set_points(df)
-    fm.set_product("era5", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_product("era5-hourly", "local", grid_file(grid_3d_ds), ["sst"])
     fm.set_method("nearest")
     fm.match()
 
@@ -398,7 +398,7 @@ def test_result_is_read_only():
 def test_set_product_remote_cds_takes_the_options(tmp_path, fake_cds):
     fm = FloatMatcher()
     fm.set_points([-30.0], [50.0], np.array(["2013-03-18T12"], dtype="datetime64[ns]"))
-    fm.set_product("era5", "remote-cds", tmp_path, ["sst"], client=fake_cds, time=["00:00", "12:00"])
+    fm.set_product("era5-hourly", "remote-cds", tmp_path, ["sst"], client=fake_cds, time=["00:00", "12:00"])
 
     requests = fm.build_request()
     assert requests[0]["time"] == ["00:00", "12:00"]
