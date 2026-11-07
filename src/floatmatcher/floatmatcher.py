@@ -350,3 +350,25 @@ class FloatMatcher:
             raise ValueError("download(): no product set, call set_product(...)")
 
         self.product.download()
+
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        Only for a product from ``"remote-cds"``, see :meth:`.CDSSource.show_register`.
+
+        Returns
+        -------
+        :class:`pandas.DataFrame`
+            One row per request, indexed by the uuid of its folder (``request``), with its
+            state first, then its fields: ``variables``, ``area``, dates, ``time``,
+            ``dataset``. Empty if nothing was downloaded in this cache yet.
+
+        Raises
+        ------
+        ValueError
+            If the product is not set, or if its source has no cache.
+        """
+        if self.product is None:
+            raise ValueError("show_register(): no product set, call set_product(...)")
+
+        return self.product.show_register()

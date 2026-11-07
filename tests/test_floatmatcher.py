@@ -403,3 +403,14 @@ def test_set_product_remote_cds_takes_the_options(tmp_path, fake_cds):
 
     requests = fm.build_request()
     assert requests[0]["time"] == ["00:00", "12:00"]
+
+
+def test_show_register_of_the_remote_cds_product(tmp_path, fake_cds):
+    fm = FloatMatcher()
+    fm.set_points([-30.0], [50.0], np.array(["2013-03-18T12"], dtype="datetime64[ns]"))
+    fm.set_product("era5-hourly", "remote-cds", tmp_path, ["sst"], client=fake_cds)
+    assert fm.show_register().empty
+
+    fm.build_request()
+    fm.download()
+    assert list(fm.show_register()["state"]) == ["available"]

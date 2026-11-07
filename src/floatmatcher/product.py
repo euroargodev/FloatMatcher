@@ -1,5 +1,6 @@
 import xarray as xr
 import numpy as np
+import pandas as pd
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
@@ -306,7 +307,26 @@ class Product(ABC):
             If the source has nothing to download, or if no request was built.
         """
         self._source.download()
-            
+
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        Only for a product from ``"remote-cds"``, see :meth:`.CDSSource.show_register`.
+
+        Returns
+        -------
+        :class:`pandas.DataFrame`
+            One row per request, indexed by the uuid of its folder (``request``), with its
+            state first, then its fields: ``variables``, ``area``, dates, ``time``,
+            ``dataset``. Empty if nothing was downloaded in this cache yet.
+
+        Raises
+        ------
+        ValueError
+            If the source has no cache.
+        """
+        return self._source.show_register()
+
     def __repr__(self) -> str:
         return _indented_repr(self)
 

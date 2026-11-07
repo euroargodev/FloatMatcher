@@ -81,6 +81,18 @@ class Source(ABC):
         """
         raise ValueError("download is available only if source == remote-cds")
 
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        Only the ``"remote-cds"`` source has a cache.
+
+        Raises
+        ------
+        ValueError
+            Always, the source has no cache. See :meth:`.CDSSource.show_register`.
+        """
+        raise ValueError("show_register is available only if source == remote-cds")
+
     @abstractmethod
     def resolve(self, points: PointSet) -> list[str]:
         """Files needed for these points
@@ -697,6 +709,31 @@ class CDSSource(Source):
         # the resolver reads the files of this request only, not the whole cache dir
         self._resolver = ExplicitFiles(cache)
         return cache
+
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        States: ``pending`` while downloading, ``available`` once downloaded, ``error`` if
+        refused by CDS or interrupted.
+
+        Returns
+        -------
+        :class:`pandas.DataFrame`
+            One row per request, indexed by the uuid of its folder (``request``), with its
+            state first, then its fields: ``variables``, ``area``, dates, ``time``,
+            ``dataset``. Empty if nothing was downloaded in this cache yet.
+        """
+        register_file = Path(self.path) / "register.json"
+        register = json.loads(register_file.read_text()) if register_file.exists() else {}
+
+        table = pd.DataFrame.from_dict(register, orient="index")
+        table.index.name = "request"
+
+        # state first, then the fields as written in the register, dataset last
+        first = [c for c in ["state"] if c in table.columns]
+        last = [c for c in ["dataset"] if c in table.columns]
+        middle = [c for c in table.columns if c not in first + last]
+        return table[first + middle + last]
 
             
             
