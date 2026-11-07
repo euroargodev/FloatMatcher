@@ -1,5 +1,6 @@
 import xarray as xr
 import numpy as np
+import pandas as pd
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
@@ -7,7 +8,7 @@ from dask.utils import SerializableLock
 from pathlib import Path
 from .sources import available_sources
 
-from .utils import _indented_repr, _select_variables
+from .utils import _check_params, _indented_repr, _select_variables
 from .pointset  import PointSet
 
 
@@ -90,7 +91,7 @@ class Product(ABC):
         If ``source`` is not in ``src_available``, or ``selected_variables`` is neither None
         nor a non-empty list.
     TypeError
-        If a source parameter is unknown.
+        If a source parameter is unknown, or a required one is missing.
     """
     name: str
     coord_map: dict[str, str] = {}
@@ -118,8 +119,10 @@ class Product(ABC):
         if self.source not in self.src_available:
             raise ValueError(f"{type(self).__name__} supports {self.src_available}, not {source!r}")
       
-        self._source = available_sources[source](path, product_info=self.product_info,
-                                         **source_params)
+        source_cls = available_sources[source]
+        _check_params("source", source, source_params, source_cls.required_params,
+                      source_cls._optional_params(self.product_info))
+        self._source = source_cls(path, product_info=self.product_info, **source_params)
 
     # TODO : get essential product metadata 
 
@@ -144,6 +147,7 @@ class Product(ABC):
         if self.src_dataset is None:
             raise ValueError("product not opened, call open(points) first")
         return _select_variables(self.src_dataset, self.selected_variables)
+
 
     # property of available variables in dataset 
     @property
@@ -303,7 +307,26 @@ class Product(ABC):
             If the source has nothing to download, or if no request was built.
         """
         self._source.download()
-            
+
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        Only for a product from ``"remote-cds"``, see :meth:`.CDSSource.show_register`.
+
+        Returns
+        -------
+        :class:`pandas.DataFrame`
+            One row per request, indexed by the uuid of its folder (``request``), with its
+            state first, then its fields: ``variables``, ``area``, dates, ``time``,
+            ``dataset``. Empty if nothing was downloaded in this cache yet.
+
+        Raises
+        ------
+        ValueError
+            If the source has no cache.
+        """
+        return self._source.show_register()
+
     def __repr__(self) -> str:
         return _indented_repr(self)
 
@@ -328,7 +351,7 @@ class ERA5Product(Product):
 
     The names ``longitude``, ``latitude`` and ``valid_time`` are renamed lon, lat and time.
     """
-    name = "era5"
+    name = "era5-hourly"
     coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
     src_available = ["local", "remote-cds"]
     product_info = {
@@ -368,10 +391,10 @@ class ERA5Product(Product):
 class LUTProduct(Product):
     """Look-up table (LUT) gridded product
 
-    Its coordinates are already named lon and lat.
+    Its coordinates are named longitude and latitude, renamed lon and lat.
     """
     name = "lut"
-    coord_map = {"lon": "lon", "lat": "lat"}
+    coord_map = {"longitude": "lon", "latitude": "lat"}
     src_available = ["local"]
     product_info = {"grid_step": 1}
 
@@ -386,13 +409,13 @@ class LUTProduct(Product):
 
 # key given to FloatMatcher.set_product(type=...) -> Product class
 available_products: dict[str, type[Product]] = {
-    "era5": ERA5Product,
+    "era5-hourly": ERA5Product,
     "lut" : LUTProduct
 }
 """dict: Product classes by name, used by :meth:`.FloatMatcher.set_product`
 
 Available products currently are:
 
-- ``"era5"``: :class:`.ERA5Product`
+- ``"era5-hourly"``: :class:`.ERA5Product`
 - ``"lut"``: :class:`.LUTProduct`
 """

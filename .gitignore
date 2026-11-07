@@ -148,3 +148,7 @@ xxx/
 *.nc
 era5_float_6900166/
 *.zip
+
+# cache of the example notebooks
+examples/cache/
+examples/cache_offline/

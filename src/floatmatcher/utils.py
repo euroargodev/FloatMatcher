@@ -7,6 +7,8 @@
 import xarray as xr
 from .exceptions import ProfileFormatError
 from numpy.typing import NDArray
+import inspect
+from collections.abc import Iterable
 from typing import Any
 
 
@@ -103,6 +105,64 @@ def _extract(ds: xr.Dataset, name: str) -> NDArray[Any]:
         If no coordinate or variable has this name.
     """
     return _get(ds, name).values
+
+
+def _signature_defaults(cls: type, names: Iterable[str]) -> dict[str, Any]:
+    """Default values of parameters of a class, read in the signature of its ``__init__``
+
+    Parameters
+    ----------
+    cls: type
+    names: iterable of str
+        Names of parameters of ``cls.__init__`` that have a default value.
+
+    Returns
+    -------
+    dict
+        Name -> default value.
+    """
+    parameters = inspect.signature(cls).parameters
+    return {name: parameters[name].default for name in sorted(names)}
+
+
+def _check_params(kind: str, name: str, given: Iterable[str],
+                  required: set[str], optional: dict[str, Any]) -> None:
+    """Check the parameters given to a source or a method, before creating it
+
+    Parameters
+    ----------
+    kind: str
+        Kind of object, ``"source"`` or ``"method"``, for the messages.
+    name: str
+        Name of the object, for the messages.
+    given: iterable of str
+        Names of the parameters given.
+    required: set of str
+        Parameters that must be given.
+    optional: dict
+        Parameters that have a default value -> that value.
+
+    Raises
+    ------
+    TypeError
+        If a required parameter is missing, or if a parameter is unknown.
+    """
+    given_names = set(given)
+    known_names = required | set(optional)
+
+    missing_names = sorted(required - given_names)
+    unknown_names = sorted(given_names - known_names)
+    if not missing_names and not unknown_names:
+        return
+
+    # what the object expects, written in the message
+    expected = (f"required: {sorted(required)}, "
+                f"optional params: {optional}, "
+                f"consider filling at least the required params")
+
+    if missing_names:
+        raise TypeError(f"{kind} {name!r} needs {missing_names} ({expected})")
+    raise TypeError(f"{kind} {name!r} does not take {unknown_names} ({expected})")
 
 
 def _indented_repr(obj: object, indent: int = 4) -> str:

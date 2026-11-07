@@ -10,6 +10,7 @@ from .methods import Method, available_methods
 from .pointset import PointSet
 from .matchup_results import MatchupResult
 from .product import Product, available_products
+from .utils import _check_params
 
 class FloatMatcher:
     """Positions matcher for gridded products
@@ -41,7 +42,7 @@ class FloatMatcher:
 
         fm = FloatMatcher()
         fm.set_points(lon, lat, time)
-        fm.set_product("era5", "local", "/data/era5", ["sst"])
+        fm.set_product("era5-hourly", "local", "/data/era5", ["sst"])
         fm.set_method("nearest", radius=50, time_gap=np.timedelta64(3, "h"))
         fm.match()
         fm.result
@@ -122,7 +123,7 @@ class FloatMatcher:
 
         Parameters
         ----------
-        type: {'era5', 'lut'}
+        type: {'era5-hourly', 'lut'}
             Product to use.
         source: {'local', 'remote-cds'}
             Where the files come from.
@@ -142,7 +143,7 @@ class FloatMatcher:
             If the product is unknown, the source is not available for it, or
             ``selected_variables`` is neither None nor a non-empty list.
         TypeError
-            If a source parameter is unknown.
+            If a source parameter is unknown, or a required one is missing.
         """
         if type not in available_products:
             raise ValueError(f"unknown product {type!r}, available: {list(available_products)}")
@@ -164,7 +165,8 @@ class FloatMatcher:
             Method to use.
         **params
             Parameters of the method. ``"nearest"``: ``radius`` (km), ``time_gap``
-            (numpy.timedelta64), ``k_nearest``.
+            (numpy.timedelta64). ``"interp"``: the same, plus ``k_nearest``, ``n_frames``,
+            ``kernel`` and ``power``.
 
         Raises
         ------
@@ -175,6 +177,8 @@ class FloatMatcher:
         """
         if type not in available_methods:
             raise ValueError(f"unknown method {type!r}, available: {list(available_methods)}")
+        _check_params("method", type, params, available_methods[type].required_params,
+                      available_methods[type]._optional_params())
         self.method = available_methods[type](**params)
 
 
@@ -313,7 +317,7 @@ class FloatMatcher:
         .. code-block:: python
 
             fm.set_points(lon, lat, time)
-            fm.set_product("era5", "remote-cds", "/cache", ["sst"], client=cdsapi.Client(),
+            fm.set_product("era5-hourly", "remote-cds", "/cache", ["sst"], client=cdsapi.Client(),
                            time=["00:00", "12:00"])
             fm.build_request()
             fm.download()
@@ -346,3 +350,25 @@ class FloatMatcher:
             raise ValueError("download(): no product set, call set_product(...)")
 
         self.product.download()
+
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        Only for a product from ``"remote-cds"``, see :meth:`.CDSSource.show_register`.
+
+        Returns
+        -------
+        :class:`pandas.DataFrame`
+            One row per request, indexed by the uuid of its folder (``request``), with its
+            state first, then its fields: ``variables``, ``area``, dates, ``time``,
+            ``dataset``. Empty if nothing was downloaded in this cache yet.
+
+        Raises
+        ------
+        ValueError
+            If the product is not set, or if its source has no cache.
+        """
+        if self.product is None:
+            raise ValueError("show_register(): no product set, call set_product(...)")
+
+        return self.product.show_register()

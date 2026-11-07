@@ -8,7 +8,7 @@ import json
 import numpy as np
 from .pointset import PointSet
 from .resolver import FileResolver, PathTemplate, ExplicitFiles
-from .utils import _indented_repr
+from .utils import _indented_repr, _signature_defaults
 import pandas as pd
 import zipfile
 import shutil
@@ -24,9 +24,21 @@ class Source(ABC):
     ----------
     path: str or list of str
         Directory or files.
+
+    Attributes
+    ----------
+    required_params: set of str
+        Parameters of the source that must be given to ``set_product``.
+    optional_params: set of str
+        Parameters of the source that have a default value, given to ``set_product`` to
+        change it. The default values are read in the signature of ``__init__``.
     """
     name: str
-    def __init__(self, 
+    # parameters given to set_product, besides path and product_info
+    required_params: set[str] = set()
+    optional_params: set[str] = set()
+
+    def __init__(self,
                  path: str | Path | list[str],
                  product_info: dict[str, Any] | None = None
                  ) -> None:
@@ -36,6 +48,11 @@ class Source(ABC):
 
     def __repr__(self) -> str:
         return _indented_repr(self)
+
+    @classmethod
+    def _optional_params(cls, product_info: dict[str, Any] | None) -> dict[str, Any]:
+        """Optional parameters of the source for a product -> their default value"""
+        return _signature_defaults(cls, cls.optional_params)
 
     def build_request(self, points: PointSet,
                       variables: list[str] | None) -> list[dict[str, Any]]:
@@ -63,6 +80,18 @@ class Source(ABC):
             Always, the source has nothing to download. See :meth:`.CDSSource.download`.
         """
         raise ValueError("download is available only if source == remote-cds")
+
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        Only the ``"remote-cds"`` source has a cache.
+
+        Raises
+        ------
+        ValueError
+            Always, the source has no cache. See :meth:`.CDSSource.show_register`.
+        """
+        raise ValueError("show_register is available only if source == remote-cds")
 
     @abstractmethod
     def resolve(self, points: PointSet) -> list[str]:
@@ -111,6 +140,7 @@ class LocalSource(Source):
     ValueError
         If ``path`` is empty, or if a ``pattern`` is given without a path or with a list of paths.
     """
+    optional_params = {"pattern"}
 
     def __init__(self,
                  path: str | list[str] | Path,
@@ -205,6 +235,17 @@ class CDSSource(Source):
     request: list of dict or None
         Sub-requests of ``original_request``, each one under the cost limit.
     """
+    required_params = {"client"}
+    optional_params = {"clear_cache"}
+
+    @classmethod
+    def _optional_params(cls, product_info: dict[str, Any] | None) -> dict[str, Any]:
+        """``optional_params`` and the options of the product (ERA5: ``time``), all their
+        values by default"""
+        options = (product_info or {}).get("cds_options", {})
+        return {**_signature_defaults(cls, cls.optional_params),
+                **options}
+
     def __init__(self,
                  path: str | Path,
                  product_info: dict[str, Any],
@@ -441,9 +482,11 @@ class CDSSource(Source):
                       variables: list[str] | None) -> list[dict[str, Any]]:
         """Request of the points, split under the cost limit of CDS
 
-        The request is split by year, then by month for the years still too large. The
-        request and its sub-requests are kept in ``original_request`` and ``request``.
-        The options are the ones of the source, given at its creation.
+        Every combination of years, months and days of the points is requested: fewer, larger
+        requests, as the queue time of CDS costs more than the volume. The request is split by
+        year, then by month for the years still too large. The request and its sub-requests
+        are kept in ``original_request`` and ``request``. The options are the ones of the
+        source, given at its creation.
 
         Parameters
         ----------
@@ -668,6 +711,31 @@ class CDSSource(Source):
         # the resolver reads the files of this request only, not the whole cache dir
         self._resolver = ExplicitFiles(cache)
         return cache
+
+    def show_register(self) -> pd.DataFrame:
+        """Displays the requests stored in the register of requests in the cache directory
+
+        States: ``pending`` while downloading, ``available`` once downloaded, ``error`` if
+        refused by CDS or interrupted.
+
+        Returns
+        -------
+        :class:`pandas.DataFrame`
+            One row per request, indexed by the uuid of its folder (``request``), with its
+            state first, then its fields: ``variables``, ``area``, dates, ``time``,
+            ``dataset``. Empty if nothing was downloaded in this cache yet.
+        """
+        register_file = Path(self.path) / "register.json"
+        register = json.loads(register_file.read_text()) if register_file.exists() else {}
+
+        table = pd.DataFrame.from_dict(register, orient="index")
+        table.index.name = "request"
+
+        # state first, then the fields as written in the register, dataset last
+        first = [c for c in ["state"] if c in table.columns]
+        last = [c for c in ["dataset"] if c in table.columns]
+        middle = [c for c in table.columns if c not in first + last]
+        return table[first + middle + last]
 
             
             
