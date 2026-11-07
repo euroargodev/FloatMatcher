@@ -62,7 +62,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 110
 target-version = "py311"
-extend-exclude = ["examples"]   # out of date with the builder API, to be rewritten
+extend-exclude = ["analysis"]   # study notebooks, not part of the library
 
 [tool.ruff.lint]
 select = ["E", "F"]
