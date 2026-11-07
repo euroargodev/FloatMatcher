@@ -167,11 +167,19 @@ class Interpolator(Method):
     Parameters
     ----------
     radius: int, default=25
-        Maximum distance to the node, in km (straight line on the sphere).
+        Maximum distance to the nodes, in km (straight line on the sphere). Nodes beyond have
+        no weight.
     time_gap: numpy.timedelta64, default=1 day
-        Maximum gap to the time step. Ignored for a grid without time axis.
-    k_nearest: int, default=1
-        Number of neighbors looked up. Only 1 works for now.
+        Maximum gap to the time steps. Ignored for a grid without time axis.
+    k_nearest: int, default=2
+        Number of nodes weighted in space.
+    n_frames: int, default=1
+        Number of time steps weighted. Ignored for a grid without time axis.
+    kernel: {'idw'}, default='idw'
+        Weighting function of the distances and time gaps, see ``available_kernels``.
+        'idw': inverse distance weighting.
+    power: int, default=2
+        Power of the distance in the kernel: the higher, the more the nearest nodes weigh.
     """
     optional_params = {"radius", "time_gap", "k_nearest", "n_frames", "kernel", "power"}
 
@@ -192,7 +200,26 @@ class Interpolator(Method):
 
 
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
-        """Match the points with the nearest node of the grid"""
+        """Match the points with a weighted combination of the nearest nodes and time steps
+
+        Invalid points, with no node within ``radius`` or no time step within ``time_gap``,
+        have NaN values in the result.
+
+        Parameters
+        ----------
+        dataset: xarray.Dataset
+            Grid with the ``lon`` and ``lat`` coordinates, and ``time`` if it has a time axis.
+        points: :class:`.PointSet`
+
+        Returns
+        -------
+        :class:`.MatchupResult`
+
+        Raises
+        ------
+        ValueError
+            If the grid has a time axis and the points have no time.
+        """
 
         # starting by lonlat2xy on spatial grid
         # return FlatGrid object, flatten grid

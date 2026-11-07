@@ -482,9 +482,11 @@ class CDSSource(Source):
                       variables: list[str] | None) -> list[dict[str, Any]]:
         """Request of the points, split under the cost limit of CDS
 
-        The request is split by year, then by month for the years still too large. The
-        request and its sub-requests are kept in ``original_request`` and ``request``.
-        The options are the ones of the source, given at its creation.
+        Every combination of years, months and days of the points is requested: fewer, larger
+        requests, as the queue time of CDS costs more than the volume. The request is split by
+        year, then by month for the years still too large. The request and its sub-requests
+        are kept in ``original_request`` and ``request``. The options are the ones of the
+        source, given at its creation.
 
         Parameters
         ----------

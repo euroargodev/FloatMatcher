@@ -391,10 +391,10 @@ class ERA5Product(Product):
 class LUTProduct(Product):
     """Look-up table (LUT) gridded product
 
-    Its coordinates are already named lon and lat.
+    Its coordinates are named longitude and latitude, renamed lon and lat.
     """
     name = "lut"
-    coord_map = {"lon": "lon", "lat": "lat"}
+    coord_map = {"longitude": "lon", "latitude": "lat"}
     src_available = ["local"]
     product_info = {"grid_step": 1}
 

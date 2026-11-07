@@ -41,9 +41,6 @@ my_fm.set_product(type="era5-hourly",
                   source="local",
                   selected_variables=["sst"], 
                   path="/<era5_data_folder>",
-                  client=cdsapi.Client(),     
-                  clear_cache=True,
-                  time=["00:00", "12:00"]
                   )
 ```
 
@@ -72,5 +69,10 @@ my_fm.result
 
 ## Additional tutorials
 
+Notebooks in [examples/](examples/):
 
-
+1. [Quickstart](examples/01_quickstart.ipynb): the whole workflow, from points to matched values.
+2. [Points](examples/02_points.ipynb): arrays, DataFrame, Dataset, Argo float with argopy.
+3. [Remote CDS](examples/03_remote_cds.ipynb): CDS account, requests, cache, without network.
+4. [Local archives](examples/04_local_archives.ipynb): one file, a list, a folder, a tree with a pattern, a look-up table.
+5. [Methods and results](examples/05_methods_results.ipynb): nearest and interpolation, radius and time gap, results.
