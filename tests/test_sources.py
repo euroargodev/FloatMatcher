@@ -395,3 +395,17 @@ def test_download_without_request_raise_error(tmp_path, fake_cds):
     source = CDSSource(path=tmp_path, product_info=ERA5Product.product_info, client=fake_cds)
     with pytest.raises(ValueError, match="No request"):
         source.download()
+
+
+# ---------- CDSSource: register of the cache ----------
+
+def test_show_register_after_download(tmp_path, p2013, fake_cds):
+    source, folder = cds_download(tmp_path, p2013, fake_cds)
+    register = source.show_register()
+
+    assert list(register.index) == [folder.name]
+    assert register.index.name == "request"
+    assert register.loc[folder.name, "state"] == "available"
+    # state first, dataset last
+    assert register.columns[0] == "state"
+    assert register.columns[-1] == "dataset"
