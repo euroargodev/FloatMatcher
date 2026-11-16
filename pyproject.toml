@@ -57,7 +57,7 @@ disallow_untyped_defs = true
 exclude = ["^tests/", "^examples/"]   # examples: out of date with the builder API, to be rewritten
 
 [[tool.mypy.overrides]]
-module = ["scipy.*", "pandas.*"]
+module = ["scipy.*", "pandas.*", "argopy.*", "sphinx_autosummary_accessors"]
 ignore_missing_imports = true
 
 [tool.ruff]

@@ -1,5 +1,6 @@
 # accessor file register for argopy library
 
+import xarray as xr
 from argopy.extensions.utils import register_argo_accessor, ArgoAccessorExtension
 from floatmatcher.floatmatcher import FloatMatcher
 
@@ -41,7 +42,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
     by profile and comes back in the same layout.
     """
 
-    def match(self, product:dict|None=None, method:dict|None=None):
+    def match(self, product: dict | None = None, method: dict | None = None) -> xr.Dataset:
         """Match the profiles or points of the dataset with a gridded product
 
         Parameters
