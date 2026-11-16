@@ -13,7 +13,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
 
     See Also
     --------
-    :meth:`floatmatcher.match`, :class:`.FloatMatcher`
+    :meth:`~xarray.Dataset.argo.floatmatcher.match`, :class:`.FloatMatcher`
 
     Examples
     --------
