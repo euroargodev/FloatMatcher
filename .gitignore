@@ -152,3 +152,4 @@ era5_float_6900166/
 # cache of the example notebooks
 examples/cache/
 examples/cache_offline/
+examples/argopy_accessor.py
