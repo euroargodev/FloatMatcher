@@ -19,6 +19,8 @@ dependencies = [
     "pandas",
     "dask",
     "netCDF4",
+    "argopy>=1.5.0",
+    "cdsapi>=0.7.7",
 ]
 
 [dependency-groups]
@@ -27,8 +29,6 @@ dev = [
     "pytest-cov",
     "mypy",
     "ruff",
-    "argopy>=1.5.0",
-    "cdsapi>=0.7.7",
     "ipykernel>=7.4.0",
     "matplotlib>=3.11.2",
     "gcsfs",

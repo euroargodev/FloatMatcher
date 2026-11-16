@@ -9,7 +9,4 @@ except PackageNotFoundError:
 
 # import floatmatcher accessor at floatmatcher import to have the accessor 
 # directly accessible with only ```import floatmatcher```
-try:
-    from . import accessors  # registers ds.argo.floatmatcher if argopy is installed
-except ImportError:          # argopy not installed: no accessor
-    pass
+from . import accessors

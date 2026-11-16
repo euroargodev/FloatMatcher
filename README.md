@@ -46,6 +46,7 @@ my_fm.set_product(type="era5-hourly",
 
 ```python 
 # set method
+import numpy as np
 my_fm.set_method(type="interp", radius=12, 
               time_gap=np.timedelta64(3, "h"),
               k_nearest=4, n_frames=2, kernel="idw",
@@ -63,9 +64,24 @@ my_fm.match()
 my_fm.result
 ```
 
+## Usage with argopy
+An Argo dataset can be matched directly through its `.argo` accessor:
 
+```python
+import argopy
+import numpy as np
+import floatmatcher
 
+ds = argopy.DataFetcher().region([-28, -25, 48, 50, 0, 50, "2018-01", "2018-06"]).data
 
+ds_matched = ds.argo.floatmatcher.match(
+    product=dict(type="era5-hourly", source="local",
+                 selected_variables=["sst"], path="/<era5_data_folder>"),
+    method=dict(type="nearest", radius=50, time_gap=np.timedelta64(6, "h")),
+)
+```
+
+The Argo dataset comes back in the same layout as the original argopy dataset with a `sst_coloc` variable.
 
 ## Additional tutorials
 

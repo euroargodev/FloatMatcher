@@ -5,8 +5,6 @@ import numpy.testing as npt
 import pytest
 import xarray as xr
 
-pytest.importorskip("argopy")
-
 @pytest.fixture
 def argo_profiles():
     """Two profiles of three levels, in the argopy N_PROF layout
