@@ -13,6 +13,20 @@ Matchup
 
    FloatMatcher
 
+Argopy accessor
+---------------
+
+With argopy object, an Argo dataset is matched directly through its ``.argo`` accessor.
+
+.. currentmodule:: xarray
+
+.. autosummary::
+   :toctree: generated/
+   :template: autosummary/accessor_method.rst
+
+   Dataset.argo.floatmatcher
+   Dataset.argo.floatmatcher.match
+
 Points and results
 ------------------
 

@@ -42,7 +42,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
     """
 
     def match(self, product:dict|None=None, method:dict|None=None):
-        """Match the profiles of the dataset with a gridded product
+        """Match the profiles or points of the dataset with a gridded product
 
         Parameters
         ----------
