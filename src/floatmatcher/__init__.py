@@ -6,3 +6,7 @@ try:
 except PackageNotFoundError:
     # local copy, not installed (same fallback as argopy)
     __version__ = "999"
+
+# import floatmatcher accessor at floatmatcher import to have the accessor 
+# directly accessible with only ```import floatmatcher```
+from . import accessors  # noqa: F401

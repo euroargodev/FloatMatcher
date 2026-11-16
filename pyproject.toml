@@ -19,6 +19,8 @@ dependencies = [
     "pandas",
     "dask",
     "netCDF4",
+    "argopy>=1.5.0",
+    "cdsapi>=0.7.7",
 ]
 
 [dependency-groups]
@@ -27,8 +29,6 @@ dev = [
     "pytest-cov",
     "mypy",
     "ruff",
-    "argopy>=1.5.0",
-    "cdsapi>=0.7.7",
     "ipykernel>=7.4.0",
     "matplotlib>=3.11.2",
     "gcsfs",
@@ -38,6 +38,7 @@ docs = [
     "sphinx>=9.0.4",
     "sphinx-book-theme>=1.4.0",
     "sphinx-copybutton>=0.5.2",
+    "sphinx-autosummary-accessors",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -56,7 +57,7 @@ disallow_untyped_defs = true
 exclude = ["^tests/", "^examples/"]   # examples: out of date with the builder API, to be rewritten
 
 [[tool.mypy.overrides]]
-module = ["scipy.*", "pandas.*"]
+module = ["scipy.*", "pandas.*", "argopy.*", "sphinx_autosummary_accessors"]
 ignore_missing_imports = true
 
 [tool.ruff]

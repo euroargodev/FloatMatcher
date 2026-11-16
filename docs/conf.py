@@ -2,6 +2,7 @@
 # Build: uv run --group docs sphinx-build -W -b html docs docs/_build/html
 
 import floatmatcher
+import sphinx_autosummary_accessors
 
 project = "FloatMatcher"
 author = "Clement Weber, Guillaume Maze, Kevin Ballem, Alban Sizun, Virginie Racapé"
@@ -16,9 +17,10 @@ extensions = [
     "sphinx.ext.viewcode",
     "numpydoc",
     "sphinx_copybutton",
+    "sphinx_autosummary_accessors",
 ]
 
-templates_path = ["_templates"]
+templates_path = ["_templates", sphinx_autosummary_accessors.templates_path]
 exclude_patterns = ["_build"]
 
 # API pages are generated from the docstrings (numpydoc style, like argopy)
