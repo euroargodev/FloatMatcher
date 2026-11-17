@@ -66,8 +66,8 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
     assert res.valid.tolist() == [True, False, False]
     npt.assert_allclose(res.values["sst"][:1], [121.03], atol=1e-4)
     assert np.isnan(res.values["sst"][1:]).all()      # no value for the rejected
-    assert np.isnan(res.distance_km[1:]).all()        # nor distance
-    assert np.isnan(res.time_delta[1:]).all()         # nor time gap
+    assert res.distance_km[1] > 25                    # p1: kept distance, beyond radius
+    assert res.time_delta[2] > 86400                  # p2: kept time gap, beyond time_gap
 
     # p1 was out on DISTANCE only
     orch.set_method("nearest", radius=100000)

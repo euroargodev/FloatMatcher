@@ -145,14 +145,9 @@ class NearestNeighbor(Method):
             full[idx] = vals
             values[var] = full
 
-        # invalid points carry no meaningful distance/time either
-        dist_out = np.full(idx_count, np.nan)
-        dist_out[idx] = dist_km[idx]
-        time_delta_out = np.full(idx_count, np.nan)
-        time_delta_out[idx] = time_delta[idx]
-
-        return MatchupResult(values=values, distance_km=dist_out,
-                                time_delta=time_delta_out, valid=valid)
+        # distance and time gap are kept for every point, valid tells which ones are matched
+        return MatchupResult(values=values, distance_km=dist_km,
+                             time_delta=time_delta, valid=valid)
 
 
 
@@ -294,9 +289,10 @@ class Interpolator(Method):
 
         valid = np.asarray(valid_spatial.any(axis=1) & valid_time.any(axis=1))          # (n,)
 
+        # distance and time gap of the nearest node and time step, kept for every point
         return MatchupResult(values=values,
-                             distance_km=np.where(valid, dist_km.min(axis=1), np.nan),
-                             time_delta=np.where(valid, time_delta.min(axis=1), np.nan),
+                             distance_km=dist_km.min(axis=1),
+                             time_delta=time_delta.min(axis=1),
                              valid=valid)
 
 # key given to FloatMatcher.set_method(type=...) -> method class

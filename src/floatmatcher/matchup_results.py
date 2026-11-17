@@ -14,19 +14,21 @@ class MatchupResult:
     """Result of a matchup
 
     One value per point, in the order of the points. A point that is not matched (too far in
-    space or in time) has NaN values, distance and time gap.
+    space or in time) has NaN values, its distance and time gap are kept.
 
     Parameters
     ----------
     values: dict
         Matched values, one array per variable.
     distance_km: numpy.ndarray
-        Distance to the matched node, in km (straight line on the sphere, close to the
-        great-circle distance at short range).
+        Distance to the nearest node, in km (straight line on the sphere, close to the
+        great-circle distance at short range), for every point, matched or not.
     time_delta: numpy.ndarray
-        Gap to the matched time step, in seconds. NaN for a grid without time axis.
+        Gap to the nearest time step, in seconds, for every point, matched or not. NaN for a
+        grid without time axis.
     valid: numpy.ndarray of bool
-        True for the matched points.
+        True for the matched points: a node within ``radius`` and a time step within
+        ``time_gap``, whatever its value.
     """
     values:      dict[str, NDArray[np.float64]]
     distance_km: NDArray[np.float64]
@@ -35,8 +37,8 @@ class MatchupResult:
 
     def __repr__(self) -> str:
         return (f"\n    variables: {self.values.keys()} \
-                \n    mean_dist:{np.round(np.nanmean(self.distance_km), 2)} (km)"
-                f"\n    mean_time_delta:{np.round(np.nanmean(self.time_delta), 2)} (seconds) \
+                \n    mean_dist:{np.round(np.nanmean(self.distance_km[self.valid]), 2)} (km)"
+                f"\n    mean_time_delta:{np.round(np.nanmean(self.time_delta[self.valid]), 2)} (seconds) \
                 \n    nb_match_found:{int(self.valid.sum())}")
 
     

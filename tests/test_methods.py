@@ -80,8 +80,8 @@ def test_apply_rejects_out_of_radius_and_out_of_time_gap(grid_3d_ds):
 
     assert res.valid.tolist() == [True, False, False]
     assert np.isnan(res.values["sst"][1:]).all()
-    assert np.isnan(res.distance_km[1:]).all()
-    assert np.isnan(res.time_delta[1:]).all()
+    assert res.distance_km[1] > 25                    # p1: kept distance, beyond radius
+    assert res.time_delta[2] > 86400                  # p2: kept time gap, beyond time_gap
 
 
 def test_apply_on_2d_grid_ignores_time(grid_2d_ds):
