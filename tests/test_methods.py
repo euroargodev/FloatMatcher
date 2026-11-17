@@ -64,6 +64,10 @@ def test_apply_picks_the_nearest_node(grid_3d_ds):
     npt.assert_allclose(res.values["sst"], [121.0])
     assert res.distance_km[0] < 1e-6
     assert res.time_delta[0] == 0.0
+    # one neighbor in space and in time (default): one value per point
+    assert res.values["sst"].shape == (1,)
+    assert res.distance_km.shape == (1,)
+    assert res.time_delta.shape == (1,)
 
 
 def test_apply_rejects_out_of_radius_and_out_of_time_gap(grid_3d_ds):
@@ -92,6 +96,60 @@ def test_apply_on_2d_grid_ignores_time(grid_2d_ds):
     assert res.valid.tolist() == [True]
     npt.assert_allclose(res.values["v"], [230.0])
     assert np.isnan(res.time_delta[0])
+
+
+# ---------- NearestNeighbor : k nearest nodes and time steps ----------
+def test_k_nearest_gives_the_nearest_nodes_sorted(grid_3d_ds):
+    # point (lon 21, lat 1.2) at the first time step
+    #   node        distance    sst
+    #   (20, 1)     ~113 km     120
+    #   (20, 2)     ~142 km     220
+    #   (20, 0)     ~173 km      20
+    #   (30, 1)     ~1000 km    130   -> beyond radius
+    points = PointSet.from_arrays(lon=[21.0], lat=[1.2],
+                                  time=np.array(["2015-01-01"], dtype="datetime64[ns]"))
+
+    res = NearestNeighbor(radius=500, k_nearest=4).apply(grid_3d_ds, points)
+
+    assert res.values["sst"].shape == (1, 4, 1)
+    npt.assert_allclose(res.values["sst"][0, :, 0], [120.0, 220.0, 20.0, np.nan])
+    assert res.valid[0, :, 0].tolist() == [True, True, True, False]
+    assert np.all(np.diff(res.distance_km[0]) > 0)      # sorted from the nearest, kept beyond radius
+
+
+def test_n_frames_gives_the_nearest_time_steps(grid_3d_ds):
+    # point on node (20, 1), 6 h after the first time step
+    #   time step     gap     sst
+    #   2015-01-01    6 h     120
+    #   2015-01-02    18 h    121   -> beyond time_gap
+    #   (none)                      -> 3 frames asked, only 2 in the grid: not found
+    points = PointSet.from_arrays(lon=[20.0], lat=[1.0],
+                                  time=np.array(["2015-01-01T06"], dtype="datetime64[ns]"))
+
+    res = NearestNeighbor(time_gap=np.timedelta64(12, "h"), n_frames=3).apply(grid_3d_ds, points)
+
+    assert res.values["sst"].shape == (1, 1, 3)
+    npt.assert_allclose(res.values["sst"][0, 0], [120.0, np.nan, np.nan])
+    npt.assert_allclose(res.time_delta[0], [6 * 3600, 18 * 3600, np.nan])
+    assert res.valid[0, 0].tolist() == [True, False, False]
+
+
+def test_k_nearest_and_n_frames_give_every_node_time_step_pair(grid_3d_ds):
+    # point (lon 21, lat 1.2), 6 h after the first time step
+    #                 2015-01-01 (6 h)   2015-01-02 (18 h)
+    #   (20, 1)       120                121
+    #   (20, 2)       220                221
+    points = PointSet.from_arrays(lon=[21.0], lat=[1.2],
+                                  time=np.array(["2015-01-01T06"], dtype="datetime64[ns]"))
+
+    res = NearestNeighbor(radius=500, k_nearest=2, n_frames=2).apply(grid_3d_ds, points)
+
+    assert res.values["sst"].shape == (1, 2, 2)
+    npt.assert_allclose(res.values["sst"][0], [[120.0, 121.0],
+                                               [220.0, 221.0]])
+    assert res.valid[0].all()
+    assert res.distance_km.shape == (1, 2)
+    npt.assert_allclose(res.time_delta[0], [6 * 3600, 18 * 3600])
 
 
 # ---------- Interpolator : IDW ----------
