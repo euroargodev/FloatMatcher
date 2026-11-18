@@ -76,7 +76,8 @@ class Method(ABC):
         # missing neighbors (k larger than the grid) come back as inf: not found
         missing = np.isinf(dist_km)
         dist_km[missing] = np.nan
-        spatial_idx[missing] = 0     # placeholder index, never used: the neighbor is invalid and valid set to false
+        # placeholder index, never used: the neighbor is invalid and valid set to false
+        spatial_idx[missing] = 0
         valid_spatial = dist_km <= self.radius             # NaN gives False
 
         # n nearest time steps, sorted from the nearest: (n, N)
@@ -87,7 +88,8 @@ class Method(ABC):
             temporal_idx = temporal_idx.reshape(idx_count, -1)
             missing = np.isinf(time_delta)
             time_delta[missing] = np.nan
-            temporal_idx[missing] = 0    # placeholder index, never used: the neighbor is invalid and valid set to false
+            # placeholder index, never used: the neighbor is invalid and valid set to false
+            temporal_idx[missing] = 0
             valid_time = time_delta <= self.time_gap_seconds
         else:
             # grid without time axis: n_frames ignored

@@ -1,5 +1,6 @@
 # tests/test_results.py
 import numpy as np
+import numpy.testing as npt
 import pandas as pd
 import pytest
 import xarray as xr
@@ -113,3 +114,15 @@ def test_to_dataframe_without_provenance_raises(result, raw_points):
 def test_to_dataframe_refuses_a_dataset_origin(result, ds_points):
     with pytest.raises(TypeError, match="to_dataset"):
         result._to_dataframe(ds_points)
+
+
+def test_neigh_to_cols_gives_one_array_per_neighbor():
+    sst = np.arange(2 * 2 * 3.0).reshape(2, 2, 3)        # 2 points, 2 nodes, 3 time steps
+    res = MatchupResult(values={"sst": sst}, distance_km=np.zeros((2, 2)),
+                        time_delta=np.zeros((2, 3)), valid=np.ones((2, 2, 3), dtype=bool))
+
+    out = res.neigh_to_cols()
+
+    assert list(out) == ["sst_s0_t0", "sst_s0_t1", "sst_s0_t2",
+                         "sst_s1_t0", "sst_s1_t1", "sst_s1_t2"]
+    npt.assert_allclose(out["sst_s1_t2"], sst[:, 1, 2])

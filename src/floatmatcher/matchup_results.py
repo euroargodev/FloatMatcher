@@ -36,12 +36,44 @@ class MatchupResult:
     valid:       NDArray[np.bool_]
 
     def __repr__(self) -> str:
+        if self.valid.ndim == 3:
+            # one valid neighbor per (point, node, time step): masks for each axis
+            valid_nodes = self.valid.any(axis=2)          # (n, K): node used at least once
+            valid_steps = self.valid.any(axis=1)          # (n, N): time step used at least once
+            valid_points = self.valid.any(axis=(1, 2))    # (n,): point with a valid neighbor
+        else:
+            valid_nodes = valid_steps = valid_points = self.valid
         return (f"\n    variables: {self.values.keys()} \
-                \n    mean_dist:{np.round(np.nanmean(self.distance_km[self.valid]), 2)} (km)"
-                f"\n    mean_time_delta:{np.round(np.nanmean(self.time_delta[self.valid]), 2)} (seconds) \
-                \n    nb_match_found:{int(self.valid.sum())}")
+                \n    mean_dist:{np.round(np.nanmean(self.distance_km[valid_nodes]), 2)} (km)"
+                f"\n    mean_time_delta:{np.round(np.nanmean(self.time_delta[valid_steps]), 2)} (seconds) \
+                \n    nb_match_found:{int(valid_points.sum())}")
 
-    
+    def neigh_to_cols(self) -> dict[str, NDArray[np.float64]]:
+        """Matched values as one array (n,) per variable and neighbor
+
+        A variable (n, K, N) gives ``<var>_s<k>_t<n>``, s being the rank of the node in distance
+        and t the rank of the time step in time gap, both from the nearest (0). A variable
+        already one value per point, (n,), is kept as it is.
+
+        Returns
+        -------
+        dict
+            One array (n,) per variable and neighbor, ready to be DataFrame columns.
+
+        Examples
+        --------
+        >>> pd.DataFrame(my_fm.result.neigh_to_cols())
+        """
+        out = {}
+        for var, v in self.values.items():
+            if v.ndim == 1:
+                out[var] = v
+                continue
+            for k in range(v.shape[1]):
+                for t in range(v.shape[2]):
+                    out[f"{var}_s{k}_t{t}"] = v[:, k, t]
+        return out
+
     def _to_dataset(self, points: PointSet) -> xr.Dataset:
         """Reinject the matched values into the Dataset the points come from
 
