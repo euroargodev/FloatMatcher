@@ -123,6 +123,6 @@ def test_neigh_to_cols_gives_one_array_per_neighbor():
 
     out = res.neigh_to_cols()
 
-    assert list(out) == ["sst_s0_t0", "sst_s0_t1", "sst_s0_t2",
-                         "sst_s1_t0", "sst_s1_t1", "sst_s1_t2"]
-    npt.assert_allclose(out["sst_s1_t2"], sst[:, 1, 2])
+    assert list(out) == ["sst_coloc_s0_t0", "sst_coloc_s0_t1", "sst_coloc_s0_t2",
+                         "sst_coloc_s1_t0", "sst_coloc_s1_t1", "sst_coloc_s1_t2"]
+    npt.assert_allclose(out["sst_coloc_s1_t2"], sst[:, 1, 2])

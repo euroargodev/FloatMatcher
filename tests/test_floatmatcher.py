@@ -343,6 +343,25 @@ def test_reinject_gives_a_dataframe_for_points_from_a_dataframe(grid_3d_ds, grid
     npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
 
 
+def test_reinject_dataframe_k_nearest_gives_one_column_per_neighbor(grid_3d_ds, grid_file):
+    # point (lon 21, lat 1.2) at the first time step of grid_3d_ds (sst = 100 * lat + lon + t)
+    #   node        sst
+    #   (20, 1)     120
+    #   (20, 2)     220
+    df = pd.DataFrame({"longitude": [21.0], "latitude": [1.2],
+                       "date": pd.to_datetime(["2015-01-01"])})
+    fm = FloatMatcher()
+    fm.set_points(df)
+    fm.set_product("era5-hourly", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_method("nearest", radius=500, k_nearest=2)
+    fm.match()
+
+    out = fm.reinject()
+
+    assert [c for c in out.columns if c.startswith("sst")] == ["sst_coloc_s0_t0", "sst_coloc_s1_t0"]
+    npt.assert_allclose(out[["sst_coloc_s0_t0", "sst_coloc_s1_t0"]].values, [[120.0, 220.0]])
+
+
 # ---------- repr ----------
 
 def test_repr_before_and_after_match(grid_3d_ds, grid_file):

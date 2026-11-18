@@ -48,12 +48,18 @@ class MatchupResult:
                 f"\n    mean_time_delta:{np.round(np.nanmean(self.time_delta[valid_steps]), 2)} (seconds) \
                 \n    nb_match_found:{int(valid_points.sum())}")
 
-    def neigh_to_cols(self) -> dict[str, NDArray[np.float64]]:
+    def neigh_to_cols(self, suffix: str = "_coloc") -> dict[str, NDArray[np.float64]]:
         """Matched values as one array (n,) per variable and neighbor
 
-        A variable (n, K, N) gives ``<var>_s<k>_t<n>``, s being the rank of the node in distance
-        and t the rank of the time step in time gap, both from the nearest (0). A variable
-        already one value per point, (n,), is kept as it is.
+        A variable (n, K, N) gives ``<var>_coloc_s<k>_t<n>``, s being the rank of the node in
+        distance and t the rank of the time step in time gap, both from the nearest (0). A
+        variable already one value per point, (n,), gives ``<var>_coloc``. These are the names
+        of the columns added by ``reinject()``.
+
+        Parameters
+        ----------
+        suffix: str, default='_coloc'
+            Added after the name of the variable, before the rank of the neighbor.
 
         Returns
         -------
@@ -67,11 +73,11 @@ class MatchupResult:
         out = {}
         for var, v in self.values.items():
             if v.ndim == 1:
-                out[var] = v
+                out[f"{var}{suffix}"] = v
                 continue
             for k in range(v.shape[1]):
                 for t in range(v.shape[2]):
-                    out[f"{var}_s{k}_t{t}"] = v[:, k, t]
+                    out[f"{var}{suffix}_s{k}_t{t}"] = v[:, k, t]
         return out
 
     def _to_dataset(self, points: PointSet) -> xr.Dataset:
@@ -117,7 +123,9 @@ class MatchupResult:
     def _to_dataframe(self, points: PointSet) -> pd.DataFrame:
         """Reinject the matched values into the DataFrame the points come from
 
-        Values are added as ``<name>_coloc`` columns. The source is not modified.
+        Values are added as ``<name>_coloc`` columns, or one ``<name>_coloc_s<k>_t<n>`` column
+        per neighbor with ``k_nearest`` or ``n_frames`` above 1 (see :meth:`neigh_to_cols`).
+        The source is not modified.
 
         Parameters
         ----------
@@ -147,7 +155,7 @@ class MatchupResult:
             )
 
         out = df.copy()
-        for k, v in self.values.items():
-            out[f"{k}_coloc"] = v
+        for name, v in self.neigh_to_cols().items():
+            out[name] = v
 
         return out
