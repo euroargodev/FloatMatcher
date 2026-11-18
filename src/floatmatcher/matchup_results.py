@@ -127,7 +127,7 @@ class MatchupResult:
         else:
             # one variable per matched variable, (n,) or (n, K, N)
             for k, v in self.values.items():
-                dims = (dim,) if v.ndim == 1 else (dim, "n_space", "n_time")
+                dims = (dim,) if v.ndim == 1 else (dim, "k_space", "n_time")
                 out[f"{k}_coloc"] = (dims, v)
 
         return out

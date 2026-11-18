@@ -3,6 +3,7 @@
 import xarray as xr
 from argopy.extensions.utils import register_argo_accessor, ArgoAccessorExtension
 from floatmatcher.floatmatcher import FloatMatcher
+from floatmatcher.methods import NearestNeighbor
 
 @register_argo_accessor('floatmatcher')
 class FloatMatcherExtension(ArgoAccessorExtension):
@@ -42,7 +43,8 @@ class FloatMatcherExtension(ArgoAccessorExtension):
     by profile and comes back in the same layout.
     """
 
-    def match(self, product: dict | None = None, method: dict | None = None) -> xr.Dataset:
+    def match(self, product: dict | None = None, method: dict | None = None,
+              neigh_to_vars: bool = False, original_shape: bool = True) -> xr.Dataset:
         """Match the profiles or points of the dataset with a gridded product
 
         Parameters
@@ -107,13 +109,28 @@ class FloatMatcherExtension(ArgoAccessorExtension):
         # set method
         fm.set_method(**method)
 
+        # several neighbors per point: only nearest, with k_nearest or n_frames above 1
+        # (interp always gives one value per point)
+        several = False
+        if isinstance(fm.method, NearestNeighbor):
+            several = fm.method.k_nearest > 1 or fm.method.n_frames > 1
+        if marker and original_shape and several and not neigh_to_vars:
+            raise ValueError(
+                "Several neighbors (k_nearest or n_frames above 1) cannot come back in the "
+                "points layout (N_POINTS) as a (k_space, n_time) matrix. Either:\n"
+                "- match a profiles dataset: ds.argo.point2profile().argo.floatmatcher.match(...), "
+                "or original_shape=False to get it back in profiles (N_PROF, N_LEVELS),\n"
+                "- or neigh_to_vars=True to get one variable per neighbor, "
+                "sst_coloc_s0_t0... along N_POINTS."
+            )
+
         # match
         fm.match()
 
         # reinject
-        ds_out = fm.reinject()
+        ds_out = fm.reinject(neigh_to_vars=neigh_to_vars)
 
-        if marker:
+        if marker and original_shape:
             ds_out = ds_out.argo.profile2point()
 
         return ds_out
