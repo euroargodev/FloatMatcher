@@ -199,6 +199,13 @@ class PointSet:
         da_lon = _get(ds, lon)
         point_dim = da_lon.dims[0]          # DISCOVERED, never assumed
 
+        # argopy points layout: one row per measurement, the positions repeat along the levels
+        if point_dim == "N_POINTS":
+            warnings.warn("This dataset is in points layout: use ds.argo.point2profile() or the "
+                          "accessor ds.argo.floatmatcher.match() to avoid performing the matchup "
+                          "on all points along the N_POINTS dimension, but only on the unique "
+                          "locations of the dataset.", stacklevel=2)
+
         # 2. extract the three arrays as ndarrays
         lon_arr  = da_lon.values
         lat_arr  = _extract(ds, lat)
@@ -218,5 +225,3 @@ class PointSet:
                         points_dim=str(point_dim),
                         original_data=ds
                         )
-
-    # --- TODO: 4. argopy ---
