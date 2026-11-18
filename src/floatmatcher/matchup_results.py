@@ -80,15 +80,20 @@ class MatchupResult:
                     out[f"{var}{suffix}_s{k}_t{t}"] = v[:, k, t]
         return out
 
-    def _to_dataset(self, points: PointSet) -> xr.Dataset:
+    def _to_dataset(self, points: PointSet, neigh_to_vars: bool = False) -> xr.Dataset:
         """Reinject the matched values into the Dataset the points come from
 
-        Values are added as ``<name>_coloc``, on the dimension of the points. The source is
-        not modified.
+        Values are added as ``<name>_coloc``, on the dimension of the points. With
+        ``k_nearest`` or ``n_frames`` above 1, they also have the ``k_space`` and ``n_time``
+        dimensions, or are split into one ``<name>_coloc_s<k>_t<n>`` variable per neighbor
+        (see :meth:`neigh_to_cols`). The source is not modified.
 
         Parameters
         ----------
         points: :class:`.PointSet`
+        neigh_to_vars: bool, default=False
+            If set to True: one variable per neighbor, on the dimension of the points only, instead of the
+            ``k_space`` and ``n_time`` dimensions. No effect with one neighbor.
 
         Returns
         -------
@@ -115,8 +120,15 @@ class MatchupResult:
             )
 
         out = ds.copy()
-        for k, v in self.values.items():
-            out[f"{k}_coloc"] = (dim, v)
+        if neigh_to_vars:
+            # one variable per neighbor, along the points
+            for name, v in self.neigh_to_cols().items():
+                out[name] = (dim, v)
+        else:
+            # one variable per matched variable, (n,) or (n, K, N)
+            for k, v in self.values.items():
+                dims = (dim,) if v.ndim == 1 else (dim, "n_space", "n_time")
+                out[f"{k}_coloc"] = (dims, v)
 
         return out
 

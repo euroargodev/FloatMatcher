@@ -362,6 +362,36 @@ def test_reinject_dataframe_k_nearest_gives_one_column_per_neighbor(grid_3d_ds, 
     npt.assert_allclose(out[["sst_coloc_s0_t0", "sst_coloc_s1_t0"]].values, [[120.0, 220.0]])
 
 
+def _matched_k2_dataset(grid_3d_ds, grid_file):
+    """Point (lon 21, lat 1.2) of a Dataset, matched with its 2 nearest nodes:
+    (20, 1) sst 120 and (20, 2) sst 220, at the first time step of grid_3d_ds"""
+    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [21.0]),
+                     "LATITUDE": ("N_PROF", [1.2]),
+                     "TIME": ("N_PROF", pd.to_datetime(["2015-01-01"]))})
+    fm = FloatMatcher()
+    fm.set_points(ds)
+    fm.set_product("era5-hourly", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_method("nearest", radius=500, k_nearest=2)
+    fm.match()
+    return fm
+
+
+def test_reinject_dataset_k_nearest_gives_a_neighbor_matrix(grid_3d_ds, grid_file):
+    out = _matched_k2_dataset(grid_3d_ds, grid_file).reinject()
+
+    assert out["sst_coloc"].dims == ("N_PROF", "k_space", "n_time")
+    npt.assert_allclose(out["sst_coloc"].values, [[[120.0], [220.0]]])
+
+
+def test_reinject_dataset_neigh_to_vars_gives_one_variable_per_neighbor(grid_3d_ds, grid_file):
+    out = _matched_k2_dataset(grid_3d_ds, grid_file).reinject(neigh_to_vars=True)
+
+    assert "sst_coloc" not in out
+    assert out["sst_coloc_s0_t0"].dims == ("N_PROF",)
+    npt.assert_allclose(out["sst_coloc_s0_t0"].values, [120.0])
+    npt.assert_allclose(out["sst_coloc_s1_t0"].values, [220.0])
+
+
 # ---------- repr ----------
 
 def test_repr_before_and_after_match(grid_3d_ds, grid_file):
