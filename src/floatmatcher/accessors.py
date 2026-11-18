@@ -55,19 +55,29 @@ class FloatMatcherExtension(ArgoAccessorExtension):
         method: dict
             Parameters of :meth:`.FloatMatcher.set_method`: ``type`` and the parameters of the
             method.
+        neigh_to_vars: bool, default=False
+            With several neighbors (``k_nearest`` or ``n_frames`` above 1): one
+            ``<variable>_coloc_s<k>_t<n>`` variable per neighbor, instead of the ``k_space`` and
+            ``n_time`` dimensions.
+        original_shape: bool, default=True
+            For a dataset in points layout (``N_POINTS``): give it back in points layout. False
+            gives it back in profiles layout (``N_PROF``, ``N_LEVELS``).
 
         Returns
         -------
         :class:`xarray.Dataset`
-            The dataset with a ``<variable>_coloc`` variable per matched variable, in the same
-            layout as the input (``N_POINTS`` or ``N_PROF``).
+            The dataset with a ``<variable>_coloc`` variable per matched variable, in the layout
+            of the input unless ``original_shape=False``. With several neighbors, see
+            ``neigh_to_vars``.
 
         Raises
         ------
         AttributeError
             If ``product`` or ``method`` is not given.
         ValueError
-            If the product, the source or the method is unknown.
+            If the product, the source or the method is unknown, or if a dataset in points
+            layout is matched with several neighbors, without ``neigh_to_vars=True`` or
+            ``original_shape=False``.
         TypeError
             If a parameter of the source or of the method is unknown, or a required one is
             missing.

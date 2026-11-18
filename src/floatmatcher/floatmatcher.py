@@ -161,12 +161,14 @@ class FloatMatcher:
 
         Parameters
         ----------
-        type: {'nearest'}
+        type: {'nearest', 'interp'}
             Method to use.
         **params
             Parameters of the method. ``"nearest"``: ``radius`` (km), ``time_gap``
-            (numpy.timedelta64). ``"interp"``: the same, plus ``k_nearest``, ``n_frames``,
-            ``kernel`` and ``power``.
+            (numpy.timedelta64), ``k_nearest`` and ``n_frames`` (number of nearest nodes and
+            time steps, 1 by default). 
+            ``"interp"``: ``radius`` (km), ``time_gap``
+            (numpy.timedelta64), ``k_nearest``, ``n_frames``, ``kernel`` and ``power``.
 
         Raises
         ------
@@ -229,6 +231,8 @@ class FloatMatcher:
 
         Values are added as ``<name>_coloc``. The source Dataset is not modified.
 
+        Only the values of the variables are added. Time gaps and distances are available in MtchupResult Only
+        
         Parameters
         ----------
         neigh_to_vars: bool, default=False
@@ -256,6 +260,8 @@ class FloatMatcher:
         """Add the matched values to the DataFrame the points come from
 
         Values are added as ``<name>_coloc`` columns. The source DataFrame is not modified.
+
+        Only the values of the variables are added. Time gaps and distances are available in MtchupResult Only
 
         Returns
         -------

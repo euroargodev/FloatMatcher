@@ -13,22 +13,24 @@ from .pointset import PointSet
 class MatchupResult:
     """Result of a matchup
 
-    One value per point, in the order of the points. A point that is not matched (too far in
-    space or in time) has NaN values, its distance and time gap are kept.
+    One value per point, in the order of the points, or one value per neighbor with
+    ``k_nearest`` or ``n_frames`` above 1. A neighbor that is not matched (too far in space or
+    in time) has NaN values, its distance and time gap are kept.
 
     Parameters
     ----------
     values: dict
-        Matched values, one array per variable.
+        Matched values, one array per variable: (n,), or (n, K, N) for K nodes and N time
+        steps, sorted from the nearest.
     distance_km: numpy.ndarray
-        Distance to the nearest node, in km (straight line on the sphere, close to the
-        great-circle distance at short range), for every point, matched or not.
+        Distance to the nearest node, or to each of the K nodes (n, K), in km (straight line
+        on the sphere, close to the great-circle distance at short range), matched or not.
     time_delta: numpy.ndarray
-        Gap to the nearest time step, in seconds, for every point, matched or not. NaN for a
-        grid without time axis.
+        Gap to the nearest time step, or to each of the N time steps (n, N), in seconds,
+        matched or not. NaN for a grid without time axis.
     valid: numpy.ndarray of bool
-        True for the matched points: a node within ``radius`` and a time step within
-        ``time_gap``, whatever its value.
+        True for the matched neighbors, (n,) or (n, K, N): a node within ``radius`` and a time
+        step within ``time_gap``, whatever its value.
     """
     values:      dict[str, NDArray[np.float64]]
     distance_km: NDArray[np.float64]

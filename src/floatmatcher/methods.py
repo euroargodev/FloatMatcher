@@ -121,7 +121,9 @@ class NearestNeighbor(Method):
     """Nearest-neighbor matchup method
 
     Each point takes the values of the nearest node of the grid, and of the nearest time step
-    if the grid has a time axis. Points beyond ``radius`` or ``time_gap`` are invalid.
+    if the grid has a time axis. With ``k_nearest`` or ``n_frames`` above 1, it takes the
+    values of its k nearest nodes at each of its n nearest time steps, sorted from the nearest.
+    Neighbors beyond ``radius`` or ``time_gap`` are invalid.
 
     Parameters
     ----------
@@ -129,6 +131,10 @@ class NearestNeighbor(Method):
         Maximum distance to the node, in km (straight line on the sphere).
     time_gap: numpy.timedelta64, default=1 day
         Maximum gap to the time step. Ignored for a grid without time axis.
+    k_nearest: int, default=1
+        Number of nearest nodes in space.
+    n_frames: int, default=1
+        Number of nearest time steps. Ignored for a grid without time axis.
     """
     optional_params = {"radius", "time_gap", "k_nearest", "n_frames"}
 
@@ -142,10 +148,12 @@ class NearestNeighbor(Method):
         self.n_frames = n_frames
 
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
-        """Match the points with the nearest node of the grid
+        """Match the points with the nearest nodes and time steps of the grid
 
-        Invalid points have NaN values, distance and time gap in the result. Values are read
-        only for the valid points.
+        Invalid neighbors have NaN values; their distance and time gap are kept, ``valid`` tells
+        which ones are matched. Values are read only for the valid neighbors. With one neighbor
+        in space and in time, the result has one value per point, (n,). Otherwise values and
+        ``valid`` are (n, K, N), ``distance_km`` (n, K) and ``time_delta`` (n, N).
 
         Parameters
         ----------
