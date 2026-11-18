@@ -202,3 +202,14 @@ def test_interp_radius_limits_the_neighbours_below_the_requested_k(grid_square_d
     # 4 asked, 2 are reachable
     npt.assert_allclose(res.values["v"], [(10.0 + 20.0) / 2], rtol=1e-4)
     assert res.valid[0]
+
+
+def test_interp_more_frames_than_the_grid_does_not_fail(grid_3d_ds):
+    # 3 frames asked, only 2 in the grid: the missing one is not found
+    points = PointSet.from_arrays(lon=[20.0], lat=[1.0],
+                                  time=np.array(["2015-01-01T06"], dtype="datetime64[ns]"))
+
+    res = Interpolator(n_frames=3).apply(grid_3d_ds, points)
+
+    assert res.valid.tolist() == [True]
+    assert np.isfinite(res.values["sst"][0])
