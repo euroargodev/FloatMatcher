@@ -66,8 +66,8 @@ def test_match_nearest_rejects_out_of_range_points(era5_files):
     assert res.valid.tolist() == [True, False, False]
     npt.assert_allclose(res.values["sst"][:1], [121.03], atol=1e-4)
     assert np.isnan(res.values["sst"][1:]).all()      # no value for the rejected
-    assert np.isnan(res.distance_km[1:]).all()        # nor distance
-    assert np.isnan(res.time_delta[1:]).all()         # nor time gap
+    assert res.distance_km[1] > 25                    # p1: kept distance, beyond radius
+    assert res.time_delta[2] > 86400                  # p2: kept time gap, beyond time_gap
 
     # p1 was out on DISTANCE only
     orch.set_method("nearest", radius=100000)
@@ -155,8 +155,6 @@ def test_set_method_unknown_type_raises():
 
 @pytest.mark.parametrize("method, params, message", [
     ("nearest", {"dummy_param": 50}, r"does not take \['dummy_param'\]"),
-    ("nearest", {"n_frames": 2}, r"does not take \['n_frames'\]"),
-    ("nearest", {"k_nearest": 2}, r"does not take \['k_nearest'\]"),
     ("interp", {"dummy_param": 50}, r"does not take \['dummy_param'\]"),
 ])
 def test_set_method_wrong_params_raise(method, params, message):
@@ -343,6 +341,55 @@ def test_reinject_gives_a_dataframe_for_points_from_a_dataframe(grid_3d_ds, grid
 
     assert isinstance(out, pd.DataFrame)
     npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
+
+
+def test_reinject_dataframe_k_nearest_gives_one_column_per_neighbor(grid_3d_ds, grid_file):
+    # point (lon 21, lat 1.2) at the first time step of grid_3d_ds (sst = 100 * lat + lon + t)
+    #   node        sst
+    #   (20, 1)     120
+    #   (20, 2)     220
+    df = pd.DataFrame({"longitude": [21.0], "latitude": [1.2],
+                       "date": pd.to_datetime(["2015-01-01"])})
+    fm = FloatMatcher()
+    fm.set_points(df)
+    fm.set_product("era5-hourly", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_method("nearest", radius=500, k_nearest=2)
+    fm.match()
+
+    out = fm.reinject()
+
+    assert [c for c in out.columns if c.startswith("sst")] == ["sst_coloc_s0_t0", "sst_coloc_s1_t0"]
+    npt.assert_allclose(out[["sst_coloc_s0_t0", "sst_coloc_s1_t0"]].values, [[120.0, 220.0]])
+
+
+def _matched_k2_dataset(grid_3d_ds, grid_file):
+    """Point (lon 21, lat 1.2) of a Dataset, matched with its 2 nearest nodes:
+    (20, 1) sst 120 and (20, 2) sst 220, at the first time step of grid_3d_ds"""
+    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [21.0]),
+                     "LATITUDE": ("N_PROF", [1.2]),
+                     "TIME": ("N_PROF", pd.to_datetime(["2015-01-01"]))})
+    fm = FloatMatcher()
+    fm.set_points(ds)
+    fm.set_product("era5-hourly", "local", grid_file(grid_3d_ds), ["sst"])
+    fm.set_method("nearest", radius=500, k_nearest=2)
+    fm.match()
+    return fm
+
+
+def test_reinject_dataset_k_nearest_gives_a_neighbor_matrix(grid_3d_ds, grid_file):
+    out = _matched_k2_dataset(grid_3d_ds, grid_file).reinject()
+
+    assert out["sst_coloc"].dims == ("N_PROF", "k_space", "n_time")
+    npt.assert_allclose(out["sst_coloc"].values, [[[120.0], [220.0]]])
+
+
+def test_reinject_dataset_neigh_to_vars_gives_one_variable_per_neighbor(grid_3d_ds, grid_file):
+    out = _matched_k2_dataset(grid_3d_ds, grid_file).reinject(neigh_to_vars=True)
+
+    assert "sst_coloc" not in out
+    assert out["sst_coloc_s0_t0"].dims == ("N_PROF",)
+    npt.assert_allclose(out["sst_coloc_s0_t0"].values, [120.0])
+    npt.assert_allclose(out["sst_coloc_s1_t0"].values, [220.0])
 
 
 # ---------- repr ----------

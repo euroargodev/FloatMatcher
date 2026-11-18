@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
+from numpy.typing import NDArray
 
 from .flatgrid import FlatGrid
 from .matchup_results import MatchupResult
@@ -32,6 +33,7 @@ class Method(ABC):
         change it. The default values are read in the signature of ``__init__``.
     """
 
+    radius: int
     time_gap: np.timedelta64
     # parameters given to set_method
     required_params: set[str] = set()
@@ -49,7 +51,54 @@ class Method(ABC):
     def time_gap_seconds(self) -> float:
         """``time_gap`` in seconds"""
         return float(self.time_gap / np.timedelta64(1, "s"))
-    
+
+    def _neighbors(self, flat_grid: FlatGrid, points: PointSet, k_nearest: int,
+                   n_frames: int) -> tuple[NDArray, NDArray, NDArray,
+                                           NDArray, NDArray | None, NDArray]:
+        """k nearest nodes and n nearest time steps of the points, sorted from the nearest
+
+        Missing neighbors (more asked than in the grid) have NaN distance or time gap and are
+        invalid. Their index is set to 0, so that it can be read, their weight being 0.
+
+        Returns
+        -------
+        tuple
+            dist_km (n, K), spatial_idx (n, K), valid_spatial (n, K),
+            time_delta (n, N), temporal_idx (n, N) or None, valid_time (n, N).
+            Without time axis, N is 1, time_delta is NaN and valid_time is True.
+        """
+        idx_count = len(points.lon)
+
+        # k nearest nodes in space, sorted from the nearest: (n, K)
+        dist_km, spatial_idx = flat_grid.spatial_nearest(points, k=k_nearest)
+        dist_km = dist_km.reshape(idx_count, -1)
+        spatial_idx = spatial_idx.reshape(idx_count, -1)
+        # missing neighbors (k larger than the grid) come back as inf: not found
+        missing = np.isinf(dist_km)
+        dist_km[missing] = np.nan
+        # placeholder index, never used: the neighbor is invalid and valid set to false
+        spatial_idx[missing] = 0
+        valid_spatial = dist_km <= self.radius             # NaN gives False
+
+        # n nearest time steps, sorted from the nearest: (n, N)
+        temporal_idx: NDArray | None
+        if flat_grid.time is not None:
+            time_delta, temporal_idx = flat_grid.temporal_nearest(points, k=n_frames)
+            time_delta = time_delta.reshape(idx_count, -1)
+            temporal_idx = temporal_idx.reshape(idx_count, -1)
+            missing = np.isinf(time_delta)
+            time_delta[missing] = np.nan
+            # placeholder index, never used: the neighbor is invalid and valid set to false
+            temporal_idx[missing] = 0
+            valid_time = time_delta <= self.time_gap_seconds
+        else:
+            # grid without time axis: n_frames ignored
+            time_delta = np.full((idx_count, 1), np.nan)
+            temporal_idx = None
+            valid_time = np.ones((idx_count, 1), dtype=bool)
+
+        return dist_km, spatial_idx, valid_spatial, time_delta, temporal_idx, valid_time
+
     @abstractmethod
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
         """Match the points with a grid
@@ -72,7 +121,9 @@ class NearestNeighbor(Method):
     """Nearest-neighbor matchup method
 
     Each point takes the values of the nearest node of the grid, and of the nearest time step
-    if the grid has a time axis. Points beyond ``radius`` or ``time_gap`` are invalid.
+    if the grid has a time axis. With ``k_nearest`` or ``n_frames`` above 1, it takes the
+    values of its k nearest nodes at each of its n nearest time steps, sorted from the nearest.
+    Neighbors beyond ``radius`` or ``time_gap`` are invalid.
 
     Parameters
     ----------
@@ -80,19 +131,29 @@ class NearestNeighbor(Method):
         Maximum distance to the node, in km (straight line on the sphere).
     time_gap: numpy.timedelta64, default=1 day
         Maximum gap to the time step. Ignored for a grid without time axis.
+    k_nearest: int, default=1
+        Number of nearest nodes in space.
+    n_frames: int, default=1
+        Number of nearest time steps. Ignored for a grid without time axis.
     """
-    optional_params = {"radius", "time_gap"}
+    optional_params = {"radius", "time_gap", "k_nearest", "n_frames"}
 
     def __init__(self, radius: int = 25,
-                 time_gap: np.timedelta64 = np.timedelta64(1, "D")) -> None :
+                 time_gap: np.timedelta64 = np.timedelta64(1, "D"),
+                 k_nearest: int = 1,
+                 n_frames: int = 1) -> None :
         self.radius = radius
         self.time_gap = time_gap
+        self.k_nearest = k_nearest
+        self.n_frames = n_frames
 
     def apply(self, dataset: xr.Dataset, points: PointSet) -> MatchupResult:
-        """Match the points with the nearest node of the grid
+        """Match the points with the nearest nodes and time steps of the grid
 
-        Invalid points have NaN values, distance and time gap in the result. Values are read
-        only for the valid points.
+        Invalid neighbors have NaN values; their distance and time gap are kept, ``valid`` tells
+        which ones are matched. Values are read only for the valid neighbors. With one neighbor
+        in space and in time, the result has one value per point, (n,). Otherwise values and
+        ``valid`` are (n, K, N), ``distance_km`` (n, K) and ``time_delta`` (n, N).
 
         Parameters
         ----------
@@ -113,46 +174,40 @@ class NearestNeighbor(Method):
         # return FlatGrid object, flatten grid
         flat_grid = FlatGrid.from_grid(dataset)
 
-        # starting Nearest method : apply kdtree on spatial
-        dist_km, spatial_idx = flat_grid.spatial_nearest(points)
-        valid_spatial = dist_km <= self.radius
+        # k nearest nodes and n nearest time steps, sorted from the nearest
+        (dist_km, spatial_idx, valid_spatial,
+         time_delta, temporal_idx, valid_time) = self._neighbors(flat_grid, points,
+                                                                 self.k_nearest, self.n_frames)
 
-        idx_count = len(points.lon)
-        if flat_grid.time is not None:
-            time_delta, temporal_idx = flat_grid.temporal_nearest(points)
-            valid = valid_spatial & (time_delta <= self.time_gap_seconds)
-        else:
-            time_delta = np.full(idx_count, np.nan)
-            temporal_idx = None
-            valid = valid_spatial
+        # one neighbor = one node x one time step: (n, K, N)
+        valid = valid_spatial[:, :, None] & valid_time[:, None, :]
 
-        # read ONLY at valid points: no wasted read for out-of-window points
-        # select indexes of spatial and time
-        idx = np.where(valid)[0]
-        node_idx = spatial_idx[idx]       # grid node index of retained points
-        tsel_idx = None              # set temporal case
+        # read ONLY the valid neighbors, as (node, time step) pairs:
+        # no wasted read for out-of-window neighbors
+        idx = np.where(valid)                        # (point, node, time step) of the valid neighbors
+        node_idx = spatial_idx[idx[0], idx[1]]       # grid node index of retained neighbors
+        tsel_idx = None                              # set temporal case
         if temporal_idx is not None:
-            tsel_idx = temporal_idx[idx] # apply on every node. filtering is made after (costless)
-
-        # retreive data only at good positions : select in dataset stacked of FlatGrid object
+            tsel_idx = temporal_idx[idx[0], idx[2]]  # time step index of retained neighbors
         picked = flat_grid.read_values(node_idx, tsel_idx)
 
-        # scatter each variable's valid values back to full PointSet-length.
-        # picked is from _stacked which is flatten, not PointSet lenght :)
+        # scatter each variable's valid values back to (n, K, N)
         values = {}
         for var, vals in picked.items():
-            full = np.full(idx_count, np.nan)
+            full = np.full(valid.shape, np.nan)
             full[idx] = vals
             values[var] = full
 
-        # invalid points carry no meaningful distance/time either
-        dist_out = np.full(idx_count, np.nan)
-        dist_out[idx] = dist_km[idx]
-        time_delta_out = np.full(idx_count, np.nan)
-        time_delta_out[idx] = time_delta[idx]
+        # one neighbor in space and in time: back to one value per point, (n,)
+        if valid.shape[1:] == (1, 1):
+            values = {var: v[:, 0, 0] for var, v in values.items()}
+            dist_km = dist_km[:, 0]
+            time_delta = time_delta[:, 0]
+            valid = valid[:, 0, 0]
 
-        return MatchupResult(values=values, distance_km=dist_out,
-                                time_delta=time_delta_out, valid=valid)
+        # distance and time gap are kept for every neighbor, valid tells which ones are matched
+        return MatchupResult(values=values, distance_km=dist_km,
+                             time_delta=time_delta, valid=valid)
 
 
 
@@ -225,42 +280,31 @@ class Interpolator(Method):
         # return FlatGrid object, flatten grid
         flat_grid = FlatGrid.from_grid(dataset)
 
-        # apply kdtree on spatial : find k nearest distances and indexes of nearest points
-        dist_km, spatial_idx = flat_grid.spatial_nearest(points, k=self.k_nearest)
-        valid_spatial = dist_km <= self.radius
-        # reshape to fit (n,) --> (n,K) in 1D:
-        spatial_idx = spatial_idx.reshape(len(points.lon), -1) 
-        dist_km = dist_km.reshape(len(points.lon), -1) 
-        valid_spatial = valid_spatial.reshape(len(points.lon), -1) 
-
         # length of points to process
         idx_count = len(points.lon)
 
-        # apply kdtree on time : find k nearest "time distances"
-        if flat_grid.time is not None:
-            time_delta, temporal_idx = flat_grid.temporal_nearest(points, k=self.n_frames)
-            # Reshape also
-            temporal_idx = temporal_idx.reshape(len(points.lon), -1) 
-            time_delta = time_delta.reshape(len(points.lon), -1) 
-            valid_time = time_delta <= self.time_gap_seconds
-        else:
-            temporal_idx = None
-            time_delta = np.full((idx_count, 1), np.nan)            
-            valid_time = np.ones((idx_count, 1), dtype=bool)
+        # k nearest nodes and n nearest time steps, sorted from the nearest
+        (dist_km, spatial_idx, valid_spatial,
+         time_delta, temporal_idx, valid_time) = self._neighbors(flat_grid, points,
+                                                                 self.k_nearest, self.n_frames)
 
         # load kernel 
         kernel = available_kernels[self.kernel]
 
         # compute spatial weights
         # return (n, K) matrix
-        spatial_weights = kernel(dist_km, power=self.power, limit=self.radius) * valid_spatial
+        # invalid nodes (beyond radius or missing) weigh 0
+        spatial_weights = np.where(valid_spatial,
+                                   kernel(dist_km, power=self.power, limit=self.radius), 0.0)
 
         # compute temporal weights 
         if flat_grid.time is None:
             temporal_weights = np.ones((idx_count, 1))      # no time axis
         else:
-            temporal_weights = kernel(time_delta, power=self.power,
-                                      limit=self.time_gap_seconds) * valid_time
+            # invalid time steps (beyond time_gap or missing) weigh 0
+            temporal_weights = np.where(valid_time,
+                                        kernel(time_delta, power=self.power,
+                                               limit=self.time_gap_seconds), 0.0)
         
         # read EVERY points and let the equation select good points 
         values = {}
@@ -294,9 +338,11 @@ class Interpolator(Method):
 
         valid = np.asarray(valid_spatial.any(axis=1) & valid_time.any(axis=1))          # (n,)
 
+        # distance and time gap of the nearest node and time step (first ones, sorted),
+        # kept for every point
         return MatchupResult(values=values,
-                             distance_km=np.where(valid, dist_km.min(axis=1), np.nan),
-                             time_delta=np.where(valid, time_delta.min(axis=1), np.nan),
+                             distance_km=dist_km[:, 0],
+                             time_delta=time_delta[:, 0],
                              valid=valid)
 
 # key given to FloatMatcher.set_method(type=...) -> method class

@@ -161,12 +161,14 @@ class FloatMatcher:
 
         Parameters
         ----------
-        type: {'nearest'}
+        type: {'nearest', 'interp'}
             Method to use.
         **params
             Parameters of the method. ``"nearest"``: ``radius`` (km), ``time_gap``
-            (numpy.timedelta64). ``"interp"``: the same, plus ``k_nearest``, ``n_frames``,
-            ``kernel`` and ``power``.
+            (numpy.timedelta64), ``k_nearest`` and ``n_frames`` (number of nearest nodes and
+            time steps, 1 by default). 
+            ``"interp"``: ``radius`` (km), ``time_gap``
+            (numpy.timedelta64), ``k_nearest``, ``n_frames``, ``kernel`` and ``power``.
 
         Raises
         ------
@@ -224,10 +226,19 @@ class FloatMatcher:
 
 
 
-    def to_dataset(self) -> xr.Dataset:
+    def to_dataset(self, neigh_to_vars: bool = False) -> xr.Dataset:
         """Add the matched values to the Dataset the points come from
 
         Values are added as ``<name>_coloc``. The source Dataset is not modified.
+
+        Only the values of the variables are added. Time gaps and distances are available in MtchupResult Only
+        
+        Parameters
+        ----------
+        neigh_to_vars: bool, default=False
+            With ``k_nearest`` or ``n_frames`` above 1: one ``<name>_coloc_s<k>_t<n>`` variable
+            per neighbor along the points, instead of the ``k_space`` and ``n_time``
+            dimensions.
 
         Returns
         -------
@@ -243,12 +254,14 @@ class FloatMatcher:
         if self._result is None or self.points is None:
             raise ValueError("no result yet or points are None, try call match()")
         
-        return self._result._to_dataset(self.points)
+        return self._result._to_dataset(self.points, neigh_to_vars=neigh_to_vars)
 
     def to_dataframe(self) -> pd.DataFrame:
         """Add the matched values to the DataFrame the points come from
 
         Values are added as ``<name>_coloc`` columns. The source DataFrame is not modified.
+
+        Only the values of the variables are added. Time gaps and distances are available in MtchupResult Only
 
         Returns
         -------
@@ -266,11 +279,17 @@ class FloatMatcher:
             
         return self._result._to_dataframe(self.points)
 
-    def reinject(self) -> xr.Dataset | pd.DataFrame:
+    def reinject(self, neigh_to_vars: bool = False) -> xr.Dataset | pd.DataFrame:
         """Add the matched values to the object the points come from
 
         Same type as the input of ``set_points``: a Dataset gives a Dataset, a DataFrame gives a
         DataFrame. Values are added as ``<name>_coloc``. The source is not modified.
+
+        Parameters
+        ----------
+        neigh_to_vars: bool, default=False
+            For a Dataset, see :meth:`to_dataset`. A DataFrame always has one column per
+            neighbor.
 
         Returns
         -------
@@ -285,7 +304,7 @@ class FloatMatcher:
             raise ValueError("no result yet or points are None, try call match()")
         origin = self.points.original_data
         if isinstance(origin, xr.Dataset):
-            return self.to_dataset()
+            return self.to_dataset(neigh_to_vars=neigh_to_vars)
         if isinstance(origin, pd.DataFrame):
             return self.to_dataframe()
         raise ValueError(

@@ -31,10 +31,11 @@ def argo_profiles():
     )
 
 
-def _match(ds, path):
+def _match(ds, path, options=None, **method_params):
     return ds.argo.floatmatcher.match(
         product=dict(type="era5-hourly", source="local", selected_variables=["sst"], path=path),
-        method=dict(type="nearest"),
+        method=dict(type="nearest", **method_params),
+        **(options or {}),
     )
 
 
@@ -56,3 +57,33 @@ def test_match_on_points_comes_back_as_points(argo_profiles, grid_3d_ds, grid_fi
     assert out.sizes["N_POINTS"] == points.sizes["N_POINTS"]
     # every level carries the value of its profile
     npt.assert_allclose(out["sst_coloc"].values, [120.0] * 3 + [231.0] * 3)
+
+
+def test_match_on_points_k_nearest_gives_one_variable_per_neighbor(argo_profiles, grid_3d_ds,
+                                                                   grid_file):
+    points = argo_profiles.argo.profile2point()
+
+    out = _match(points, grid_file(grid_3d_ds), options=dict(neigh_to_vars=True), k_nearest=2)
+
+    # the nearest node is the one of argo_profiles, the second one is beyond radius (25 km)
+    assert out["sst_coloc_s0_t0"].dims == ("N_POINTS",)
+    npt.assert_allclose(out["sst_coloc_s0_t0"].values, [120.0] * 3 + [231.0] * 3)
+    assert np.isnan(out["sst_coloc_s1_t0"].values).all()
+
+
+def test_match_on_points_k_nearest_without_option_raises(argo_profiles, grid_3d_ds, grid_file):
+    points = argo_profiles.argo.profile2point()
+
+    with pytest.raises(ValueError, match="neigh_to_vars=True"):
+        _match(points, grid_file(grid_3d_ds), k_nearest=2)
+
+
+def test_match_on_points_original_shape_false_gives_profiles(argo_profiles, grid_3d_ds, grid_file):
+    points = argo_profiles.argo.profile2point()
+
+    out = _match(points, grid_file(grid_3d_ds), options=dict(original_shape=False), k_nearest=2)
+
+    # back in profiles, with the neighbor matrix
+    assert "N_POINTS" not in out.dims
+    assert out["sst_coloc"].dims == ("N_PROF", "k_space", "n_time")
+    npt.assert_allclose(out["sst_coloc"].values[:, 0, 0], [120.0, 231.0])
