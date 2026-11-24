@@ -227,7 +227,7 @@ class FloatMatcher:
 
 
 
-    def to_xarray(self, neigh_to_vars: bool = False) -> xr.Dataset:
+    def to_xarray(self, neigh_to_vars: bool = False, in_place=False) -> xr.Dataset:
         """Add the matched values to the Dataset the points come from
 
         Values are added as ``<name>_coloc``. The source Dataset is not modified.
@@ -240,6 +240,9 @@ class FloatMatcher:
             With ``k_nearest`` or ``n_frames`` above 1: one ``<name>_coloc_s<k>_t<n>`` variable
             per neighbor along the points, instead of the ``k_space`` and ``n_time``
             dimensions.
+        in_place: bool, default True, 
+            If True, keep the original xarray dataset variable attributes. 
+            Otherwise, attributes of the xarray dataset produced are not filled
 
         Returns
         -------
@@ -254,8 +257,11 @@ class FloatMatcher:
         """
         if self._result is None or self.points is None:
             raise ValueError("no result yet or points are None, try call match()")
+
+        if not self.product.src_dataset:
+            raise ValueError("product.src_dataset is None")
         
-        return self._result._to_xarray(self.points, neigh_to_vars=neigh_to_vars)
+        return self._result._to_xarray(self.points, self.product.src_dataset, neigh_to_vars=neigh_to_vars, in_place=in_place)
 
     def to_dataframe(self) -> pd.DataFrame:
         """Add the matched values to the DataFrame the points come from

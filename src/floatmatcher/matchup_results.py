@@ -82,7 +82,7 @@ class MatchupResult:
                     out[f"{var}{suffix}_s{k}_t{t}"] = v[:, k, t]
         return out
 
-    def _to_xarray(self, points: PointSet, neigh_to_vars: bool = False) -> xr.Dataset:
+    def _to_xarray(self, points: PointSet, src_dataset: xr.Dataset, neigh_to_vars: bool = False, in_place=True) -> xr.Dataset:
         """Reinject the matched values into the Dataset the points come from
 
         Values are added as ``<name>_coloc``, on the dimension of the points. With
@@ -131,6 +131,9 @@ class MatchupResult:
             for k, v in self.values.items():
                 dims = (dim,) if v.ndim == 1 else (dim, "k_space", "n_time")
                 out[f"{k}_coloc"] = (dims, v)
+                # if in_place, keep original attributes of the variable
+                if in_place:
+                    out[f"{k}_coloc"].attrs = src_dataset[f"{k}"].attrs
 
         return out
 

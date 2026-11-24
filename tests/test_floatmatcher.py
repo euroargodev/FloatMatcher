@@ -269,6 +269,31 @@ def test_to_xarray_through_the_builder(grid_3d_ds, grid_file):
     assert "sst_coloc" not in ds.data_vars            # the source is not modified
 
 
+def test_to_xarray_opt_in_place(grid_3d_ds, grid_file):
+    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
+                     "LATITUDE": ("N_PROF", [1.05, 1.95]),
+                     "TIME": ("N_PROF", TIMES)},
+                    coords={"N_PROF": [10, 11]})
+
+    # add attributes to t2m variable
+    gridded_ds = grid_3d_ds.copy()
+    gridded_ds.sst.attrs = {"attribute" : "attr_value"}
+    gridded_ds.t2m.attrs = {"attribute1" : "attr_value1", "attribute2": "attr_value2"}
+
+    fm = FloatMatcher()
+    fm.set_points(ds)
+
+    fm.set_product("era5-hourly", "local", grid_file(gridded_ds), ["sst", "t2m"])
+    fm.set_method("nearest")
+    fm.match()
+
+
+    assert fm.to_xarray(neigh_to_vars=False, ).t2m_coloc.attrs == {}
+    assert fm.to_xarray(neigh_to_vars=False, in_place=True).sst_coloc.attrs == {"attribute" : "attr_value"}
+    assert fm.to_xarray(neigh_to_vars=False, in_place=True).t2m_coloc.attrs == {"attribute1" : "attr_value1", "attribute2": "attr_value2"}
+
+
+
 def test_to_dataframe_through_the_builder(grid_3d_ds, grid_file):
     df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
     fm = FloatMatcher()
