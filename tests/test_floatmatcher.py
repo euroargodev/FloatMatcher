@@ -248,7 +248,7 @@ def test_match_through_the_builder(era5_files):
     npt.assert_allclose(res.values["sst"], [121.03], atol=1e-4)
 
 
-# ---------- builder : reinject through the set_points input ----------
+# ---------- builder : to_xarray / to_dataframe ----------
 # grid_3d_ds, sst = 100*lat + lon + time_index: p0 -> node (1, 20) at t0 = 120, p1 -> node (2, 10) at t1 = 211
 
 def test_to_xarray_through_the_builder(grid_3d_ds, grid_file):
@@ -283,16 +283,6 @@ def test_to_dataframe_through_the_builder(grid_3d_ds, grid_file):
     assert "sst_coloc" not in df.columns              # the source is not modified
 
 
-def test_reinject_before_match_raises():
-    fm = FloatMatcher()
-    fm.set_points([20.1], [1.05])
-
-    with pytest.raises(ValueError, match="no result yet"):
-        fm.to_xarray()
-    with pytest.raises(ValueError, match="no result yet"):
-        fm.to_dataframe()
-
-
 def test_to_dataframe_refuses_points_from_a_dataset(grid_3d_ds, grid_file):
     ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
                      "LATITUDE": ("N_PROF", [1.05, 1.95]),
@@ -311,39 +301,8 @@ def test_to_xarray_refuses_points_from_a_dataframe(grid_3d_ds, grid_file):
         fm.to_xarray()
 
 
-def test_reinject_refuses_points_from_arrays(grid_3d_ds, grid_file):
-    """arrays carry no origin to reinject into"""
-    fm = _matched(grid_3d_ds, grid_file, [20.1, 10.05], [1.05, 1.95], TIMES)
 
-    with pytest.raises(ValueError):
-        fm.to_xarray()
-    with pytest.raises(ValueError):
-        fm.to_dataframe()
-
-
-def test_reinject_gives_a_dataset_for_points_from_a_dataset(grid_3d_ds, grid_file):
-    ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
-                     "LATITUDE": ("N_PROF", [1.05, 1.95]),
-                     "TIME": ("N_PROF", TIMES)})
-    fm = _matched(grid_3d_ds, grid_file, ds)
-
-    out = fm.reinject()
-
-    assert isinstance(out, xr.Dataset)
-    npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
-
-
-def test_reinject_gives_a_dataframe_for_points_from_a_dataframe(grid_3d_ds, grid_file):
-    df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
-    fm = _matched(grid_3d_ds, grid_file, df)
-
-    out = fm.reinject()
-
-    assert isinstance(out, pd.DataFrame)
-    npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
-
-
-def test_reinject_dataframe_k_nearest_gives_one_column_per_neighbor(grid_3d_ds, grid_file):
+def test_to_dataframe_k_nearest_gives_one_column_per_neighbor(grid_3d_ds, grid_file):
     # point (lon 21, lat 1.2) at the first time step of grid_3d_ds (sst = 100 * lat + lon + t)
     #   node        sst
     #   (20, 1)     120
@@ -356,7 +315,7 @@ def test_reinject_dataframe_k_nearest_gives_one_column_per_neighbor(grid_3d_ds, 
     fm.set_method("nearest", radius=500, k_nearest=2)
     fm.match()
 
-    out = fm.reinject()
+    out = fm.to_dataframe()
 
     assert [c for c in out.columns if c.startswith("sst")] == ["sst_coloc_s0_t0", "sst_coloc_s1_t0"]
     npt.assert_allclose(out[["sst_coloc_s0_t0", "sst_coloc_s1_t0"]].values, [[120.0, 220.0]])
@@ -376,15 +335,15 @@ def _matched_k2_dataset(grid_3d_ds, grid_file):
     return fm
 
 
-def test_reinject_dataset_k_nearest_gives_a_neighbor_matrix(grid_3d_ds, grid_file):
-    out = _matched_k2_dataset(grid_3d_ds, grid_file).reinject()
+def test_to_xarray_k_nearest_gives_a_neighbor_matrix(grid_3d_ds, grid_file):
+    out = _matched_k2_dataset(grid_3d_ds, grid_file).to_xarray()
 
     assert out["sst_coloc"].dims == ("N_PROF", "k_space", "n_time")
     npt.assert_allclose(out["sst_coloc"].values, [[[120.0], [220.0]]])
 
 
-def test_reinject_dataset_neigh_to_vars_gives_one_variable_per_neighbor(grid_3d_ds, grid_file):
-    out = _matched_k2_dataset(grid_3d_ds, grid_file).reinject(neigh_to_vars=True)
+def test_to_xarray_neigh_to_vars_gives_one_variable_per_neighbor(grid_3d_ds, grid_file):
+    out = _matched_k2_dataset(grid_3d_ds, grid_file).to_xarray(neigh_to_vars=True)
 
     assert "sst_coloc" not in out
     assert out["sst_coloc_s0_t0"].dims == ("N_PROF",)

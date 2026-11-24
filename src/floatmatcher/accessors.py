@@ -137,7 +137,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
         # match
         fm.match()
 
-        # reinject
+        # export to_xarray
         ds_out = fm.to_xarray(neigh_to_vars=neigh_to_vars)
 
         if marker and original_shape:
