@@ -16,7 +16,8 @@ class FloatMatcher:
     """Positions matcher for gridded products
 
     Fill it with the ``set_*`` methods (points, product, method), then call ``match()`` and read
-    the result with ``result`` or ``reinject()``.
+    the result with ``result``. Results can be integrated to original dataset with ``to_xarray()`` or ``to_dataframe()``.
+    ``in_place`` ... TODO
 
     Parameters
     ----------
@@ -226,7 +227,7 @@ class FloatMatcher:
 
 
 
-    def to_dataset(self, neigh_to_vars: bool = False) -> xr.Dataset:
+    def to_xarray(self, neigh_to_vars: bool = False) -> xr.Dataset:
         """Add the matched values to the Dataset the points come from
 
         Values are added as ``<name>_coloc``. The source Dataset is not modified.
@@ -254,7 +255,7 @@ class FloatMatcher:
         if self._result is None or self.points is None:
             raise ValueError("no result yet or points are None, try call match()")
         
-        return self._result._to_dataset(self.points, neigh_to_vars=neigh_to_vars)
+        return self._result._to_xarray(self.points, neigh_to_vars=neigh_to_vars)
 
     def to_dataframe(self) -> pd.DataFrame:
         """Add the matched values to the DataFrame the points come from
@@ -272,45 +273,45 @@ class FloatMatcher:
         ValueError
             If there is no result yet, or the points come from arrays.
         TypeError
-            If the points come from a Dataset, use ``to_dataset()``.
+            If the points come from a Dataset, use ``to_xarray()``.
         """
         if self._result is None or self.points is None:
             raise ValueError("no result yet or points are None, try call match()")
             
         return self._result._to_dataframe(self.points)
 
-    def reinject(self, neigh_to_vars: bool = False) -> xr.Dataset | pd.DataFrame:
-        """Add the matched values to the object the points come from
+    # def reinject(self, neigh_to_vars: bool = False) -> xr.Dataset | pd.DataFrame:
+    #     """Add the matched values to the object the points come from
 
-        Same type as the input of ``set_points``: a Dataset gives a Dataset, a DataFrame gives a
-        DataFrame. Values are added as ``<name>_coloc``. The source is not modified.
+    #     Same type as the input of ``set_points``: a Dataset gives a Dataset, a DataFrame gives a
+    #     DataFrame. Values are added as ``<name>_coloc``. The source is not modified.
 
-        Parameters
-        ----------
-        neigh_to_vars: bool, default=False
-            For a Dataset, see :meth:`to_dataset`. A DataFrame always has one column per
-            neighbor.
+    #     Parameters
+    #     ----------
+    #     neigh_to_vars: bool, default=False
+    #         For a Dataset, see :meth:`to_xarray`. A DataFrame always has one column per
+    #         neighbor.
 
-        Returns
-        -------
-        :class:`xarray.Dataset` or :class:`pandas.DataFrame`
+    #     Returns
+    #     -------
+    #     :class:`xarray.Dataset` or :class:`pandas.DataFrame`
 
-        Raises
-        ------
-        ValueError
-            If there is no result yet, or the points come from arrays.
-        """
-        if self._result is None or self.points is None:
-            raise ValueError("no result yet or points are None, try call match()")
-        origin = self.points.original_data
-        if isinstance(origin, xr.Dataset):
-            return self.to_dataset(neigh_to_vars=neigh_to_vars)
-        if isinstance(origin, pd.DataFrame):
-            return self.to_dataframe()
-        raise ValueError(
-            "Cannot reinject: these points come from arrays, there is no Dataset or DataFrame "
-            "to add the values to. Use result."
-        )
+    #     Raises
+    #     ------
+    #     ValueError
+    #         If there is no result yet, or the points come from arrays.
+    #     """
+    #     if self._result is None or self.points is None:
+    #         raise ValueError("no result yet or points are None, try call match()")
+    #     origin = self.points.original_data
+    #     if isinstance(origin, xr.Dataset):
+    #         return self.to_xarray(neigh_to_vars=neigh_to_vars)
+    #     if isinstance(origin, pd.DataFrame):
+    #         return self.to_dataframe()
+    #     raise ValueError(
+    #         "Cannot reinject: these points come from arrays, there is no Dataset or DataFrame "
+    #         "to add the values to. Use result."
+    #     )
 
     def build_request(self) -> list[dict[str, Any]]:
         """Build the download request of the product for the points

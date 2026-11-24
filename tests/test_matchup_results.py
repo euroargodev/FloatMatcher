@@ -66,29 +66,29 @@ def raw_points():
 #     )
 
 
-# ---------- to_dataset ----------
+# ---------- to_xarray ----------
 
-def test_to_dataset_adds_coloc_variable(result, ds_points):
-    out = result._to_dataset(ds_points)
+def test_to_xarray_adds_coloc_variable(result, ds_points):
+    out = result._to_xarray(ds_points)
     assert out["dummy_variable_coloc"].dims == ("N_PROF",)
     assert out["dummy_variable_coloc"].sel(N_PROF=10) == 280.0
     assert out["dummy_variable_coloc"].sel(N_PROF=11) == 281.0
     assert np.isnan(out["dummy_variable_coloc"].sel(N_PROF=12))
 
 
-def test_to_dataset_does_not_mutate_the_source(result, ds_points):
-    result._to_dataset(ds_points)
+def test_to_xarray_does_not_mutate_the_source(result, ds_points):
+    result._to_xarray(ds_points)
     assert "dummy_variable_coloc" not in ds_points.original_data.data_vars
 
 
-def test_to_dataset_without_provenance_raises(result, raw_points):
+def test_to_xarray_without_provenance_raises(result, raw_points):
     with pytest.raises(ValueError):
-        result._to_dataset(raw_points)
+        result._to_xarray(raw_points)
 
 
-def test_to_dataset_refuses_a_dataframe_origin(result, df_points):
+def test_to_xarray_refuses_a_dataframe_origin(result, df_points):
     with pytest.raises(TypeError, match="to_dataframe"):
-        result._to_dataset(df_points)
+        result._to_xarray(df_points)
 
 
 # ---------- to_dataframe ----------
@@ -112,7 +112,7 @@ def test_to_dataframe_without_provenance_raises(result, raw_points):
 
 
 def test_to_dataframe_refuses_a_dataset_origin(result, ds_points):
-    with pytest.raises(TypeError, match="to_dataset"):
+    with pytest.raises(TypeError, match="to_xarray"):
         result._to_dataframe(ds_points)
 
 

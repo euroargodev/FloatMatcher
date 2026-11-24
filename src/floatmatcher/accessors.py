@@ -138,7 +138,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
         fm.match()
 
         # reinject
-        ds_out = fm.reinject(neigh_to_vars=neigh_to_vars)
+        ds_out = fm.to_xarray(neigh_to_vars=neigh_to_vars)
 
         if marker and original_shape:
             ds_out = ds_out.argo.profile2point()

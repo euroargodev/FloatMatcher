@@ -251,7 +251,7 @@ def test_match_through_the_builder(era5_files):
 # ---------- builder : reinject through the set_points input ----------
 # grid_3d_ds, sst = 100*lat + lon + time_index: p0 -> node (1, 20) at t0 = 120, p1 -> node (2, 10) at t1 = 211
 
-def test_to_dataset_through_the_builder(grid_3d_ds, grid_file):
+def test_to_xarray_through_the_builder(grid_3d_ds, grid_file):
     ds = xr.Dataset({"LONGITUDE": ("N_PROF", [20.1, 10.05]),
                      "LATITUDE": ("N_PROF", [1.05, 1.95]),
                      "TIME": ("N_PROF", TIMES)},
@@ -262,7 +262,7 @@ def test_to_dataset_through_the_builder(grid_3d_ds, grid_file):
     fm.set_method("nearest")
     fm.match()
 
-    out = fm.to_dataset()
+    out = fm.to_xarray()
 
     assert out["sst_coloc"].dims == ("N_PROF",)
     npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
@@ -288,7 +288,7 @@ def test_reinject_before_match_raises():
     fm.set_points([20.1], [1.05])
 
     with pytest.raises(ValueError, match="no result yet"):
-        fm.to_dataset()
+        fm.to_xarray()
     with pytest.raises(ValueError, match="no result yet"):
         fm.to_dataframe()
 
@@ -299,16 +299,16 @@ def test_to_dataframe_refuses_points_from_a_dataset(grid_3d_ds, grid_file):
                      "TIME": ("N_PROF", TIMES)})
     fm = _matched(grid_3d_ds, grid_file, ds)
 
-    with pytest.raises(TypeError, match="to_dataset"):
+    with pytest.raises(TypeError, match="to_xarray"):
         fm.to_dataframe()
 
 
-def test_to_dataset_refuses_points_from_a_dataframe(grid_3d_ds, grid_file):
+def test_to_xarray_refuses_points_from_a_dataframe(grid_3d_ds, grid_file):
     df = pd.DataFrame({"longitude": [20.1, 10.05], "latitude": [1.05, 1.95], "date": TIMES})
     fm = _matched(grid_3d_ds, grid_file, df)
 
     with pytest.raises(TypeError, match="to_dataframe"):
-        fm.to_dataset()
+        fm.to_xarray()
 
 
 def test_reinject_refuses_points_from_arrays(grid_3d_ds, grid_file):
@@ -316,7 +316,7 @@ def test_reinject_refuses_points_from_arrays(grid_3d_ds, grid_file):
     fm = _matched(grid_3d_ds, grid_file, [20.1, 10.05], [1.05, 1.95], TIMES)
 
     with pytest.raises(ValueError):
-        fm.to_dataset()
+        fm.to_xarray()
     with pytest.raises(ValueError):
         fm.to_dataframe()
 

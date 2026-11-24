@@ -82,7 +82,7 @@ class MatchupResult:
                     out[f"{var}{suffix}_s{k}_t{t}"] = v[:, k, t]
         return out
 
-    def _to_dataset(self, points: PointSet, neigh_to_vars: bool = False) -> xr.Dataset:
+    def _to_xarray(self, points: PointSet, neigh_to_vars: bool = False) -> xr.Dataset:
         """Reinject the matched values into the Dataset the points come from
 
         Values are added as ``<name>_coloc``, on the dimension of the points. With
@@ -165,7 +165,7 @@ class MatchupResult:
         if not isinstance(df, pd.DataFrame):
             raise TypeError(
                 f"Cannot reinject into a DataFrame: the origin is a {type(df).__name__}. "
-                "Use FloatMatcher.to_dataset()."
+                "Use FloatMatcher.to_xarray()."
             )
 
         out = df.copy()
