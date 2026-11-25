@@ -122,6 +122,7 @@ class MatchupResult:
             )
 
         out = ds.copy()
+
         if neigh_to_vars:
             # one variable per neighbor, along the points
             for name, v in self.neigh_to_cols().items():
@@ -131,10 +132,16 @@ class MatchupResult:
             for k, v in self.values.items():
                 dims = (dim,) if v.ndim == 1 else (dim, "k_space", "n_time")
                 out[f"{k}_coloc"] = (dims, v)
-                # if in_place, keep original attributes of the variable
-                if in_place:
-                    out[f"{k}_coloc"].attrs = src_dataset[f"{k}"].attrs
+                
 
+        # if in_place, keep original attributes of the variable
+        if in_place:
+            # list all variables with coloc in their names : 
+            for v in out.data_vars:
+                if "coloc" in str(v):
+                    base, _, suffix = str(v).partition("_coloc")
+                    out[f"{v}"].attrs = src_dataset[f"{base}"].attrs
+                    
         return out
 
     def _to_dataframe(self, points: PointSet) -> pd.DataFrame:
