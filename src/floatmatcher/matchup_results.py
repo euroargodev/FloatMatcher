@@ -125,22 +125,26 @@ class MatchupResult:
 
         if neigh_to_vars:
             # one variable per neighbor, along the points
-            for name, v in self.neigh_to_cols().items():
+            added = self.neigh_to_cols()
+            for name, v in added.items():
                 out[name] = (dim, v)
         else:
+            added = {}
             # one variable per matched variable, (n,) or (n, K, N)
             for k, v in self.values.items():
                 dims = (dim,) if v.ndim == 1 else (dim, "k_space", "n_time")
+
+                added[f"{k}_coloc"] = v
+
                 out[f"{k}_coloc"] = (dims, v)
                 
 
         # if in_place, keep original attributes of the variable
         if in_place:
             # list all variables with coloc in their names : 
-            for v in out.data_vars:
-                if "coloc" in str(v):
-                    base, _, suffix = str(v).partition("_coloc")
-                    out[f"{v}"].attrs = src_dataset[f"{base}"].attrs
+            for k, v in added.items():
+                base, _, suffix = k.partition("_coloc")
+                out[f"{k}"].attrs = src_dataset[f"{base}"].attrs
                     
         return out
 

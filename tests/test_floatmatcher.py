@@ -284,7 +284,7 @@ def test_to_xarray_opt_in_place(grid_3d_ds, grid_file):
     fm.set_points(ds)
 
     fm.set_product("era5-hourly", "local", grid_file(gridded_ds), ["sst", "t2m"])
-    fm.set_method("nearest")
+    fm.set_method("nearest", k_nearest=2)
     fm.match()
 
 
