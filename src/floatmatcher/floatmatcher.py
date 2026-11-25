@@ -18,8 +18,6 @@ class FloatMatcher:
     Fill it with the ``set_*`` methods (points, product, method), then call ``match()`` and read
     the result with ``result``. Results can be integrated to original dataset with ``to_xarray()``
     or ``to_dataframe()``.
-    With ``to_xarray(in_place=True)`` (default), each ``<name>_coloc`` variable keeps the
-    attributes (units, long_name...) of the ``<name>`` variable of the gridded product.
 
     Parameters
     ----------
@@ -229,7 +227,7 @@ class FloatMatcher:
 
 
 
-    def to_xarray(self, neigh_to_vars: bool = False, in_place: bool = True) -> xr.Dataset:
+    def to_xarray(self, neigh_to_vars: bool = False, in_place: bool = False) -> xr.Dataset:
         """Add the matched values to the Dataset the points come from
 
         Values are added as ``<name>_coloc``. The source Dataset is not modified.
@@ -242,9 +240,8 @@ class FloatMatcher:
             With ``k_nearest`` or ``n_frames`` above 1: one ``<name>_coloc_s<k>_t<n>`` variable
             per neighbor along the points, instead of the ``k_space`` and ``n_time``
             dimensions.
-        in_place: bool, default True, 
-            If True, keep the original xarray dataset variable attributes. 
-            Otherwise, attributes of the xarray dataset produced are not filled
+        in_place: bool, default=False
+            If set to True, the original xarray dataset is enriched with matched variables instead of a copy. 
 
         Returns
         -------

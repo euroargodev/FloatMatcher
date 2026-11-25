@@ -80,9 +80,16 @@ def test_to_xarray_adds_coloc_variable(result, ds_points, src_dataset):
     assert out["dummy_variable_coloc"].attrs == {"units": "K", "long_name": "dummy variable"}
 
 
-def test_to_xarray_does_not_mutate_the_source(result, ds_points, src_dataset):
-    result._to_xarray(ds_points, src_dataset)
+def test_to_xarray_does_not_mutate_the_source_by_default(result, ds_points, src_dataset):
+    out = result._to_xarray(ds_points, src_dataset)
+    assert out is not ds_points.original_data
     assert "dummy_variable_coloc" not in ds_points.original_data.data_vars
+
+
+def test_to_xarray_in_place_modifies_the_source(result, ds_points, src_dataset):
+    out = result._to_xarray(ds_points, src_dataset, in_place=True)
+    assert out is ds_points.original_data
+    assert "dummy_variable_coloc" in ds_points.original_data.data_vars
 
 
 def test_to_xarray_without_provenance_raises(result, raw_points, src_dataset):
@@ -93,11 +100,6 @@ def test_to_xarray_without_provenance_raises(result, raw_points, src_dataset):
 def test_to_xarray_refuses_a_dataframe_origin(result, df_points, src_dataset):
     with pytest.raises(TypeError, match="to_dataframe"):
         result._to_xarray(df_points, src_dataset)
-
-def test_to_xarray_in_place_opt_false(result, ds_points, src_dataset):
-
-    out = result._to_xarray(ds_points, src_dataset, in_place=False)
-    assert out["dummy_variable_coloc"].attrs == {}
 
 
 # ---------- to_dataframe ----------

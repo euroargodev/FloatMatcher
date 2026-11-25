@@ -83,13 +83,13 @@ class MatchupResult:
         return out
 
     def _to_xarray(self, points: PointSet, src_dataset: xr.Dataset,
-                   neigh_to_vars: bool = False, in_place: bool = True) -> xr.Dataset:
+                   neigh_to_vars: bool = False, in_place: bool = False) -> xr.Dataset:
         """Reinject the matched values into the Dataset the points come from
 
         Values are added as ``<name>_coloc``, on the dimension of the points. With
         ``k_nearest`` or ``n_frames`` above 1, they also have the ``k_space`` and ``n_time``
         dimensions, or are split into one ``<name>_coloc_s<k>_t<n>`` variable per neighbor
-        (see :meth:`neigh_to_cols`). The source is not modified.
+        (see :meth:`neigh_to_cols`). The source is not modified, unless in_place=True
 
         Parameters
         ----------
@@ -97,6 +97,8 @@ class MatchupResult:
         neigh_to_vars: bool, default=False
             If set to True: one variable per neighbor, on the dimension of the points only, instead of the
             ``k_space`` and ``n_time`` dimensions. No effect with one neighbor.
+        in_place: bool, default=False
+            If set to True, the original xarray dataset is enriched with matched variables instead of a copy. 
 
         Returns
         -------
@@ -122,7 +124,11 @@ class MatchupResult:
                 "Use FloatMatcher.to_dataframe()."
             )
 
-        out = ds.copy()
+        # if in_place, enrich the original dataset
+        if in_place:
+            out = ds
+        else:
+            out = ds.copy()
 
         if neigh_to_vars:
             # one variable per neighbor, along the points
@@ -139,13 +145,11 @@ class MatchupResult:
 
                 out[f"{k}_coloc"] = (dims, v)
                 
-
-        # if in_place, keep original attributes of the variable
-        if in_place:
-            # list all variables with coloc in their names : 
-            for k, v in added.items():
-                base, _, suffix = k.partition("_coloc")
-                out[f"{k}"].attrs = src_dataset[f"{base}"].attrs
+            
+        # add attributes to the matched variables : 
+        for k, v in added.items():
+            base, _, suffix = k.partition("_coloc")
+            out[f"{k}"].attrs = src_dataset[f"{base}"].attrs
                     
         return out
 

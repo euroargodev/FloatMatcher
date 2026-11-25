@@ -262,7 +262,7 @@ def test_to_xarray_through_the_builder(grid_3d_ds, grid_file):
     fm.set_method("nearest")
     fm.match()
 
-    out = fm.to_xarray()
+    out = fm.to_xarray(in_place=False)
 
     assert out["sst_coloc"].dims == ("N_PROF",)
     npt.assert_allclose(out["sst_coloc"].values, [120.0, 211.0])
@@ -288,8 +288,7 @@ def test_to_xarray_opt_in_place(grid_3d_ds, grid_file):
     fm.match()
 
 
-    assert fm.to_xarray(neigh_to_vars=False, in_place=False).t2m_coloc.attrs == {}
-    # in_place is applied to neigh_to_vars variables too
+    # attributes are kept for neigh_to_vars variables too
     assert fm.to_xarray(neigh_to_vars=True).sst_coloc_s0_t0.attrs == {"attribute": "attr_value"}
     assert fm.to_xarray(neigh_to_vars=False, in_place=True).sst_coloc.attrs == {"attribute" : "attr_value"}
     assert fm.to_xarray(neigh_to_vars=False, in_place=True).t2m_coloc.attrs == {
