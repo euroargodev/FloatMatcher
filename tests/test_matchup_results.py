@@ -55,40 +55,43 @@ def raw_points():
                     np.array(["2015-01-01", "2015-01-02", "2015-01-03"],
                              dtype="datetime64[ns]"))
 
-# @pytest.fixture
-# def argo_like_ds():
-#     return xr.Dataset(
-#         {"LONGITUDE": (("N_PROF",), np.array([-40.0, -30.0, -20.0])),
-#          "LATITUDE": (("N_PROF",), np.array([35.0, 36.0, 37.0])),
-#          "TIME": (("N_PROF",), np.array(["2018-01-03", "2018-01-01", "2018-01-02"],
-#                                         dtype="datetime64[ns]"))},
-#         coords={"N_PROF": np.array([10, 11, 12])},
-#     )
+@pytest.fixture
+def src_dataset():
+
+    return xr.Dataset(
+        {"LONGITUDE": (("N_PROF",), np.array([-40.0, -30.0, -20.0])),
+            "LATITUDE": (("N_PROF",), np.array([35.0, 36.0, 37.0])),
+            "TIME": (("N_PROF",), np.array(["2018-01-03", "2018-01-01", "2018-01-02"],
+                                        dtype="datetime64[ns]")),
+            "dummy_variable": (("N_PROF",), np.array([1.0, 2.0, 3.0]),
+                            {"units": "K", "long_name": "dummy variable"})},
+        coords={"N_PROF": np.array([10, 11, 12])},
+    )
 
 
 # ---------- to_xarray ----------
+def test_to_xarray_adds_coloc_variable(result, ds_points, src_dataset):
 
-def test_to_xarray_adds_coloc_variable(result, ds_points):
-    out = result._to_xarray(ds_points)
+    out = result._to_xarray(ds_points, src_dataset)
     assert out["dummy_variable_coloc"].dims == ("N_PROF",)
     assert out["dummy_variable_coloc"].sel(N_PROF=10) == 280.0
     assert out["dummy_variable_coloc"].sel(N_PROF=11) == 281.0
     assert np.isnan(out["dummy_variable_coloc"].sel(N_PROF=12))
 
 
-def test_to_xarray_does_not_mutate_the_source(result, ds_points):
-    result._to_xarray(ds_points)
+def test_to_xarray_does_not_mutate_the_source(result, ds_points, src_dataset):
+    result._to_xarray(ds_points, src_dataset)
     assert "dummy_variable_coloc" not in ds_points.original_data.data_vars
 
 
-def test_to_xarray_without_provenance_raises(result, raw_points):
+def test_to_xarray_without_provenance_raises(result, raw_points, src_dataset):
     with pytest.raises(ValueError):
-        result._to_xarray(raw_points)
+        result._to_xarray(raw_points, src_dataset)
 
 
-def test_to_xarray_refuses_a_dataframe_origin(result, df_points):
+def test_to_xarray_refuses_a_dataframe_origin(result, df_points, src_dataset):
     with pytest.raises(TypeError, match="to_dataframe"):
-        result._to_xarray(df_points)
+        result._to_xarray(df_points, src_dataset)
 
 
 # ---------- to_dataframe ----------

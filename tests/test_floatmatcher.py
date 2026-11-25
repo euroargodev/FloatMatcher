@@ -275,7 +275,7 @@ def test_to_xarray_opt_in_place(grid_3d_ds, grid_file):
                      "TIME": ("N_PROF", TIMES)},
                     coords={"N_PROF": [10, 11]})
 
-    # add attributes to t2m variable
+    # add attributes to m variables
     gridded_ds = grid_3d_ds.copy()
     gridded_ds.sst.attrs = {"attribute" : "attr_value"}
     gridded_ds.t2m.attrs = {"attribute1" : "attr_value1", "attribute2": "attr_value2"}
@@ -288,7 +288,7 @@ def test_to_xarray_opt_in_place(grid_3d_ds, grid_file):
     fm.match()
 
 
-    assert fm.to_xarray(neigh_to_vars=False, ).t2m_coloc.attrs == {}
+    assert fm.to_xarray(neigh_to_vars=False, in_place=False).t2m_coloc.attrs == {}
     assert fm.to_xarray(neigh_to_vars=False, in_place=True).sst_coloc.attrs == {"attribute" : "attr_value"}
     assert fm.to_xarray(neigh_to_vars=False, in_place=True).t2m_coloc.attrs == {"attribute1" : "attr_value1", "attribute2": "attr_value2"}
 
