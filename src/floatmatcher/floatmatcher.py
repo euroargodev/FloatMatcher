@@ -17,7 +17,8 @@ class FloatMatcher:
 
     Fill it with the ``set_*`` methods (points, product, method), then call ``match()`` and read
     the result with ``result``. Results can be integrated to original dataset with ``to_xarray()`` or ``to_dataframe()``.
-    ``in_place`` ... TODO
+    With ``to_xarray(in_place=True)`` (default), each ``<name>_coloc`` variable keeps the
+    attributes (units, long_name...) of the ``<name>`` variable of the gridded product.
 
     Parameters
     ----------

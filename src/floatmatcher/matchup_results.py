@@ -56,7 +56,7 @@ class MatchupResult:
         A variable (n, K, N) gives ``<var>_coloc_s<k>_t<n>``, s being the rank of the node in
         distance and t the rank of the time step in time gap, both from the nearest (0). A
         variable already one value per point, (n,), gives ``<var>_coloc``. These are the names
-        of the columns added by ``reinject()``.
+        of the columns added by ``_to_dataframe()`` and ``to_xarray``.
 
         Parameters
         ----------
@@ -112,12 +112,12 @@ class MatchupResult:
         dim = points.points_dim
         if ds is None or dim is None:
             raise ValueError(
-                "Cannot reinject: these points have no origin dataset "
+                "Cannot to_xarray(): these points do not come from an xarray dataset "
                 "(they came from raw arrays). Use the MatchupResult directly."
             )
         if not isinstance(ds, xr.Dataset):
             raise TypeError(
-                f"Cannot reinject into a Dataset: the origin is a {type(ds).__name__}. "
+                f"Cannot to_xarray(): the origin is a {type(ds).__name__}. "
                 "Use FloatMatcher.to_dataframe()."
             )
 
@@ -162,12 +162,12 @@ class MatchupResult:
         df = points.original_data
         if df is None:
             raise ValueError(
-                "Cannot reinject: these points have no origin dataframe "
+                "Cannot to_dataframe(): these points have no origin dataframe "
                 "(they came from raw arrays). Use the MatchupResult directly."
             )
         if not isinstance(df, pd.DataFrame):
             raise TypeError(
-                f"Cannot reinject into a DataFrame: the origin is a {type(df).__name__}. "
+                f"Cannot to_dataframe(): the origin is a {type(df).__name__}. "
                 "Use FloatMatcher.to_xarray()."
             )
 

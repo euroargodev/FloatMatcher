@@ -129,13 +129,13 @@ Notebooks in [examples/](examples/):
 
 `time_gap` and `n_frames` are ignored on a grid without time axis. `interp` weights its neighbors into one value per point; `nearest` with `k_nearest` or `n_frames` above 1 keeps every neighbor, sorted from the nearest (`s0`, `t0`).
 
-### Outputs: `result` and `reinject()`
+### Outputs: `result` and augmented original objects
 
 | Points given to `set_points` | One neighbor | Several neighbors (`nearest`) |
 |---|---|---|
 | arrays, `PointSet` | `result` only | `result` only, values `(n, K, N)` |
 | DataFrame | column `sst_coloc` | columns `sst_coloc_s0_t0`, `sst_coloc_s0_t1`... |
-| Dataset | `sst_coloc(N_PROF)` | `sst_coloc(N_PROF, k_space, n_time)`, or with `reinject(neigh_to_vars=True)`: `sst_coloc_s0_t0(N_PROF)`... |
+| Dataset | `sst_coloc(N_PROF)` | `sst_coloc(N_PROF, k_space, n_time)`, or with `to_xarray(neigh_to_vars=True)`: `sst_coloc_s0_t0(N_PROF)`... |
 
 `result.neigh_to_cols()` gives the same columns as the DataFrame.
 
