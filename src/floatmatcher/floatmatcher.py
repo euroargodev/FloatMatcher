@@ -227,7 +227,7 @@ class FloatMatcher:
 
 
 
-    def to_xarray(self, neigh_to_vars: bool = False, in_place=False) -> xr.Dataset:
+    def to_xarray(self, neigh_to_vars: bool = False, in_place=True) -> xr.Dataset:
         """Add the matched values to the Dataset the points come from
 
         Values are added as ``<name>_coloc``. The source Dataset is not modified.
