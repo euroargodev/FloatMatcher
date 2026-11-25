@@ -289,9 +289,11 @@ def test_to_xarray_opt_in_place(grid_3d_ds, grid_file):
 
 
     assert fm.to_xarray(neigh_to_vars=False, in_place=False).t2m_coloc.attrs == {}
-    assert fm.to_xarray(neigh_to_vars=True).sst_coloc_s0_t0.attrs == {"attribute": "attr_value"} # in_place is applied to neigh_to_vars variables too
+    # in_place is applied to neigh_to_vars variables too
+    assert fm.to_xarray(neigh_to_vars=True).sst_coloc_s0_t0.attrs == {"attribute": "attr_value"}
     assert fm.to_xarray(neigh_to_vars=False, in_place=True).sst_coloc.attrs == {"attribute" : "attr_value"}
-    assert fm.to_xarray(neigh_to_vars=False, in_place=True).t2m_coloc.attrs == {"attribute1" : "attr_value1", "attribute2": "attr_value2"}
+    assert fm.to_xarray(neigh_to_vars=False, in_place=True).t2m_coloc.attrs == {
+        "attribute1": "attr_value1", "attribute2": "attr_value2"}
 
 
 

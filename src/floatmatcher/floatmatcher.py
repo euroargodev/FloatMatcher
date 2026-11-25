@@ -16,7 +16,8 @@ class FloatMatcher:
     """Positions matcher for gridded products
 
     Fill it with the ``set_*`` methods (points, product, method), then call ``match()`` and read
-    the result with ``result``. Results can be integrated to original dataset with ``to_xarray()`` or ``to_dataframe()``.
+    the result with ``result``. Results can be integrated to original dataset with ``to_xarray()``
+    or ``to_dataframe()``.
     With ``to_xarray(in_place=True)`` (default), each ``<name>_coloc`` variable keeps the
     attributes (units, long_name...) of the ``<name>`` variable of the gridded product.
 
@@ -228,7 +229,7 @@ class FloatMatcher:
 
 
 
-    def to_xarray(self, neigh_to_vars: bool = False, in_place=True) -> xr.Dataset:
+    def to_xarray(self, neigh_to_vars: bool = False, in_place: bool = True) -> xr.Dataset:
         """Add the matched values to the Dataset the points come from
 
         Values are added as ``<name>_coloc``. The source Dataset is not modified.
@@ -259,10 +260,11 @@ class FloatMatcher:
         if self._result is None or self.points is None:
             raise ValueError("no result yet or points are None, try call match()")
 
-        if not self.product.src_dataset:
+        if self.product is None or self.product.src_dataset is None:
             raise ValueError("product.src_dataset is None")
-        
-        return self._result._to_xarray(self.points, self.product.src_dataset, neigh_to_vars=neigh_to_vars, in_place=in_place)
+
+        return self._result._to_xarray(self.points, self.product.src_dataset,
+                                       neigh_to_vars=neigh_to_vars, in_place=in_place)
 
     def to_dataframe(self) -> pd.DataFrame:
         """Add the matched values to the DataFrame the points come from
