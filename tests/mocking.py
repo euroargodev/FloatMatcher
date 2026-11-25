@@ -1,4 +1,4 @@
-# mocking.py: stand-ins for external services, to test and develop without them
+# mocking.py: tools to perform tests without real third party library.
 
 import zipfile
 from pathlib import Path
