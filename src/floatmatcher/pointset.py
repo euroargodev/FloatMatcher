@@ -32,7 +32,7 @@ class PointSet:
     points_dim: str, optional
         Dimension holding the points in ``original_data``.
     original_data: pandas.DataFrame or xarray.Dataset, optional
-        Object the points come from, kept to reinject the matched values.
+        Object the points come from, kept to to_xarray/to_dataframe methods.
 
     Raises
     ------
