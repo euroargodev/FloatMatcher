@@ -33,7 +33,7 @@ def argo_profiles():
 
 def _match(ds, path, options=None, **method_params):
     return ds.argo.floatmatcher.match(
-        product=dict(type="era5-hourly", source="local", selected_variables=["sst"], path=path),
+        product=dict(type="era5-hourly", source="local", selected_variables=["sst"], store=path),
         method=dict(type="nearest", **method_params),
         **(options or {}),
     )

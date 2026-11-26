@@ -19,27 +19,27 @@ from floatmatcher.sources import LocalSource, CDSSource
 # ---------- LocalSource ----------
 
 def test_local_with_pattern_builds_a_pathtemplate():
-    source = LocalSource(path="/data", pattern="{year}/x.nc")
+    source = LocalSource(store="/data", pattern="{year}/x.nc")
     assert isinstance(source._resolver, PathTemplate)
 
 
 def test_local_without_pattern_builds_explicitfiles():
-    source = LocalSource(path="/data/2018")
+    source = LocalSource(store="/data/2018")
     assert isinstance(source._resolver, ExplicitFiles)
 
 
 def test_local_without_path_raise_error():
     with pytest.raises(ValueError):
-        LocalSource(path="", pattern="{year}/x.nc")     # pattern sans path
+        LocalSource(store="", pattern="{year}/x.nc")     # pattern sans store
     with pytest.raises(ValueError):
-        LocalSource(path="")
+        LocalSource(store="")
 
 
 # ---------- CDSSource ----------
 
 @pytest.fixture
 def cds_source(fake_cds):
-    return CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds)
+    return CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds)
 
 
 @pytest.fixture
@@ -65,32 +65,32 @@ def test_cds_request_without_variables_raise_error(cds_source, points):
 
 def test_local_source_has_no_request(points):
     with pytest.raises(ValueError):
-        LocalSource(path="/data").build_request(points, ["sst"])
+        LocalSource(store="/data").build_request(points, ["sst"])
 
 
 def test_cds_source_uses_given_client(fake_cds):
-    source = CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds)
+    source = CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds)
     assert source.client is fake_cds
 
 
 def test_cds_options_default_to_all_values(fake_cds):
-    source = CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds)
+    source = CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds)
     assert source._options_request({}) == {"time": [f"{h:02d}:00" for h in range(24)]}
 
 
 def test_cds_options_subset_of_hours(fake_cds):
-    source = CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds)
+    source = CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds)
     assert source._options_request({"time": ["02:00", "14:00"]}) == {"time": ["02:00", "14:00"]}
 
 
 def test_cds_options_unknown_option_raise_error(fake_cds):
-    source = CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds)
+    source = CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds)
     with pytest.raises(ValueError, match="unknown options"):
         source._options_request({"hours": ["02:00"]})
 
 
 def test_cds_options_unavailable_value_raise_error(fake_cds):
-    source = CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds)
+    source = CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds)
     with pytest.raises(ValueError, match="not available"):
         source._options_request({"time": ["02:30"]})
     with pytest.raises(ValueError, match="empty list"):
@@ -98,17 +98,17 @@ def test_cds_options_unavailable_value_raise_error(fake_cds):
 
 
 def test_cds_options_given_to_the_source_used_in_the_request(fake_cds, points):
-    source = CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds,
+    source = CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds,
                        time=["00:00", "12:00"])
     assert source.build_request(points, ["sst"])[0]["time"] == ["00:00", "12:00"]
 
 
 def test_cds_options_wrong_raise_error_at_creation(fake_cds):
     with pytest.raises(ValueError, match="unknown options"):
-        CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds,
+        CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds,
                   hours=["00:00"])
     with pytest.raises(ValueError, match="not available"):
-        CDSSource(path="/cache", product_info=ERA5Product.product_info, client=fake_cds,
+        CDSSource(store="/cache", product_info=ERA5Product.product_info, client=fake_cds,
                   time=["02:30"])
 
 
@@ -117,7 +117,7 @@ def test_cds_options_wrong_raise_error_at_creation(fake_cds):
 def area_of(lon, lat=None, lon_convention="-180/180"):
     lat = lat or [50.0] * len(lon)
     product_info = dict(ERA5Product.product_info, lon_convention=lon_convention)
-    source = CDSSource(path="/cache", product_info=product_info, client=None)
+    source = CDSSource(store="/cache", product_info=product_info, client=None)
     return source._area(make_points(lon, lat, ["2013-03-18T12"] * len(lon)))
 
 
@@ -165,7 +165,7 @@ def cds_download(cache_dir, points, client, by_year=False, variables=("sst",), c
 
     The request is set by hand, not by build_request, so that the split does not depend on costs.
     """
-    source = CDSSource(path=cache_dir, product_info=ERA5Product.product_info, client=client,
+    source = CDSSource(store=cache_dir, product_info=ERA5Product.product_info, client=client,
                        clear_cache=clear_cache)
     source.original_request = source._build_request(points, list(variables))
     if by_year:
@@ -299,7 +299,7 @@ def test_download_band_reused_by_a_float_inside(tmp_path, p_antimeridian, fake_c
 
 def test_download_with_options_not_downloaded_again_by_fetch(tmp_path, p2013, fake_cds):
     """Source with options, build_request and download, then fetch (as match does) builds it again"""
-    source = CDSSource(path=tmp_path, product_info=ERA5Product.product_info, client=fake_cds,
+    source = CDSSource(store=tmp_path, product_info=ERA5Product.product_info, client=fake_cds,
                        time=["00:00", "12:00"])
     source.build_request(p2013, ["sst"])
     source.download()
@@ -395,7 +395,7 @@ def test_download_clear_cache(tmp_path, p2013, p2014, fake_cds):
 
 
 def test_download_without_request_raise_error(tmp_path, fake_cds):
-    source = CDSSource(path=tmp_path, product_info=ERA5Product.product_info, client=fake_cds)
+    source = CDSSource(store=tmp_path, product_info=ERA5Product.product_info, client=fake_cds)
     with pytest.raises(ValueError, match="No request"):
         source.download()
 
