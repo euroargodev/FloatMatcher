@@ -277,9 +277,10 @@ class FloatMatcher:
     def to_xarray(self, neigh_to_vars: bool = False, in_place: bool = False) -> xr.Dataset:
         """Add the matched values to the Dataset the points come from
 
-        Values are added as ``<name>_coloc``. The source Dataset is not modified.
+        Values are added as ``<name>_coloc``. By default, the source Dataset is not modified.
 
-        Only the values of the variables are added. Time gaps and distances are available in MtchupResult Only
+        Only the values of the variables are added. Time gaps and distances are available in
+        :class:`.MatchupResult`.
         
         Parameters
         ----------
@@ -315,7 +316,8 @@ class FloatMatcher:
 
         Values are added as ``<name>_coloc`` columns. The source DataFrame is not modified.
 
-        Only the values of the variables are added. Time gaps and distances are available in MtchupResult Only
+        Only the values of the variables are added. Time gaps and distances are available in
+        :class:`.MatchupResult`.
 
         Returns
         -------
