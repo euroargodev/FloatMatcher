@@ -145,8 +145,8 @@ class Product(ABC):
     # avoid duplication of store into Product and Source 
     @property
     def store(self) -> str | Path | list[str | Path]:
-        """Directory or files of the product, as given to the source"""
-        return self._source.path
+        """Where the files of the product are on disk, as given to the source"""
+        return self._source.store
 
     # view of src_dataset restricted to selected_variables : no data copy,
     # src_dataset stays complete
