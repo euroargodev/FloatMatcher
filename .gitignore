@@ -117,8 +117,8 @@ env.bak/
 venv.bak/
 /runtime
 
-# uv lockfile is regenerated on demand (uv sync / uv lock), not tracked
-uv.lock
+# # uv lockfile is regenerated on demand (uv sync / uv lock), not tracked
+# uv.lock
 
 !.env.example.*
 !.env.example
