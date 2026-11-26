@@ -1,5 +1,6 @@
 # FloatMatcher.py: the top-level coordinator (public API of the library).
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -113,9 +114,9 @@ class FloatMatcher:
 
 
     def set_product(self,
-                    type: str, 
+                    type: str,
                     source: str,
-                    path: str, 
+                    store: str | Path | list[str | Path],
                     selected_variables: list[str] | None,
                     **src_params: Any
                     ) -> None:
@@ -126,16 +127,37 @@ class FloatMatcher:
         type: {'era5-hourly', 'lut'}
             Product to use.
         source: {'local', 'remote-cds'}
-            Where the files come from.
-        path: str or list of str
-            Directory or files of the product. With a ``pattern``, the root of the tree.
+            Where the files come from: already on disk (``"local"``), or downloaded from the
+            Copernicus Climate Data Store (``"remote-cds"``).
+        store: str, pathlib.Path or list of them
+            Where the files of the product are on disk (a path, not a zarr store).
+
+            - ``source="local"``: a file, a directory (all the ``.nc`` files found in it and in
+              its sub-directories are opened), or a list of files and/or directories. With the
+              ``pattern`` option, ``store`` must be a single directory, the root of the tree.
+            - ``source="remote-cds"``: the cache directory, a single directory where the files
+              are downloaded, then opened from. Requests already downloaded there are not
+              downloaded again.
         selected_variables: list of str or None
-            Variables to keep. None keeps all.
+            Variables to match, with their names in the files (e.g. ``sst``, ``t2m``).
+
+            - ``source="local"``: None keeps all the variables of the files.
+            - ``source="remote-cds"``: a list is required to know what to download. The
+              variables available depend on the product, see :class:`.ERA5Product`.
         **src_params
-            Parameters of the source. ``"local"``: ``pattern``, a path template like
-            ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``. ``"remote-cds"``:
-            ``client``, ``clear_cache`` and the options of the product (ERA5: ``time``, e.g.
-            ``["00:00", "12:00"]``), see :class:`.CDSSource`.
+            Parameters depending on the ``source``.
+
+            - ``source="local"``: ``pattern``, a path template under ``store``, built from the
+              dates of the points with the fields ``{year}``, ``{month}``, ``{day}``, ``{hour}``
+              and ``{minute}``, e.g. ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``.
+              Only the files needed by the points are opened, which spares the user from
+              selecting them by hand: the daily file of each point, plus the day before and the
+              day after (close to midnight, the nearest time step can be in the next or previous
+              file). It speeds up the opening of the files, especially on a large archive.
+              Works only with one file per day.
+            - ``source="remote-cds"``: ``client`` (required, ``cdsapi.Client()``),
+              ``clear_cache`` and the options of the product (ERA5: ``time``, e.g.
+              ``["00:00", "12:00"]``), see :class:`.CDSSource`.
 
         Raises
         ------
@@ -144,13 +166,31 @@ class FloatMatcher:
             ``selected_variables`` is neither None nor a non-empty list.
         TypeError
             If a source parameter is unknown, or a required one is missing.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            # a local archive, one file per day, every file of the directory opened (slow)
+            fm.set_product("era5-hourly", "local", "/data/era5", ["sst"])
+
+            # the same archive with a pattern: only the files of the dates of the points (fast)
+            fm.set_product("era5-hourly", "local", "/data/era5", ["sst"],
+                           pattern="{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc")
+
+            # an explicit list of files (fast)
+            fm.set_product("era5-hourly", "local",
+                           ["/data/era5_20180101.nc", "/data/era5_20180102.nc"], ["sst"])
+
+            # downloaded from CDS into ./cache (slow the first time, then read from the cache)
+            fm.set_product("era5-hourly", "remote-cds", "./cache", ["sst"], client=cdsapi.Client())
         """
         if type not in available_products:
             raise ValueError(f"unknown product {type!r}, available: {list(available_products)}")
-        
-        self.product = available_products[type](source, 
-                                                path, 
-                                                selected_variables, 
+
+        self.product = available_products[type](source,
+                                                store,
+                                                selected_variables,
                                                 **src_params
                                                 )
         
