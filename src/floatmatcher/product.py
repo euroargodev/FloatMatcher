@@ -347,9 +347,30 @@ class Product(ABC):
 
 
 class ERA5Product(Product):
-    """ERA5 reanalysis of ECMWF
+    """ERA5 hourly reanalysis of ECMWF, on single levels
 
-    The names ``longitude``, ``latitude`` and ``valid_time`` are renamed lon, lat and time.
+    Type ``"era5-hourly"`` in :meth:`.FloatMatcher.set_product`
+    Global grid of 0.25°, one time step per hour
+    Sources available: ``"local"`` or ``"remote-cds"``
+
+    Variables available from ``"remote-cds"``, with their names in the files, to give in
+    ``selected_variables``:
+
+    - ``sst``: sea surface temperature
+    - ``t2m``: 2 m temperature
+    - ``u10``, ``v10``: 10 m u and v components of wind
+    - ``avg_slhtf``: mean surface latent heat flux
+    - ``avg_ishf``: mean surface sensible heat flux
+    - ``avg_snswrf``: mean surface net short-wave radiation flux
+    - ``avg_snlwrf``: mean surface net long-wave radiation flux
+
+    With ``"remote-cds"``, the option ``time`` selects the hours downloaded (default= all the houres), 
+    ex: ``time=["00:00", "12:00"]``. 
+    With ``"local"``, any variable present in the files can be selected : 
+    the available variable list only concerns the CDS download
+
+    The names ``longitude``, ``latitude`` and ``valid_time`` of the files are renamed lon,
+    lat and time.
     """
     name = "era5-hourly"
     coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}
