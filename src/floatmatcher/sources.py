@@ -213,9 +213,8 @@ class CDSSource(Source):
         Information of the product: ``cds_dataset``, ``cds_request``, ``cds_variables``,
         ``cds_options``, ``grid_step``, ``lon_convention``, ``time_resolution`` and
         ``time_margin``.
-    client: cdsapi.Client or mocking.FakeCDSClient
-        Client of the CDS API. :class:`.FakeCDSClient` to develop without network.
-    clear_cache: bool, default False
+    client: cdsapi.Client 
+        Client of the CDS API. 
         Empty the cache directory before downloading.
     **kwargs: list of str
         Values of the options of the product (ERA5: ``time``, e.g. ``["00:00", "12:00"]``),
@@ -256,7 +255,7 @@ class CDSSource(Source):
         
         self.path: str | Path = path      # cache dir, a single directory
         self.product_info: dict[str, Any] = product_info
-        self.client = client      # cdsapi.Client, or mocking.FakeCDSClient to develop without network
+        self.client = client      # cdsapi.Client,
         self.clear_cache = clear_cache
 
         # options of the requests, checked now so that a wrong one fails at set_product

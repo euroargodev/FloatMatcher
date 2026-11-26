@@ -3,7 +3,7 @@
 import pytest
 import requests
 
-from floatmatcher.mocking import FakeCDSClient
+from mocking import FakeCDSClient
 
 DATASET = "reanalysis-era5-single-levels"
 

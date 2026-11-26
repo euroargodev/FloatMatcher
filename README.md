@@ -89,7 +89,7 @@ Notebooks in [examples/](examples/):
 
 1. [Quickstart](examples/01_quickstart.ipynb): the whole workflow, from points to matched values.
 2. [Points](examples/02_points.ipynb): arrays, DataFrame, Dataset, Argo float with argopy.
-3. [Remote CDS](examples/03_remote_cds.ipynb): CDS account, requests, cache, without network.
+3. [Remote CDS](examples/03_remote_cds.ipynb): CDS account, requests, cache, limits.
 4. [Local archives](examples/04_local_archives.ipynb): one file, a list, a folder, a tree with a pattern, a look-up table.
 5. [Methods and results](examples/05_methods_results.ipynb): nearest and interpolation, radius and time gap, several neighbors, results.
 6. [Argopy accessor](examples/06_argopy_accessor.ipynb): match an argopy dataset in one call, several neighbors.
