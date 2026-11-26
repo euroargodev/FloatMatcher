@@ -133,19 +133,19 @@ class FloatMatcher:
         store: str, pathlib.Path or list of them
             Where the files of the product are on disk (not a zarr store).
 
-            - ``source="local"``: a file, a directory (all the ``.nc`` files found in it and in
+            - When ``source="local"``: a file, a directory (all the ``.nc`` files found in it and in
               its sub-directories are opened), or a list of files and/or directories. With the
               ``pattern`` option, ``store`` must be a single directory, the root of the tree.
-            - ``source="remote-cds"``: the cache directory, a single directory where the files
+            - When ``source="remote-cds"``: the cache directory, a single directory where the files
               are downloaded, then opened from. Requests already downloaded there are not
               downloaded again.
 
-            Warning : the time used by the library to open files is proportional to the 
+            Warning: the time used by the library to open files is proportional to the
             number of opened files. It is much faster to open a restricted list of files
-            than a entire archive. It is prefferable to build the list before the matchup,
-            however if it is not possible, using pattern option on large archives helps
-            to speed up the process and having similar times than providing a list
-            (see **src_params section).
+            than an entire archive. It is preferable to build the list before the matchup,
+            however if it is not possible, using the ``pattern`` option on large archives
+            helps to speed up the process and gives similar times to providing a list
+            (see ``**src_params``).
         selected_variables: list of str or None
             Variables to match, with their names in the files (e.g. ``sst``, ``t2m``).
 
