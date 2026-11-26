@@ -130,7 +130,7 @@ class FloatMatcher:
             Where the files come from: already on disk (``"local"``), or downloaded from the
             Copernicus Climate Data Store (``"remote-cds"``).
         store: str, pathlib.Path or list of them
-            Where the files of the product are on disk (a path, not a zarr store).
+            Where the files of the product are on disk (not a zarr store).
 
             - ``source="local"``: a file, a directory (all the ``.nc`` files found in it and in
               its sub-directories are opened), or a list of files and/or directories. With the
@@ -138,6 +138,13 @@ class FloatMatcher:
             - ``source="remote-cds"``: the cache directory, a single directory where the files
               are downloaded, then opened from. Requests already downloaded there are not
               downloaded again.
+
+            Warning : the time used by the library to open files is proportional to the 
+            number of opened files. It is much faster to open a restricted list of files
+            than a entire archive. It is prefferable to build the list before the matchup,
+            however if it is not possible, using pattern option on large archives helps
+            to speed up the process and having similar times than providing a list
+            (see **src_params section).
         selected_variables: list of str or None
             Variables to match, with their names in the files (e.g. ``sst``, ``t2m``).
 
