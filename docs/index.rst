@@ -17,7 +17,7 @@ distance and a time gap.
     fm.set_method("nearest", radius=50, time_gap=np.timedelta64(3, "h"))
     fm.match()
     fm.result          # matched values, distances and time gaps
-    fm.reinject()      # the input DataFrame or Dataset, with <name>_coloc added
+    fm.to_xarray()     # the input xr.Dataset with <name>_coloc added (to_dataframe() for a pandas.DataFrame)
 
 .. toctree::
    :maxdepth: 2

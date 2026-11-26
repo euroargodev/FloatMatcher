@@ -7,7 +7,7 @@ import xarray as xr
 
 from floatmatcher.pointset import PointSet
 from floatmatcher.product import ERA5Product
-from floatmatcher.mocking import FakeCDSClient
+from mocking import FakeCDSClient
 from helpers import make_grid, daily_timestamps
 
 

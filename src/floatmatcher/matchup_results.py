@@ -56,7 +56,7 @@ class MatchupResult:
         A variable (n, K, N) gives ``<var>_coloc_s<k>_t<n>``, s being the rank of the node in
         distance and t the rank of the time step in time gap, both from the nearest (0). A
         variable already one value per point, (n,), gives ``<var>_coloc``. These are the names
-        of the columns added by ``reinject()``.
+        of the columns added by ``_to_dataframe()`` and ``to_xarray``.
 
         Parameters
         ----------
@@ -82,13 +82,14 @@ class MatchupResult:
                     out[f"{var}{suffix}_s{k}_t{t}"] = v[:, k, t]
         return out
 
-    def _to_dataset(self, points: PointSet, neigh_to_vars: bool = False) -> xr.Dataset:
+    def _to_xarray(self, points: PointSet, src_dataset: xr.Dataset,
+                   neigh_to_vars: bool = False, in_place: bool = False) -> xr.Dataset:
         """Reinject the matched values into the Dataset the points come from
 
         Values are added as ``<name>_coloc``, on the dimension of the points. With
         ``k_nearest`` or ``n_frames`` above 1, they also have the ``k_space`` and ``n_time``
         dimensions, or are split into one ``<name>_coloc_s<k>_t<n>`` variable per neighbor
-        (see :meth:`neigh_to_cols`). The source is not modified.
+        (see :meth:`neigh_to_cols`). The source is not modified, unless in_place=True
 
         Parameters
         ----------
@@ -96,6 +97,8 @@ class MatchupResult:
         neigh_to_vars: bool, default=False
             If set to True: one variable per neighbor, on the dimension of the points only, instead of the
             ``k_space`` and ``n_time`` dimensions. No effect with one neighbor.
+        in_place: bool, default=False
+            If set to True, the original xarray dataset is enriched with matched variables instead of a copy. 
 
         Returns
         -------
@@ -112,26 +115,42 @@ class MatchupResult:
         dim = points.points_dim
         if ds is None or dim is None:
             raise ValueError(
-                "Cannot reinject: these points have no origin dataset "
+                "Cannot to_xarray(): these points do not come from an xarray dataset "
                 "(they came from raw arrays). Use the MatchupResult directly."
             )
         if not isinstance(ds, xr.Dataset):
             raise TypeError(
-                f"Cannot reinject into a Dataset: the origin is a {type(ds).__name__}. "
+                f"Cannot to_xarray(): the origin is a {type(ds).__name__}. "
                 "Use FloatMatcher.to_dataframe()."
             )
 
-        out = ds.copy()
+        # if in_place, enrich the original dataset
+        if in_place:
+            out = ds
+        else:
+            out = ds.copy()
+
         if neigh_to_vars:
             # one variable per neighbor, along the points
-            for name, v in self.neigh_to_cols().items():
+            added = self.neigh_to_cols()
+            for name, v in added.items():
                 out[name] = (dim, v)
         else:
+            added = {}
             # one variable per matched variable, (n,) or (n, K, N)
             for k, v in self.values.items():
                 dims = (dim,) if v.ndim == 1 else (dim, "k_space", "n_time")
-                out[f"{k}_coloc"] = (dims, v)
 
+                added[f"{k}_coloc"] = v
+
+                out[f"{k}_coloc"] = (dims, v)
+                
+            
+        # add attributes to the matched variables : 
+        for k, v in added.items():
+            base, _, suffix = k.partition("_coloc")
+            out[f"{k}"].attrs = src_dataset[f"{base}"].attrs
+                    
         return out
 
     def _to_dataframe(self, points: PointSet) -> pd.DataFrame:
@@ -159,13 +178,13 @@ class MatchupResult:
         df = points.original_data
         if df is None:
             raise ValueError(
-                "Cannot reinject: these points have no origin dataframe "
+                "Cannot to_dataframe(): these points have no origin dataframe "
                 "(they came from raw arrays). Use the MatchupResult directly."
             )
         if not isinstance(df, pd.DataFrame):
             raise TypeError(
-                f"Cannot reinject into a DataFrame: the origin is a {type(df).__name__}. "
-                "Use FloatMatcher.to_dataset()."
+                f"Cannot to_dataframe(): the origin is a {type(df).__name__}. "
+                "Use FloatMatcher.to_xarray()."
             )
 
         out = df.copy()
