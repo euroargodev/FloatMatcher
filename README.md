@@ -1,10 +1,10 @@
 # FloatMatcher
 
-Floatmatcher is a a python library for third-party dataset matchup with Argo floats 
+Floatmatcher is a python library for third-party dataset matchup with Argo floats 
 Third-party datasets can originate from local or distant repositories.
 
 ## Documentation
-Asociated documentation is available running : ``` python3 -m http.server 8000 -d docs/_build/html ``` after installation 
+Associated documentation is available running : ``` python3 -m http.server 8000 -d docs/_build/html ``` after installation 
 
 ## Installation
 To install floatmatcher library, use the current git repository : 
@@ -21,12 +21,14 @@ import floatmatcher.floatmatcher as fm
 ```
 
 ```python
-# Instanciate builder object:
+# Instantiate builder object:
 my_fm = fm.FloatMatcher() 
 ```
 
 ```python
 # Import points:
+import numpy as np
+
 lon = np.array([-28.15, -46.51])
 lat = np.array([54.48, 30.08])
 time = np.array(["2013-03-18T22:47", "2014-05-18T12:22"], dtype="datetime64[ns]")
@@ -40,13 +42,12 @@ my_fm.set_points(lon, lat, time)
 my_fm.set_product(type="era5-hourly", 
                   source="local",
                   selected_variables=["sst"], 
-                  path="/<era5_data_folder>",
+                  store="/<era5_data_folder>",
                   )
 ```
 
 ```python 
 # set method
-import numpy as np
 my_fm.set_method(type="interp", radius=12, 
               time_gap=np.timedelta64(3, "h"),
               k_nearest=4, n_frames=2, kernel="idw",
@@ -76,7 +77,7 @@ ds = argopy.DataFetcher().region([-28, -25, 48, 50, 0, 50, "2018-01", "2018-06"]
 
 ds_matched = ds.argo.floatmatcher.match(
     product=dict(type="era5-hourly", source="local",
-                 selected_variables=["sst"], path="/<era5_data_folder>"),
+                 selected_variables=["sst"], store="/<era5_data_folder>"),
     method=dict(type="nearest", radius=50, time_gap=np.timedelta64(6, "h")),
 )
 ```
@@ -96,38 +97,83 @@ Notebooks in [examples/](examples/):
 
 ## Products, methods and options
 
-### Products: `set_product(type, source, path, selected_variables, ...)`
+### Products: `set_product(type, source, store, selected_variables, ...)`
 
-| `type` | `source` | Source parameters | Grid |
-|---|---|---|---|
-| `"era5-hourly"` | `"local"` | `pattern` (optional) | 0.25°, hourly time axis |
-| `"era5-hourly"` | `"remote-cds"` | `client` (required), `clear_cache` (False), `time` (all hours) | 0.25°, hourly time axis |
-| `"lut"` | `"local"` | `pattern` (optional) | 1°, no time axis: points without time |
+`store` is where the files of the product are on disk. What to give depends on the `source`:
 
-| `type` | `source` | Variable (`selected_variables`) | Description |
+- When `source="local"`: the files are already on disk. `store` can then be one file, one
+  directory (all `.nc` files under it and its subdirectories are opened), or a list of files
+  and/or directories. With the `pattern` option, `store` must be a directory at the top of the
+  tree: the pattern describes the path of the files below it to speed up file opening.
+- When `source="remote-cds"`: the files are downloaded from CDS. `store` must then be one
+  directory and represents the CDS cache dir. The files are downloaded there, then opened from
+  there. A request already downloaded in the cache is not downloaded again.
+
+Warning 1: the files must share the same grid and be unique: the library doesn't manage several
+files having the same time: it will raise an error.
+
+Warning 2: the time to open the files is proportional to the number of files opened. Opening a complete archive is slower than opening only the files needed (e.g. a list of files). If possible, prefer to 
+build the list of files before the matchup. If not, using the `pattern` option gives similar results but only works with a daily archive tree for now.  
+For example, for a float of 81 profiles and a local ERA5 archive of 3 years (one file per day): opening the entire archive (stored locally) takes about 11 s (1 096 files opened), a list of the needed files or the
+directory with a `pattern` takes only about 3.5 s. This opening time might be extended in the case of shared filesystem (e.g. nfs).
+
+```python
+import cdsapi
+
+# local archive - one file per day: every file below the directory is opened (slow)
+my_fm.set_product("era5-hourly", "local", "/data/era5", ["sst"])
+
+# local archive - one file per day: using the pattern option opens only the files concerning the times of the points (fast)
+my_fm.set_product("era5-hourly", "local", "/data/era5", ["sst"],
+                  pattern="{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc")
+
+# local archive - one file per day: an explicit list of files opens only the files given (fast)
+my_fm.set_product("era5-hourly", "local",
+                  ["/data/era5_20180101.nc", "/data/era5_20180102.nc"], ["sst"])
+
+# remote archive: download files from CDS into ./cache directory (slow). Then, it  opens all the files in it (fast). In case of a re-run, if the cache has not been emptied, it opens directly the files without re-downloading it (fast)
+my_fm.set_product("era5-hourly", "remote-cds", "./cache", ["sst"], client=cdsapi.Client())
+```
+
+The options allowed with each source are given in the following table:
+
+| Option | `source="local"` | `source="remote-cds"` | Note |
+|---|:---:|:---:|---|
+| `store` = one file | x | | |
+| `store` = one directory | x | mandatory | With `remote-cds`, a directory is required: it is used as the cache, the files are downloaded there and then opened from there. |
+| `store` = list of files and/or directories | x | | |
+| `selected_variables=None` (all variables) | x | | With `remote-cds`, a list of variables is required to know what to download. |
+| `pattern` | optional | | `store` must then be one directory, the top of the tree of files. |
+| `client` | | mandatory | Required: the client of the CDS API, `cdsapi.Client()`. |
+| `clear_cache` | | optional | Optional, `False` by default. With `True`, the cache directory is emptied before downloading. |
+| `time` | | optional | Optional, ERA5 only: hours of the day to download, e.g. `["00:00", "12:00"]`. All hours by default. |
+
+
+
+The following table displays the available products with floatmatcher:
+
+| `type` | `source` | Variables (`selected_variables`) | Description |
 |---|---|---|---|
-| `"era5-hourly"` | `"remote-cds"` | `sst` | sea surface temperature |
-| | | `t2m` | 2 m temperature |
-| | | `u10`, `v10` | 10 m u and v components of wind |
-| | | `avg_slhtf` | mean surface latent heat flux |
-| | | `avg_ishf` | mean surface sensible heat flux |
-| | | `avg_snswrf` | mean surface net short-wave radiation flux |
-| | | `avg_snlwrf` | mean surface net long-wave radiation flux |
-| `"era5-hourly"` | `"local"` | the variables of the local files | |
-| `"lut"` | `"local"` | `fluorescence_chlorophyll_ratio` | physiological ratio between fluorescence and chlorophyll-a (`LUT_v2_202608.nc`) |
-| | | `sd_fluorescence_chlorophyll_ratio` | its temporal standard deviation |
+| `"era5-hourly"` | `"remote-cds"` | `sst`, `t2m`, `u10`, `v10`, `avg_slhtf`, `avg_ishf`, `avg_snswrf`, `avg_snlwrf` | ERA5 hourly reanalysis on single levels, downloaded from CDS (`reanalysis-era5-single-levels`). Grid 0.25°, hourly time axis. |
+| `"era5-hourly"` | `"local"` | all the variables of the local files | ERA5 files already on disk. Grid 0.25°, hourly time axis. |
+| `"lut"` | `"local"` | all the variables of the local files | Look-up table of the physiological ratio between fluorescence and chlorophyll-a, and its temporal standard deviation (`LUT_v2_202608.nc`). Grid 1°, no time axis: points without time. |
+
+
 
 ### Methods: `set_method(type, ...)`
 
-| Parameter | `"nearest"` | `"interp"` |
-|---|---|---|
-| `radius` (km) | 25 | 25 |
-| `time_gap` | 1 day | 1 day |
-| `k_nearest`: nearest nodes | 1 | 2 |
-| `n_frames`: nearest time steps | 1 | 1 |
-| `kernel`, `power` | - | `"idw"`, 2 |
+The parameters allowed with each method are given in the following table (default value in
+brackets). An empty cell means the parameter is not accepted: giving it raises an error.
 
-`time_gap` and `n_frames` are ignored on a grid without time axis. `interp` weights its neighbors into one value per point; `nearest` with `k_nearest` or `n_frames` above 1 keeps every neighbor, sorted from the nearest (`s0`, `t0`).
+| Parameter | `type="nearest"` | `type="interp"` | Note |
+|---|:---:|:---:|---|
+| `type` | mandatory | mandatory | `"nearest"` or `"interp"`. |
+| `radius` | optional (25) | optional (25) | Maximum distance to a node of the grid, in km. Nodes beyond are invalid. |
+| `time_gap` | optional (1 day) | optional (1 day) | Maximum gap to a time step, e.g. `np.timedelta64(6, "h")`. Ignored on a grid without time axis. |
+| `k_nearest` | optional (1) | optional (2) | Number of nearest nodes. `nearest` keeps every neighbor. `interp` weights the neighbors to one value per point. |
+| `n_frames` | optional (1) | optional (1) | Number of nearest time steps, same behavior as `k_nearest` (`t0`, `t1`...). Ignored on a grid without time axis. |
+| `kernel` | | optional (`"idw"`) | Weighting function of the neighbors. Only `"idw"` (inverse distance weighting) for now. |
+| `power` | | optional (2) | Power of the inverse distance in `"idw"`. |
 
 ### Outputs: `result` and augmented original objects
 
@@ -138,6 +184,9 @@ Notebooks in [examples/](examples/):
 | Dataset | `sst_coloc(N_PROF)` | `sst_coloc(N_PROF, k_space, n_time)`, or with `to_xarray(neigh_to_vars=True)`: `sst_coloc_s0_t0(N_PROF)`... |
 
 `result.neigh_to_cols()` gives the same columns as the DataFrame.
+
+`to_xarray()` adds the matched variables to a copy of the Dataset by default (`in_place=False`).
+`to_xarray(in_place=True)` adds the matched variables to the original Dataset itself.
 
 ### Argopy accessor: `ds.argo.floatmatcher.match(product, method, neigh_to_vars=False, original_shape=True)`
 

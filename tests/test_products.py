@@ -92,8 +92,8 @@ def test_lut_normalize(tmp_path):
 
 
 def test_product_built_from_local_keeps_its_path():
-    assert ERA5Product("local", "/data", None).path == "/data"
-    assert LUTProduct("local", "/data", None).path == "/data"
+    assert ERA5Product("local", "/data", None).store == "/data"
+    assert LUTProduct("local", "/data", None).store == "/data"
 
 
 # ---------- open : grid validation ----------

@@ -57,22 +57,37 @@ def to_standard(ds: xr.Dataset, mapping: dict[str, str]) -> xr.Dataset:
 class Product(ABC):
     """Gridded product the points are matched with
 
-    A product knows where its files come from (its source), opens them as one dataset with
-    standard names (lon, lat, time) and keeps it in ``src_dataset``. Subclasses give their
-    ``name``, ``coord_map`` and ``src_available``, and implement ``normalize``.
+    A product knows where its files come from (its source, pointing to a store), opens them
+    as one dataset with standard names (lon, lat, time) and keeps it in ``src_dataset``.
+    Subclasses give their ``name``, ``coord_map`` and ``src_available``, and implement
+    ``normalize``.
 
     Parameters
     ----------
     source: str
-        Where the files come from, one of ``src_available``.
-    path: str or list of str
-        Directory or files of the product.
+        Where the files come from, one of ``src_available``: already on disk (``"local"``),
+        or downloaded from the Copernicus Climate Data Store (``"remote-cds"``).
+    store: str, pathlib.Path or list of them
+        Where the files of the product are on disk. What to give depends on the source.
+
+        - When ``source="local"``: the files are already on disk. ``store`` can then be one file,
+          one directory (all ``.nc`` files under it and its subdirectories are opened), or a
+          list of files and/or directories. With the ``pattern`` option, ``store`` must be a
+          directory at the top of the tree: the pattern describes the path of the files below
+          it to speed up file opening.
+        - When ``source="remote-cds"``: the files are downloaded from CDS. ``store`` must then be
+          one directory and represents the CDS cache dir. The files are downloaded there,
+          then opened from there. A request already downloaded in the cache is not
+          downloaded again.
+
+        More details and examples in :meth:`.FloatMatcher.set_product`.
     selected_variables: list of str or None
-        Variables to keep. None keeps all.
+        Variables to keep, with their names in the files (e.g. ``sst``, ``t2m``). None keeps
+        all, only with ``"local"``: ``"remote-cds"`` needs a list to know what to download.
     **source_params
-        Parameters of the source. ``"local"``: ``pattern``. ``"remote-cds"``: ``client``
-        (``cdsapi.Client()``), required, ``clear_cache`` and the options of the product (ERA5:
-        ``time``).
+        Parameters of the source, see :meth:`.FloatMatcher.set_product`. ``"local"``:
+        ``pattern``. ``"remote-cds"``: ``client`` (required, ``cdsapi.Client()``),
+        ``clear_cache`` and the options of the product (ERA5: ``time``).
 
     Attributes
     ----------
@@ -101,7 +116,7 @@ class Product(ABC):
 
     def __init__(self, 
                  source: str, 
-                 path: str, 
+                 store: str | Path | list[str | Path], 
                  selected_variables: list[str] | None,
                  **source_params: Any
                 ) -> None:
@@ -122,16 +137,16 @@ class Product(ABC):
         source_cls = available_sources[source]
         _check_params("source", source, source_params, source_cls.required_params,
                       source_cls._optional_params(self.product_info))
-        self._source = source_cls(path, product_info=self.product_info, **source_params)
+        self._source = source_cls(store, product_info=self.product_info, **source_params)
 
     # TODO : get essential product metadata 
 
-    # allow to store path in ._source object but to access it from Product 
-    # avoid duplication of path storage into Product and Source 
+    # allow to keep "store" in ._source object but to access it from Product 
+    # avoid duplication of store into Product and Source 
     @property
-    def path(self) -> str | Path | list[str]:
-        """Directory or files of the product, as given to the source"""
-        return self._source.path
+    def store(self) -> str | Path | list[str | Path]:
+        """Where the files of the product are on disk, as given to the source"""
+        return self._source.store
 
     # view of src_dataset restricted to selected_variables : no data copy,
     # src_dataset stays complete
@@ -347,9 +362,30 @@ class Product(ABC):
 
 
 class ERA5Product(Product):
-    """ERA5 reanalysis of ECMWF
+    """ERA5 hourly reanalysis of ECMWF, on single levels
 
-    The names ``longitude``, ``latitude`` and ``valid_time`` are renamed lon, lat and time.
+    Type ``"era5-hourly"`` in :meth:`.FloatMatcher.set_product`
+    Global grid of 0.25°, one time step per hour
+    Sources available: ``"local"`` or ``"remote-cds"``
+
+    Variables available from ``"remote-cds"``, with their names in the files, to give in
+    ``selected_variables``:
+
+    - ``sst``: sea surface temperature
+    - ``t2m``: 2 m temperature
+    - ``u10``, ``v10``: 10 m u and v components of wind
+    - ``avg_slhtf``: mean surface latent heat flux
+    - ``avg_ishf``: mean surface sensible heat flux
+    - ``avg_snswrf``: mean surface net short-wave radiation flux
+    - ``avg_snlwrf``: mean surface net long-wave radiation flux
+
+    With ``"remote-cds"``, the option ``time`` selects the hours downloaded (default= all the houres), 
+    ex: ``time=["00:00", "12:00"]``. 
+    With ``"local"``, any variable present in the files can be selected : 
+    the available variable list only concerns the CDS download
+
+    The names ``longitude``, ``latitude`` and ``valid_time`` of the files are renamed lon,
+    lat and time.
     """
     name = "era5-hourly"
     coord_map = {"longitude": "lon", "latitude": "lat", "valid_time": "time"}

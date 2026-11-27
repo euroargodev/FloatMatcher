@@ -22,8 +22,8 @@ class Source(ABC):
 
     Parameters
     ----------
-    path: str or list of str
-        Directory or files.
+    store: str, pathlib.Path or list of them
+        Where the files of the product are on disk, see :meth:`.FloatMatcher.set_product`.
 
     Attributes
     ----------
@@ -34,15 +34,15 @@ class Source(ABC):
         change it. The default values are read in the signature of ``__init__``.
     """
     name: str
-    # parameters given to set_product, besides path and product_info
+    # parameters given to set_product, besides store and product_info
     required_params: set[str] = set()
     optional_params: set[str] = set()
 
     def __init__(self,
-                 path: str | Path | list[str],
+                 store: str | Path | list[str | Path],
                  product_info: dict[str, Any] | None = None
                  ) -> None:
-            self.path = path
+            self.store = store
             self.product_info = product_info
             self.original_request: dict[str, Any] | None = None
 
@@ -127,10 +127,12 @@ class LocalSource(Source):
 
     Parameters
     ----------
-    path: str or list of str
-        Directory or files. With a ``pattern``, the root of the tree.
+    store: str, pathlib.Path or list of them
+        One file, one directory, or a list of files and/or directories. 
+        With a ``pattern``, one directory is mandatory as the root of the tree 
+        described by a pattern.
     pattern: str, optional
-        Path template under ``path``, built from the dates of the points with the fields
+        Path template under ``store``, built from the dates of the points with the fields
         ``{year}``, ``{month}``, ``{day}``, ``{hour}`` and ``{minute}``, for example
         ``"{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc"``. The neighboring days
         are taken too.
@@ -138,32 +140,32 @@ class LocalSource(Source):
     Raises
     ------
     ValueError
-        If ``path`` is empty, or if a ``pattern`` is given without a path or with a list of paths.
+        If ``store`` is empty, or if a ``pattern`` is given without ``store`` or with a list.
     """
     optional_params = {"pattern"}
 
     def __init__(self,
-                 path: str | list[str] | Path,
-                 pattern: str | None = None, 
+                 store: str | Path | list[str | Path],
+                 pattern: str | None = None,
                  product_info: dict[str, Any]| None = None) -> None:
-        
-        self.path = path
+
+        self.store = store
         self.pattern = pattern
         self.product_info = product_info
         self._resolver: FileResolver # declaration for mypy
 
-        if self.pattern and not self.path:
-            raise ValueError("pattern given without a root path")
-        if not self.path:
-            raise ValueError("no path or pattern provided for opening data")
+        if self.pattern and not self.store:
+            raise ValueError("pattern given without a root directory in store")
+        if not self.store:
+            raise ValueError("store is empty: no file or directory to open")
 
         if self.pattern:
             # a pattern is substituted under ONE root, not a list of paths
-            if not isinstance(self.path, (str, Path)):
-                raise ValueError("a pattern needs a single root path, not a list")
-            self._resolver = PathTemplate(self.path, self.pattern)
+            if not isinstance(self.store, (str, Path)):
+                raise ValueError("a pattern needs a single root directory in store, not a list")
+            self._resolver = PathTemplate(self.store, self.pattern)
         else:
-            self._resolver = ExplicitFiles(self.path)
+            self._resolver = ExplicitFiles(self.store)
 
 
     def resolve(self, points: PointSet) -> list[str]:
@@ -207,14 +209,16 @@ class CDSSource(Source):
 
     Parameters
     ----------
-    path: str or pathlib.Path
-        Cache directory. Each request gets its own folder in it, named by a uuid.
+    store: str or pathlib.Path
+        Cache directory, a single directory. Each request gets its own folder in it, named by
+        a uuid.
     product_info: dict
         Information of the product: ``cds_dataset``, ``cds_request``, ``cds_variables``,
         ``cds_options``, ``grid_step``, ``lon_convention``, ``time_resolution`` and
         ``time_margin``.
     client: cdsapi.Client 
-        Client of the CDS API. 
+        Client of the CDS API.
+    clear_cache: bool, default=False
         Empty the cache directory before downloading.
     **kwargs: list of str
         Values of the options of the product (ERA5: ``time``, e.g. ``["00:00", "12:00"]``),
@@ -246,14 +250,14 @@ class CDSSource(Source):
                 **options}
 
     def __init__(self,
-                 path: str | Path,
+                 store: str | Path,
                  product_info: dict[str, Any],
                  client: Any,
                  clear_cache: bool = False,
                  **kwargs: list[str]
                  ) -> None:
         
-        self.path: str | Path = path      # cache dir, a single directory
+        self.store: str | Path = store      # cache dir, a single directory
         self.product_info: dict[str, Any] = product_info
         self.client = client      # cdsapi.Client,
         self.clear_cache = clear_cache
@@ -263,9 +267,9 @@ class CDSSource(Source):
         self.options: dict[str, list[str]] = kwargs
 
 
-        # in remote case, resolver is the cache dir given in path, until download()
+        # in remote case, resolver is the cache dir given in store, until download()
         # points it to the folder of the request
-        self._resolver: FileResolver = ExplicitFiles(self.path)
+        self._resolver: FileResolver = ExplicitFiles(self.store)
         
         # request template of the product, completed from the points by build_request
         self.base_request: dict[str, Any] = copy.deepcopy(product_info["cds_request"])
@@ -298,7 +302,7 @@ class CDSSource(Source):
             If CDS refuses a sub-request.
         """
         # verify path
-        Path(self.path).mkdir(parents=True, exist_ok=True)
+        Path(self.store).mkdir(parents=True, exist_ok=True)
 
         # build requests
         self.build_request(points, variables)
@@ -605,7 +609,7 @@ class CDSSource(Source):
             raise ValueError("Client is not set. configure CDS client before download request")
 
         # verify path
-        cache_dir = Path(self.path)
+        cache_dir = Path(self.store)
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         # manage cache
@@ -671,8 +675,6 @@ class CDSSource(Source):
         try:
             for req in self.request:
                 # remove if necessary
-                # if os.path.exists(self.path):
-                #     os.remove(self.path)
                 retreive = cli.retrieve(self.product_info["cds_dataset"], req)
 
                 # forge name of downloaded file
@@ -724,7 +726,7 @@ class CDSSource(Source):
             state first, then its fields: ``variables``, ``area``, dates, ``time``,
             ``dataset``. Empty if nothing was downloaded in this cache yet.
         """
-        register_file = Path(self.path) / "register.json"
+        register_file = Path(self.store) / "register.json"
         register = json.loads(register_file.read_text()) if register_file.exists() else {}
 
         table = pd.DataFrame.from_dict(register, orient="index")

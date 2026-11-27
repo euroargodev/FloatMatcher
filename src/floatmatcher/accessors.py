@@ -35,7 +35,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
 
         ds.argo.floatmatcher.match(
             product=dict(type='era5-hourly', source='local',
-                         selected_variables=['sst'], path='/<era5_data_folder>'),
+                         selected_variables=['sst'], store='/<era5_data_folder>'),
             method=dict(type='nearest', radius=50, time_gap=np.timedelta64(6, 'h')),
         )
 
@@ -50,7 +50,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
         Parameters
         ----------
         product: dict
-            Parameters of :meth:`.FloatMatcher.set_product`: ``type``, ``source``, ``path``,
+            Parameters of :meth:`.FloatMatcher.set_product`: ``type``, ``source``, ``store``,
             ``selected_variables`` and the parameters of the source.
         method: dict
             Parameters of :meth:`.FloatMatcher.set_method`: ``type`` and the parameters of the
@@ -91,7 +91,7 @@ class FloatMatcherExtension(ArgoAccessorExtension):
                 product=dict(type='era5-hourly',
                             source='local',
                             selected_variables=['sst'],
-                            path=root
+                            store='/<era5_data_folder>'
                             ),
                 method=dict(type='nearest',
                             radius=50,
