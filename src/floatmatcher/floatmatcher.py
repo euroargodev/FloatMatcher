@@ -180,18 +180,24 @@ class FloatMatcher:
         .. code-block:: python
 
             # a local archive, one file per day, every file of the directory opened (slow)
-            fm.set_product("era5-hourly", "local", "/data/era5", ["sst"])
+            fm.set_product(type="era5-hourly", source="local", store="/data/era5",
+                            selected_variables=["sst"])
 
             # the same archive with a pattern: only the files of the dates of the points (fast)
-            fm.set_product("era5-hourly", "local", "/data/era5", ["sst"],
-                           pattern="{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc")
+            fm.set_product(type="era5-hourly", source="local", store="/data/era5", 
+                            selected_variables=["sst"],
+                            pattern="{year}/{month:02d}/era5_{year}{month:02d}{day:02d}.nc")
 
             # an explicit list of files (fast)
-            fm.set_product("era5-hourly", "local",
-                           ["/data/era5_20180101.nc", "/data/era5_20180102.nc"], ["sst"])
+            fm.set_product(type="era5-hourly", source="local",
+                            store=["/data/era5_20180101.nc", "/data/era5_20180102.nc"], 
+                            selected_variables=["sst"])
 
             # downloaded from CDS into ./cache (slow the first time, then read from the cache)
-            fm.set_product("era5-hourly", "remote-cds", "./cache", ["sst"], client=cdsapi.Client())
+            fm.set_product(type="era5-hourly", source="remote-cds", 
+                            store="./cache", 
+                            selected_variables=["sst"], 
+                            client=cdsapi.Client())
         """
         if type not in available_products:
             raise ValueError(f"unknown product {type!r}, available: {list(available_products)}")
